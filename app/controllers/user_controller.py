@@ -1,9 +1,11 @@
 # Backend/controllers/user_controller.py
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from sqlalchemy import or_  # <-- Necesario para buscar múltiples nombres a la vez
 from models.models import usuarios 
 from schemas.user_schema import UserSchema
 import uuid
+from utils.response import success_response, error_response  
 
 def validar_uuid(id_string: str):
     try:
@@ -22,17 +24,14 @@ def get_user(id: str, db: Session):
     return usuario
 
 def create_user(user: UserSchema, db: Session):
-    # Comprobar si el email ya existe en la base de datos
     existe = db.query(usuarios).filter(usuarios.email == user.email).first()
     if existe:
         raise HTTPException(status_code=400, detail="Este correo electrónico ya está registrado.")
     
-    # Creamos el registro mapeando los nuevos campos del script SQL
-    # Nota: Aquí puedes usar librerías como passlib/bcrypt para hashear 'user.password' en producción
     nuevo_usuario = usuarios(
         nombre=user.nombre, 
         email=user.email, 
-        password_hash=user.password,  # Mapeado a password_hash
+        password_hash=user.password,  
         is_admin=user.is_admin
     )
     db.add(nuevo_usuario)
@@ -46,7 +45,6 @@ def update_user(id: str, user: UserSchema, db: Session):
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     
-    # Verificar que el nuevo email no le pertenezca a otro ID diferente
     correo_ocupado = db.query(usuarios).filter(usuarios.email == user.email, usuarios.id != id).first()
     if correo_ocupado:
         raise HTTPException(status_code=400, detail="Este correo ya está en uso por otro usuario.")
@@ -70,13 +68,30 @@ def delete_user(id: str, db: Session):
     db.commit()
     return {"mensaje": f"Usuario con ID {id} eliminado permanentemente ❌"}
 
-def search_user_by_name(nombre: str, db: Session):
-    usuarios_encontrados = db.query(usuarios).filter(
-    usuarios.nombre.ilike(f"%{nombre}%")
-    ).all()
+# Esta versión maneja múltiples nombres limpiamente
+def search_user_by_name(nombre: list[str], db: Session):
+    filtros = [usuarios.nombre.ilike(f"%{n}%") for n in nombre]
+    usuarios_encontrados = db.query(usuarios).filter(or_(*filtros)).all()
 
     if not usuarios_encontrados:
-        raise HTTPException(status_code=404, detail="No se encontraron usuarios con ese nombre.")
+        return error_response(
+            message="Búsqueda sin resultados",
+            error_details="No se encontraron usuarios con los nombres suministrados.",
+            status_code=404
+        )
 
-    return usuarios_encontrados
-
+    data_resultados = [
+        {
+            "id": u.id, 
+            "nombre": u.nombre, 
+            "email": u.email,
+            "is_admin": u.is_admin
+        } 
+        for u in usuarios_encontrados
+    ]
+    
+    return success_response(
+        message="Usuarios encontrados correctamente 🔍",
+        data=data_resultados,
+        status_code=200
+    )
