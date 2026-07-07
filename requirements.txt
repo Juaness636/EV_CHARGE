@@ -1,8 +1,25 @@
-fastapi
+# uvicorn: El servidor ASGI que hace correr la aplicación FastAPI. 
+# Básicamente es el "motor" que escucha peticiones web.
 uvicorn
+
+# fastapi: El framework principal. Con esto construimos los endpoints de la API REST.
+fastapi
+
+# requests: Librería para hacer peticiones HTTP. La usamos para llamar a la API de OSRM
+# (para calcular rutas viales) y a OpenChargeMap (para buscar estaciones de carga).
+requests
+
+# sqlalchemy: El ORM que conecta nuestro código Python con la base de datos.
+# Nos permite trabajar con tablas como si fueran objetos.
 sqlalchemy
+
+# python-jose[cryptography]: Necesario para generar y validar los tokens JWT
+# que usamos para autenticar a los usuarios (login/registro).
+python-jose[cryptography]
+
+# python-multipart: FastAPI lo usa para procesar los formularios HTML, 
+# como el formulario de inicio de sesión (OAuth2PasswordRequestForm).
+python-multipart
+
+# psycopg2-binary: El "puente" para que SQLAlchemy se comunique con PostgreSQL.
 psycopg2-binary
-pydantic
-pydantic-settings
-email-validator
-python-dotenv
