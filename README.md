@@ -19,21 +19,74 @@ Backend centralizado para la plataforma de búsqueda y gestión de estaciones de
 ## 📂 Estructura del Proyecto
 
 ```text
-project/
-│
+Proyecto/
 ├── app/
-│   ├── config/       # Configuración de variables de entorno y bases de datos
-│   ├── controllers/  # Lógica de negocio y controladores principales
-│   ├── models/       # Modelos relacionales de la base de datos (SQLAlchemy)
-│   ├── routes/       # Definición de Endpoints y Rutas Protegidas (HTTP)
-│   ├── schemas/      # Modelos de validación y serialización de datos (Pydantic)
-│   ├── utils/        # Funciones auxiliares (Hashing, JWT tokens, etc.)
-│   └── main.py       # Punto de entrada de la aplicación FastAPI
-│
-├── .env.example      # Plantilla para la configuración de variables de entorno
-├── .gitignore        # Archivos y carpetas excluidos del repositorio (ej: .venv, .env)
-├── requirements.txt  # Lista completa de dependencias del proyecto
-└── README.md         # Documentación del proyecto
+│   ├── config/
+│   │   └── database.py
+│   ├── controllers/
+│   │   ├── auth_controller.py
+│   │   ├── calificaciones_controller.py
+│   │   ├── cargas_controller.py
+│   │   ├── empresa_controller.py
+│   │   ├── estacion_propias_controller.py
+│   │   ├── favoritos_controller.py
+│   │   ├── __init__.py
+│   │   ├── metodo_pago_controller.py
+│   │   ├── reportes_controller.py
+│   │   ├── reservas_controller.py
+│   │   ├── user_controller.py
+│   │   └── vehiculo_controller.py
+│   ├── main.py
+│   ├── middleware/
+│   │   └── error_handler.py
+│   ├── models/
+│   │   ├── calificacion.py
+│   │   ├── carga.py
+│   │   ├── empresa.py
+│   │   ├── estacion_propia.py
+│   │   ├── favorito.py
+│   │   ├── __init__.py
+│   │   ├── metodo_pago.py
+│   │   ├── reporte.py
+│   │   ├── reservas.py
+│   │   ├── role.py
+│   │   ├── usuarios.py
+│   │   └── vehiculos.py
+│   ├── README.md
+│   ├── routes/
+│   │   ├── auth_routes.py
+│   │   ├── calificaciones_routes.py
+│   │   ├── cargas_routes.py
+│   │   ├── empresa_routes.py
+│   │   ├── estaciones_propias_routes.py
+│   │   ├── favoritos_routes.py
+│   │   ├── __init__.py
+│   │   ├── metodos_pago_routes.py
+│   │   ├── reportes_routes.py
+│   │   ├── reservas_routes.py
+│   │   ├── user_routes.py
+│   │   └── vehiculos_routes.py
+│   ├── schemas/
+│   │   ├── calificaciones_schema.py
+│   │   ├── cargas_schema.py
+│   │   ├── empresa_schema.py
+│   │   ├── estacion_propia_schema.py
+│   │   ├── favoritos_schemas.py
+│   │   ├── metodos_pago_schema.py
+│   │   ├── reportes_schema.py
+│   │   ├── reservas_schemas.py
+│   │   ├── user_schema.py
+│   │   └── vehiculo_schema.py
+│   └── utils/
+│       ├── __init__.py
+│       ├── jwt.py
+│       ├── response.py
+│       └── security.py
+├── .env
+├── .gitignore
+├── main.py  
+├── README.md
+└── requirements.txt
 
 ```
 ---
