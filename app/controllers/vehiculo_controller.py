@@ -1,7 +1,7 @@
 # Backend/controllers/vehiculo_controller.py
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models.models import vehiculos  
+from models import vehiculos  
 from schemas.vehiculo_schema import VehiculoSchema
 import uuid
 

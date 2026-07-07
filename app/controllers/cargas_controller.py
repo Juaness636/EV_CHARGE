@@ -1,11 +1,11 @@
-from models.models import Cargas
+from models import carga
 
 def get_cargas(db):
-    return db.query(Cargas).all()
+    return db.query(carga).all()
 
 def create_carga(data, db):
     try:
-        new = Cargas(**data.model_dump())  # 🔥 cambio clave
+        new = carga(**data.model_dump())  # 🔥 cambio clave
         db.add(new)
         db.commit()
         db.refresh(new)

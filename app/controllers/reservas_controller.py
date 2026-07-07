@@ -1,14 +1,14 @@
-from models.models import Reservas
+from app.models import reservas
 
 def get_reservas(db):
-    return db.query(Reservas).all()
+    return db.query(reservas).all()
 
 def get_reserva(id, db):
-    return db.query(Reservas).filter(Reservas.id == id).first()
+    return db.query(reservas).filter(reservas.id == id).first()
 
 def create_reserva(data, db):
     try:
-        new = Reservas(**data.model_dump())
+        new = reservas(**data.model_dump())
         db.add(new)
         db.commit()
         db.refresh(new)
@@ -17,7 +17,7 @@ def create_reserva(data, db):
         return {"error": str(e)}
 
 def update_reserva(id, data, db):
-    reserva = db.query(Reservas).filter(Reservas.id == id).first()
+    reserva = db.query(reservas).filter(reservas.id == id).first()
     if not reserva:
         return {"error": "No encontrado"}
 
@@ -29,7 +29,7 @@ def update_reserva(id, data, db):
     return reserva
 
 def delete_reserva(id, db):
-    reserva = db.query(Reservas).filter(Reservas.id == id).first()
+    reserva = db.query(reservas).filter(reservas.id == id).first()
     if not reserva:
         return {"error": "No encontrado"}
 

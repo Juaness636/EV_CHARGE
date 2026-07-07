@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from sqlalchemy import or_  # <-- Necesario para buscar múltiples nombres a la vez
-from models.models import usuarios 
+from app.models import usuarios
 from schemas.user_schema import UserSchema
 import uuid
 from utils.response import success_response, error_response  

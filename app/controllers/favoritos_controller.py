@@ -1,14 +1,14 @@
-from models.models import Favoritos
+from models import favorito
 
 def get_favoritos(db):
-    return db.query(Favoritos).all()
+    return db.query(favorito).all()
 
 def get_favorito(id, db):
-    return db.query(Favoritos).filter(Favoritos.id == id).first()
+    return db.query(favorito).filter(favorito.id == id).first()
 
 def create_favorito(data, db):
     try:
-        new = Favoritos(**data.model_dump())  # 🔥 cambio clave
+        new = favorito(**data.model_dump())  # 🔥 cambio clave
         db.add(new)
         db.commit()
         db.refresh(new)
@@ -18,7 +18,7 @@ def create_favorito(data, db):
 
 def delete_favorito(id, db):
     try:
-        item = db.query(Favoritos).filter(Favoritos.id == id).first()
+        item = db.query(favorito).filter(favorito.id == id).first()
 
         if not item:
             return {"error": "No encontrado"}

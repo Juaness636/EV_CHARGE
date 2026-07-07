@@ -1,11 +1,11 @@
-from models.models import Calificaciones
+from models import calificacion
 
 def get_calificaciones(db):
-    return db.query(Calificaciones).all()
+    return db.query(calificacion).all()
 
 def create_calificacion(data, db):
     try:
-        new = Calificaciones(**data.model_dump())  # 🔥 cambio clave
+        new = calificacion(**data.model_dump())  # 🔥 cambio clave
         db.add(new)
         db.commit()
         db.refresh(new)

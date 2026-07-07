@@ -1,7 +1,7 @@
 # Backend/controllers/auth_controller.py
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models.models import usuarios as User  # Asegúrate de que apunte bien a tu modelo
+from models import usuarios as User  # Asegúrate de que apunte bien a tu modelo
 from utils.security import hash_password, verify_password
 from utils.jwt import create_access_token
 

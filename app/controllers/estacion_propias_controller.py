@@ -1,7 +1,7 @@
 # Backend/controllers/estacion_propia_controller.py
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models.models import EstacionPropia
+from models import estacion_propia
 from schemas.estacion_propia_schema import EstacionPropiaSchema
 import uuid
 
@@ -12,17 +12,17 @@ def validar_uuid(id_string: str):
         raise HTTPException(status_code=400, detail="El formato del ID (UUID) suministrado no es válido.")
 
 def get_all_stations(db: Session):
-    return db.query(EstacionPropia).all()
+    return db.query(estacion_propia).all()
 
 def get_station(id: str, db: Session):
     validar_uuid(id)
-    estacion = db.query(EstacionPropia).filter(EstacionPropia.id == id).first()
+    estacion = db.query(estacion_propia).filter(estacion_propia.id == id).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación propia no encontrada.")
     return estacion
 
 def create_station(station: EstacionPropiaSchema, db: Session):
-    nueva_estacion = EstacionPropia(
+    nueva_estacion = estacion_propia(
         nombre=station.nombre,
         direccion=station.direccion,
         lat=station.lat,
@@ -39,7 +39,7 @@ def create_station(station: EstacionPropiaSchema, db: Session):
 
 def update_station(id: str, station: EstacionPropiaSchema, db: Session):
     validar_uuid(id)
-    estacion = db.query(EstacionPropia).filter(EstacionPropia.id == id).first()
+    estacion = db.query(estacion_propia).filter(estacion_propia.id == id).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación propia no encontrada.")
     
@@ -58,7 +58,7 @@ def update_station(id: str, station: EstacionPropiaSchema, db: Session):
 
 def delete_station(id: str, db: Session):
     validar_uuid(id)
-    estacion = db.query(EstacionPropia).filter(EstacionPropia.id == id).first()
+    estacion = db.query(estacion_propia).filter(EstacionPropia.id == id).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación propia no encontrada.")
     

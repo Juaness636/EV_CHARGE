@@ -1,14 +1,14 @@
-from models.models import Reportes
+from models import reporte
 
 def get_reportes(db):
-    return db.query(Reportes).all()
+    return db.query(reporte).all()
 
 def get_reporte(id, db):
-    return db.query(Reportes).filter(Reportes.id == id).first()
+    return db.query(reporte).filter(reporte.id == id).first()
 
 def create_reporte(data, db):
     try:
-        new = Reportes(**data.model_dump())  # 🔥 cambio aquí
+        new = reporte(**data.model_dump())  # 🔥 cambio aquí
         db.add(new)
         db.commit()
         db.refresh(new)
@@ -18,7 +18,7 @@ def create_reporte(data, db):
 
 def update_reporte(id, data, db):
     try:
-        item = db.query(Reportes).filter(Reportes.id == id).first()
+        item = db.query(reporte).filter(reporte.id == id).first()
 
         if not item:
             return {"error": "No encontrado"}
@@ -35,7 +35,7 @@ def update_reporte(id, data, db):
 
 def delete_reporte(id, db):
     try:
-        item = db.query(Reportes).filter(Reportes.id == id).first()
+        item = db.query(reporte).filter(reporte.id == id).first()
 
         if not item:
             return {"error": "No encontrado"}

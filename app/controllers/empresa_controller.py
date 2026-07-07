@@ -1,13 +1,13 @@
 # Backend/controllers/empresa_controller.py
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models.models import  EstacionPropia  # Asegúrate de que se llame así en models.py
+from models import  estacion_propia # Asegúrate de que se llame así en models.py
 from schemas.empresa_schema import EmpresaSchema
 import uuid
 
 def get_companies(db: Session):
     # Trae todas las estaciones propias registradas
-    return db.query(EstacionPropia).all()
+    return db.query(estacion_propia).all()
 
 def get_company(id: str, db: Session):
     # Validación de formato UUID para evitar errores de sintaxis en Postgres
@@ -16,13 +16,13 @@ def get_company(id: str, db: Session):
     except ValueError:
         raise HTTPException(status_code=400, detail="El formato del ID (UUID) no es válido.")
 
-    empresa = db.query(EstacionPropia).filter(EstacionPropia.id == id).first()
+    empresa = db.query(estacion_propia).filter(estacion_propia.id == id).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Estación/Empresa no encontrada.")
     return empresa
 
 def create_company(company: EmpresaSchema, db: Session):
-    nueva_empresa = EstacionPropia(
+    nueva_empresa = estacion_propia(
         nombre=company.nombre,
         direccion=company.direccion,
         lat=company.lat,
