@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charge — Mi Dashboard</title>
+
+    <!-- Fuentes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="dashboard_usuario.css">
+</head>
+<body>
+
+<div id="admin-sidebar">
+    <div class="admin-brand">
+        <img src="./img/logo.png" alt="EV Charge">
+        <span>EV Charge</span>
+    </div>
+
+    <div class="admin-user-info-sidebar" style="padding: 12px 20px; border-bottom: 1px solid var(--border);">
+      <div style="font-size:14px; font-weight:600; color:var(--text);" id="sidebar-username">—</div>
+      <div style="font-size:12px; color:var(--muted);" id="sidebar-user-role">—</div>
+    </div>
+
+    <nav class="admin-nav">
+        <a class="anav active" href="#" onclick="showPanel('panel-inicio',this)">🏠 Inicio</a>
+        <a class="anav" href="#" onclick="showPanel('panel-vehiculos',this)">🚗 Vehículos</a>
+        <a class="anav" href="#" onclick="showPanel('panel-reservas',this)">📅 Reservas</a>
+        <a class="anav" href="#" onclick="showPanel('panel-pagos',this)">💳 Pagos</a>
+        <a class="anav" href="#" onclick="showPanel('panel-favoritos',this)">⭐ Favoritos</a>
+        <a class="anav" href="#" onclick="showPanel('panel-reportes',this)">📢 Reportes</a>
+        <a class="anav" href="#" onclick="showPanel('panel-calificaciones',this)">⭐ Calificaciones</a>
+        <a class="anav" href="#" onclick="showPanel('panel-perfil',this)">👤 Mi Perfil</a>
+    </nav>
+    <div class="admin-nav-bottom">
+        <a class="anav" href="mapa.html">🗺 Abrir mapa</a>
+        <a class="anav danger" href="#" onclick="doLogout()">🚪 Cerrar sesión</a>
+    </div>
+</div>
+
+<div id="admin-content">
+    <div id="admin-header">
+        <div>
+            <h1 id="panel-title">Inicio</h1>
+            <p id="panel-sub">Bienvenido a tu dashboard</p>
+        </div>
+        <div id="admin-user-info"></div>
+    </div>
+
+    <!-- PANEL INICIO -->
+    <div id="panel-inicio" class="panel active">
+        <div class="kpi-grid" id="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">🚗</div>
+                <div class="kpi-num" id="k-vehiculos">—</div>
+                <div class="kpi-label">Vehículos</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">📅</div>
+                <div class="kpi-num" id="k-reservas">—</div>
+                <div class="kpi-label">Reservas activas</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">💳</div>
+                <div class="kpi-num" id="k-pagos">—</div>
+                <div class="kpi-label">Métodos de pago</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">⭐</div>
+                <div class="kpi-num" id="k-favoritos">—</div>
+                <div class="kpi-label">Favoritos</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">⚡</div>
+                <div class="kpi-num" id="k-ultima-carga">—</div>
+                <div class="kpi-label">Última carga</div>
+            </div>
+        </div>
+
+        <div class="activity-box">
+            <div class="box-title">Actividad reciente</div>
+            <div id="actividad-reciente"><p class="empty">Cargando...</p></div>
+        </div>
+    </div>
+
+    <!-- PANEL VEHÍCULOS -->
+    <div id="panel-vehiculos" class="panel">
+        <div class="panel-toolbar">
+            <button class="pill" onclick="toggleForm('form-vehiculo')">+ Agregar vehículo</button>
+        </div>
+        <div id="form-vehiculo" class="inline-form">
+            <div class="form-grid">
+                <div><label>Marca</label><input type="text" id="v-marca" placeholder="Ej: Tesla"></div>
+                <div><label>Modelo</label><input type="text" id="v-modelo" placeholder="Ej: Model 3"></div>
+                <div><label>Año</label><input type="number" id="v-anio" placeholder="2023"></div>
+                <div><label>Autonomía (km)</label><input type="number" id="v-autonomia" placeholder="400"></div>
+                <div class="full"><label>Conector</label>
+                    <select id="v-conector">
+                        <option>CCS</option><option>Type 2</option><option>CHAdeMO</option><option>GB/T</option><option>J1772</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" id="btn-guardar-vehiculo" onclick="guardarVehiculo()">Guardar</button>
+                <button class="btn-form cancel" onclick="toggleForm('form-vehiculo')">Cancelar</button>
+            </div>
+            <div id="vehiculo-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+        </div>
+
+        <div id="form-editar-vehiculo" class="inline-form">
+            <div class="form-grid">
+                <div><label>Marca</label><input type="text" id="ev-marca" placeholder="Ej: Tesla"></div>
+                <div><label>Modelo</label><input type="text" id="ev-modelo" placeholder="Ej: Model 3"></div>
+                <div><label>Año</label><input type="number" id="ev-anio" placeholder="2023"></div>
+                <div><label>Autonomía (km)</label><input type="number" id="ev-autonomia" placeholder="400"></div>
+                <div class="full"><label>Conector</label>
+                    <select id="ev-conector">
+                        <option>CCS</option><option>Type 2</option><option>CHAdeMO</option><option>GB/T</option><option>J1772</option>
+                    </select>
+                </div>
+                <div class="full"><label>Activo</label>
+                    <select id="ev-activo">
+                        <option value="true">Activo</option><option value="false">Inactivo</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" onclick="actualizarVehiculo()">Actualizar</button>
+                <button class="btn-form cancel" onclick="ocultarEditarVehiculo()">Cancelar</button>
+            </div>
+            <div id="editar-vehiculo-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+            <input type="hidden" id="ev-id">
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Marca</th><th>Modelo</th><th>Año</th><th>Autonomía</th><th>Conector</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="tbody-vehiculos"><tr><td colspan="7" class="empty">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PANEL RESERVAS — NUEVO SISTEMA (igual que mapa)               -->
+    <!-- ============================================================ -->
+    <div id="panel-reservas" class="panel">
+        <div class="panel-toolbar">
+            <button class="pill" onclick="toggleForm('form-reserva')">+ Nueva reserva</button>
+        </div>
+        <div id="form-reserva" class="inline-form">
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+                <div><label>ID Estación</label><input type="text" id="r-estacion" placeholder="ID OCM" value=""></div>
+                <div><label>Nombre</label><input type="text" id="r-estacion-nombre" placeholder="Nombre de la estación"></div>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="duracion-control" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                    <label style="font-size:12px; color:#aaa; margin-right:8px;">Duración:</label>
+                    <input type="range" id="res-dashboard-duracion" min="1" max="8" value="2" step="1" oninput="actualizarDuracionLabelDashboard()">
+                    <span id="res-dashboard-duracion-label">2 h</span>
+                </div>
+                <div class="form-group" style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                    <label style="font-size:12px; color:#aaa; margin:0;">Inicio:</label>
+                    <input type="datetime-local" id="res-dashboard-inicio" style="flex:1;" onchange="actualizarFechasReservaDashboard()">
+                    <button class="btn-now" onclick="ponerHoraActualDashboard()">Ahora</button>
+                </div>
+                <div class="form-group">
+                    <label style="font-size:12px; color:#aaa;">Fin:</label>
+                    <input type="datetime-local" id="res-dashboard-fin" readonly style="background:#2a2a2a; opacity:0.7; width:100%; padding:10px 14px; border:2px solid #555; border-radius:8px; color:#fff;">
+                </div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" id="btn-guardar-reserva" onclick="crearReservaDashboard()">Crear reserva</button>
+                <button class="btn-form cancel" onclick="toggleForm('form-reserva')">Cancelar</button>
+            </div>
+            <div id="reserva-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Estación</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="tbody-reservas"><tr><td colspan="5" class="empty">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    <!-- ============================================================ -->
+
+    <!-- PANEL PAGOS -->
+    <div id="panel-pagos" class="panel">
+        <div class="panel-toolbar">
+            <button class="pill" onclick="toggleForm('form-pago')">+ Agregar método</button>
+        </div>
+        <div id="form-pago" class="inline-form">
+            <div class="form-grid">
+                <div><label>Tipo</label>
+                    <select id="p-tipo">
+                        <option>Visa</option><option>Mastercard</option><option>American Express</option><option>Efectivo</option><option>Otro</option>
+                    </select>
+                </div>
+                <div><label>Número (enmascarado)</label><input type="text" id="p-numero" placeholder="**** **** **** 1234"></div>
+                <div class="full"><label>Estado</label>
+                    <select id="p-estado">
+                        <option value="true">Activo</option><option value="false">Inactivo</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" id="btn-guardar-pago" onclick="guardarPago()">Guardar</button>
+                <button class="btn-form cancel" onclick="toggleForm('form-pago')">Cancelar</button>
+            </div>
+            <div id="pago-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Tipo</th><th>Número</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="tbody-pagos"><tr><td colspan="4" class="empty">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PANEL FAVORITOS -->
+    <div id="panel-favoritos" class="panel">
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Estación</th><th>Acciones</th></tr></thead>
+                <tbody id="tbody-favoritos"><tr><td colspan="2" class="empty">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PANEL REPORTES -->
+    <div id="panel-reportes" class="panel">
+        <div class="panel-toolbar">
+            <button class="pill" onclick="toggleForm('form-reporte')">+ Nuevo reporte</button>
+        </div>
+        <div id="form-reporte" class="inline-form">
+            <div class="form-grid">
+                <div><label>ID Estación</label><input type="text" id="rep-estacion" placeholder="ID OCM"></div>
+                <div><label>Nombre</label><input type="text" id="rep-nombre" placeholder="Nombre"></div>
+                <div class="full"><label>Tipo</label>
+                    <select id="rep-tipo">
+                        <option>averia</option><option>fuera_servicio</option><option>ocupado</option><option>otro</option>
+                    </select>
+                </div>
+                <div class="full"><label>Descripción</label><textarea id="rep-desc" rows="2" style="width:100%; padding:8px; background:#0d0d0d; border:1px solid #333; border-radius:4px; color:#fff; font-size:13px; font-family:'Nunito',sans-serif;"></textarea></div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" id="btn-guardar-reporte" onclick="guardarReporte()">Enviar</button>
+                <button class="btn-form cancel" onclick="toggleForm('form-reporte')">Cancelar</button>
+            </div>
+            <div id="reporte-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+        </div>
+
+        <div id="form-editar-reporte" class="inline-form">
+            <div class="form-grid">
+                <div><label>Tipo</label>
+                    <select id="er-tipo">
+                        <option>averia</option><option>fuera_servicio</option><option>ocupado</option><option>otro</option>
+                    </select>
+                </div>
+                <div class="full"><label>Descripción</label><textarea id="er-desc" rows="2" style="width:100%; padding:8px; background:#0d0d0d; border:1px solid #333; border-radius:4px; color:#fff; font-size:13px; font-family:'Nunito',sans-serif;"></textarea></div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" onclick="actualizarReporte()">Actualizar</button>
+                <button class="btn-form cancel" onclick="ocultarEditarReporte()">Cancelar</button>
+            </div>
+            <div id="editar-reporte-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+            <input type="hidden" id="er-id">
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Estación</th><th>Tipo</th><th>Descripción</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+                <tbody id="tbody-reportes"><tr><td colspan="6" class="empty">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PANEL CALIFICACIONES -->
+    <div id="panel-calificaciones" class="panel">
+        <div class="panel-toolbar">
+            <button class="pill" onclick="toggleForm('form-calificacion')">+ Calificar estación</button>
+        </div>
+        <div id="form-calificacion" class="inline-form">
+            <div class="form-grid">
+                <div><label>ID Estación</label><input type="text" id="cal-estacion" placeholder="ID OCM"></div>
+                <div><label>Nombre</label><input type="text" id="cal-nombre" placeholder="Nombre"></div>
+                <div><label>Puntaje</label>
+                    <select id="cal-puntaje">
+                        <option value="1">⭐</option><option value="2">⭐⭐</option><option value="3">⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="5">⭐⭐⭐⭐⭐</option>
+                    </select>
+                </div>
+                <div class="full"><label>Comentario</label><textarea id="cal-comentario" rows="2" style="width:100%; padding:8px; background:#0d0d0d; border:1px solid #333; border-radius:4px; color:#fff; font-size:13px; font-family:'Nunito',sans-serif;"></textarea></div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" id="btn-guardar-calificacion" onclick="guardarCalificacion()">Enviar</button>
+                <button class="btn-form cancel" onclick="toggleForm('form-calificacion')">Cancelar</button>
+            </div>
+            <div id="calificacion-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+        </div>
+
+        <div id="form-editar-calificacion" class="inline-form">
+            <div class="form-grid">
+                <div><label>Puntaje</label>
+                    <select id="ec-puntaje">
+                        <option value="1">⭐</option><option value="2">⭐⭐</option><option value="3">⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="5">⭐⭐⭐⭐⭐</option>
+                    </select>
+                </div>
+                <div class="full"><label>Comentario</label><textarea id="ec-comentario" rows="2" style="width:100%; padding:8px; background:#0d0d0d; border:1px solid #333; border-radius:4px; color:#fff; font-size:13px; font-family:'Nunito',sans-serif;"></textarea></div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="btn-form" onclick="actualizarCalificacion()">Actualizar</button>
+                <button class="btn-form cancel" onclick="ocultarEditarCalificacion()">Cancelar</button>
+            </div>
+            <div id="editar-calificacion-alert" style="margin-top:8px; font-size:13px; color:#39a900;"></div>
+            <input type="hidden" id="ec-id">
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Estación</th><th>Puntaje</th><th>Comentario</th><th>Fecha</th><th>Acciones</th></tr></thead>
+                <tbody id="tbody-calificaciones"><tr><td colspan="5" class="empty">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PANEL PERFIL -->
+    <div id="panel-perfil" class="panel">
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">Nombre</div>
+                <div class="value" id="perfil-nombre">—</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Apellido</div>
+                <div class="value" id="perfil-apellido">—</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Correo</div>
+                <div class="value" id="perfil-email">—</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Miembro desde</div>
+                <div class="value" id="perfil-creado">—</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Total cargas</div>
+                <div class="value" id="perfil-total-cargas">—</div>
+            </div>
+            <div class="info-card">
+                <div class="label">kWh consumidos</div>
+                <div class="value" id="perfil-total-kwh">—</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Reservas realizadas</div>
+                <div class="value" id="perfil-total-reservas">—</div>
+            </div>
+        </div>
+
+        <div class="admin-form-grid" style="margin-top:24px;">
+            <div class="box-title full-width" style="margin-bottom:4px;">Editar perfil</div>
+            <div><label>Nombre</label><input type="text" id="edit-nombre" placeholder="Tu nombre"></div>
+            <div><label>Apellido</label><input type="text" id="edit-apellido" placeholder="Tu apellido"></div>
+            <div class="full-width"><label>Correo</label><input type="email" id="edit-email" placeholder="correo@ejemplo.com"></div>
+            <div class="full-width" style="margin-top:8px;">
+                <button class="btn-save-estacion" onclick="guardarPerfil()">Guardar cambios</button>
+                <span id="perfil-msg" style="margin-left:12px;font-size:13px;color:#39a900;"></span>
+            </div>
+        </div>
+
+        <div class="admin-form-grid" style="margin-top:16px;">
+            <div class="box-title full-width" style="margin-bottom:4px;">Cambiar contraseña</div>
+            <div><label>Contraseña actual</label><input type="password" id="edit-old-pass" placeholder="••••••••"></div>
+            <div><label>Nueva contraseña</label><input type="password" id="edit-new-pass" placeholder="••••••••"></div>
+            <div class="full-width" style="margin-top:8px;">
+                <button class="btn-save-estacion" onclick="cambiarPassword()">Actualizar contraseña</button>
+                <span id="pass-msg" style="margin-left:12px;font-size:13px;color:#39a900;"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <img src="./img/logo.png" alt="EV Charge" class="footer-logo">
+            <p style="font-size:15px; font-weight:600; color:#fff; margin:6px 0 4px;">EV Charge</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.6; max-width:320px;">
+                Plataforma para localizar y gestionar estaciones de carga para vehículos eléctricos en Colombia.
+            </p>
+        </div>
+
+        <div class="footer-links">
+            <p class="footer-title">Navegación</p>
+            <a href="index.html#inicio">Inicio</a>
+            <a href="index.html#servicios">Servicios</a>
+            <a href="index.html#nosotros">Quiénes somos</a>
+            <a href="index.html#contacto">Contacto</a>
+        </div>
+
+        <div class="footer-links">
+            <p class="footer-title">Contacto</p>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--text-muted);">
+                <span>📧 contacto@evcharge.co</span>
+                <span>📍 Bogotá D.C., Colombia</span>
+                <span>📞 +57 300 123 4567</span>
+            </div>
+        </div>
+
+        <div class="footer-links">
+            <p class="footer-title">Información</p>
+            <p style="font-size:13px; color:var(--text-muted); margin:0 0 4px;">Versión 2.0</p>
+            <p style="font-size:13px; color:var(--text-muted); margin:0 0 4px;">Proyecto académico SENA ADSO</p>
+            <p style="font-size:13px; color:var(--text-muted); margin:0;">
+                Última actualización: <span class="footer-year" style="font-weight:600; color:#fff;"></span>
+            </p>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>
+            © <span class="footer-year"></span> EV Charge • Todos los derechos reservados.
+        </p>
+    </div>
+</footer>
+<script>
+    document.querySelectorAll('.footer-year').forEach(function(el) {
+        el.textContent = new Date().getFullYear();
+    });
+</script>
+<!-- ==================== FIN FOOTER ==================== -->
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let currentUser = null;
+let vehiculoEditandoId = null;
+let reporteEditandoId = null;
+let calificacionEditandoId = null;
+let pagosList = [];
+
+function nombreCompleto(user) {
+    if (!user) return 'Usuario eliminado';
+    if (user.apellido && user.apellido.trim()) {
+        return user.nombre + ' ' + user.apellido;
+    }
+    return user.nombre;
+}
+
+function fechaCorta(iso) {
+    return new Date(iso).toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fechaHora(iso) {
+    return new Date(iso).toLocaleString('es-CO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function toggleForm(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        const display = window.getComputedStyle(el).display;
+        if (display === 'none') {
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+        const alertId = id.replace('form-', '') + '-alert';
+        const alertEl = document.getElementById(alertId);
+        if (alertEl) {
+            alertEl.textContent = '';
+            alertEl.style.color = '#39a900';
+        }
+    }
+}
+
+async function apiFetch(path, method = 'GET', body = null) {
+    const token = localStorage.getItem('ev_token');
+    if (!token) throw new Error('No autenticado');
+    const opts = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(`${API}${path}`, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error');
+    return data;
+}
+
+function toast(msg, err = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = err ? 'show error' : 'show';
+    clearTimeout(window.toastTimer);
+    window.toastTimer = setTimeout(() => el.className = '', 3000);
+}
+
+function doLogout() {
+    localStorage.removeItem('ev_token');
+    window.location.href = 'index.html';
+}
+
+const panelTitles = {
+    'panel-inicio': ['Inicio', 'Bienvenido a tu dashboard'],
+    'panel-vehiculos': ['Vehículos', 'Gestiona tus vehículos eléctricos'],
+    'panel-reservas': ['Reservas', 'Todas tus reservas de carga'],
+    'panel-pagos': ['Métodos de Pago', 'Tarjetas y medios de pago registrados'],
+    'panel-favoritos': ['Favoritos', 'Estaciones que has guardado'],
+    'panel-reportes': ['Reportes', 'Problemas reportados'],
+    'panel-calificaciones': ['Calificaciones', 'Tus opiniones sobre estaciones'],
+    'panel-perfil': ['Mi Perfil', 'Edita tus datos personales y contraseña']
+};
+
+function actualizarInfoUsuario(user) {
+    const nombreCompletoUser = nombreCompleto(user);
+    const roleLabel = user.is_admin ? 'Admin' : 'Usuario';
+    document.getElementById('admin-user-info').innerHTML = `
+        <span style="font-size:13px;color:#666; display:flex; align-items:center; gap:8px;">
+            <span>${nombreCompletoUser}</span>
+            <span style="background:${user.is_admin ? 'rgba(57,169,0,0.15)' : 'rgba(255,255,255,0.05)'}; 
+                  color:${user.is_admin ? '#39a900' : '#999'}; 
+                  padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600;">
+                ${roleLabel}
+            </span>
+        </span>
+    `;
+    document.getElementById('sidebar-username').textContent = nombreCompletoUser;
+    document.getElementById('sidebar-user-role').textContent = user.is_admin ? 'Administrador' : 'Usuario';
+}
+
+function showPanel(id, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.anav').forEach(a => a.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (el) el.classList.add('active');
+    const [title, sub] = panelTitles[id] || [id, ''];
+    document.getElementById('panel-title').textContent = title;
+    document.getElementById('panel-sub').textContent = sub;
+    
+    if (id === 'panel-inicio') cargarInicio();
+    if (id === 'panel-vehiculos') cargarVehiculos();
+    if (id === 'panel-reservas') cargarReservas();
+    if (id === 'panel-pagos') cargarPagos();
+    if (id === 'panel-favoritos') cargarFavoritos();
+    if (id === 'panel-reportes') cargarReportes();
+    if (id === 'panel-calificaciones') cargarCalificaciones();
+    if (id === 'panel-perfil') cargarPerfil();
+}
+
+// ─── INICIO ───────────────────────────────────────────────────
+async function cargarInicio() {
+    try {
+        const [vehiculos, reservas, pagos, favs, cargas] = await Promise.all([
+            apiFetch('/vehiculos'),
+            apiFetch('/mis-reservas'),
+            apiFetch('/pagos'),
+            apiFetch('/favoritos'),
+            apiFetch('/cargas')
+        ]);
+        const activas = reservas.filter(r => r.estado === 'activa');
+        const ultima = cargas.length > 0 ? cargas[0] : null;
+
+        document.getElementById('k-vehiculos').textContent = vehiculos.length;
+        document.getElementById('k-reservas').textContent = activas.length;
+        document.getElementById('k-pagos').textContent = pagos.length;
+        document.getElementById('k-favoritos').textContent = favs.length;
+        document.getElementById('k-ultima-carga').textContent = ultima ? ultima.kwh_cargados + ' kWh' : '—';
+
+        const items = [];
+        cargas.slice(0,2).forEach(c => items.push({ tipo: '⚡ Carga', desc: `${c.kwh_cargados} kWh en ${c.estacion_nombre || 'estación'}`, fecha: c.fecha }));
+        reservas.slice(0,2).forEach(r => items.push({ tipo: '📅 Reserva', desc: `${r.estacion_nombre || r.estacion_ocm_id}`, fecha: r.created_at }));
+        favs.slice(0,2).forEach(f => items.push({ tipo: '⭐ Favorito', desc: `"${f.estacion_nombre || f.estacion_ocm_id}"`, fecha: f.fecha }));
+        pagos.slice(0,2).forEach(p => items.push({ tipo: '💳 Pago', desc: `${p.tipo} terminada en ${p.numero.slice(-4)}`, fecha: p.created_at }));
+        items.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+        const cont = document.getElementById('actividad-reciente');
+        if (items.length === 0) {
+            cont.innerHTML = '<p class="empty">Sin actividad reciente.</p>';
+        } else {
+            cont.innerHTML = items.slice(0,5).map(item => `
+                <div class="res-row">
+                    <div><span class="badge-tipo">${item.tipo}</span> ${item.desc}</div>
+                    <span class="res-fecha">${fechaCorta(item.fecha)}</span>
+                </div>
+            `).join('');
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+// ─── VEHÍCULOS ──────────────────────────────────────────────
+async function cargarVehiculos() {
+    try {
+        const data = await apiFetch('/vehiculos');
+        const tbody = document.getElementById('tbody-vehiculos');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin vehículos registrados.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(v => `
+            <tr>
+                <td><strong>${v.marca}</strong></td>
+                <td>${v.modelo}</td>
+                <td>${v.anio || '—'}</td>
+                <td>${v.autonomia_km} km</td>
+                <td><span class="badge-tipo">${v.tipo_conector}</span></td>
+                <td><span class="badge-estado ${v.activo ? 'resuelto' : 'abierto'}">${v.activo ? 'Activo' : 'Inactivo'}</span></td>
+                <td>
+                    ${!v.activo ? `<button class="btn-tbl" onclick="activarVehiculo('${v.id}')">Activar</button>` : ''}
+                    <button class="btn-tbl" onclick="mostrarEditarVehiculo('${v.id}')">✏️</button>
+                    <button class="btn-tbl danger" onclick="eliminarVehiculo('${v.id}')">🗑</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+
+function mostrarEditarVehiculo(id) {
+    document.getElementById('form-vehiculo').style.display = 'none';
+    const form = document.getElementById('form-editar-vehiculo');
+    form.style.display = 'block';
+    document.getElementById('editar-vehiculo-alert').textContent = '';
+    vehiculoEditandoId = id;
+    apiFetch('/vehiculos')
+        .then(data => {
+            const v = data.find(item => item.id === id);
+            if (v) {
+                document.getElementById('ev-marca').value = v.marca;
+                document.getElementById('ev-modelo').value = v.modelo;
+                document.getElementById('ev-anio').value = v.anio || '';
+                document.getElementById('ev-autonomia').value = v.autonomia_km;
+                document.getElementById('ev-conector').value = v.tipo_conector;
+                document.getElementById('ev-activo').value = v.activo ? 'true' : 'false';
+                document.getElementById('ev-id').value = v.id;
+            }
+        })
+        .catch(e => alert(e.message));
+}
+
+function ocultarEditarVehiculo() {
+    document.getElementById('form-editar-vehiculo').style.display = 'none';
+    vehiculoEditandoId = null;
+    document.getElementById('editar-vehiculo-alert').textContent = '';
+}
+
+function limpiarFormularioVehiculo() {
+    document.getElementById('v-marca').value = '';
+    document.getElementById('v-modelo').value = '';
+    document.getElementById('v-anio').value = '';
+    document.getElementById('v-autonomia').value = '';
+    document.getElementById('v-conector').selectedIndex = 0;
+    document.getElementById('vehiculo-alert').textContent = '';
+    document.getElementById('vehiculo-alert').style.color = '#39a900';
+}
+
+async function actualizarVehiculo() {
+    const id = document.getElementById('ev-id').value;
+    const marca = document.getElementById('ev-marca').value.trim();
+    const modelo = document.getElementById('ev-modelo').value.trim();
+    const anio = parseInt(document.getElementById('ev-anio').value) || null;
+    const autonomia_km = parseFloat(document.getElementById('ev-autonomia').value) || 300;
+    const tipo_conector = document.getElementById('ev-conector').value;
+    const activo = document.getElementById('ev-activo').value === 'true';
+    if (!marca || !modelo) {
+        document.getElementById('editar-vehiculo-alert').textContent = 'Marca y modelo son obligatorios';
+        document.getElementById('editar-vehiculo-alert').style.color = '#e74c3c';
+        return;
+    }
+    try {
+        await apiFetch(`/vehiculos/${id}`, 'PUT', { marca, modelo, anio, autonomia_km, tipo_conector, activo });
+        toast('Vehículo actualizado');
+        ocultarEditarVehiculo();
+        cargarVehiculos();
+        cargarInicio();
+    } catch(e) {
+        document.getElementById('editar-vehiculo-alert').textContent = e.message;
+        document.getElementById('editar-vehiculo-alert').style.color = '#e74c3c';
+    }
+}
+
+async function guardarVehiculo() {
+    const btn = document.getElementById('btn-guardar-vehiculo');
+    if (btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+    }
+    try {
+        const marca = document.getElementById('v-marca').value.trim();
+        const modelo = document.getElementById('v-modelo').value.trim();
+        const anio = parseInt(document.getElementById('v-anio').value) || null;
+        const autonomia_km = parseFloat(document.getElementById('v-autonomia').value) || 300;
+        const tipo_conector = document.getElementById('v-conector').value;
+        if (!marca || !modelo) {
+            document.getElementById('vehiculo-alert').textContent = 'Marca y modelo son obligatorios';
+            document.getElementById('vehiculo-alert').style.color = '#e74c3c';
+            return;
+        }
+        await apiFetch('/vehiculos', 'POST', { marca, modelo, anio, autonomia_km, tipo_conector, activo: true });
+        toast('Vehículo guardado');
+        toggleForm('form-vehiculo');
+        limpiarFormularioVehiculo();
+        cargarVehiculos();
+        cargarInicio();
+    } catch(e) {
+        document.getElementById('vehiculo-alert').textContent = e.message;
+        document.getElementById('vehiculo-alert').style.color = '#e74c3c';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Guardar';
+        }
+    }
+}
+
+async function activarVehiculo(id) {
+    try {
+        const vehiculos = await apiFetch('/vehiculos');
+        const v = vehiculos.find(item => item.id === id);
+        if (!v) throw new Error('Vehículo no encontrado');
+        await apiFetch(`/vehiculos/${id}`, 'PUT', { activo: true });
+        toast('Vehículo activado');
+        cargarVehiculos();
+        cargarInicio();
+    } catch(e) {
+        toast(e.message, true);
+    }
+}
+
+async function eliminarVehiculo(id) {
+    if (!confirm('¿Eliminar este vehículo?')) return;
+    try {
+        await apiFetch(`/vehiculos/${id}`, 'DELETE');
+        toast('Vehículo eliminado');
+        if (vehiculoEditandoId === id) {
+            ocultarEditarVehiculo();
+        }
+        cargarVehiculos();
+        cargarInicio();
+    } catch(e) {
+        toast(e.message, true);
+    }
+}
+
+// ─── RESERVAS (NUEVO SISTEMA, igual que mapa) ──────────────
+async function cargarReservas() {
+    try {
+        const data = await apiFetch('/mis-reservas');
+        const tbody = document.getElementById('tbody-reservas');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin reservas.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(r => `
+            <tr>
+                <td><strong>${r.estacion_nombre || r.estacion_ocm_id}</strong></td>
+                <td>${fechaHora(r.fecha_hora_inicio)}</td>
+                <td>${fechaHora(r.fecha_hora_fin)}</td>
+                <td><span class="badge-estado ${r.estado}">${r.estado}</span></td>
+                <td>
+                    ${r.estado === 'activa' ? `<button class="btn-tbl" onclick="cancelarReserva('${r.id}')">Cancelar</button>` : ''}
+                    <button class="btn-tbl" onclick="editarReserva('${r.id}')">✏️</button>
+                    <button class="btn-tbl danger" onclick="eliminarReserva('${r.id}')">🗑</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function cancelarReserva(id) {
+    if (!confirm('¿Cancelar esta reserva?')) return;
+    try {
+        await apiFetch(`/reservas/${id}/cancelar`, 'PATCH');
+        toast('Reserva cancelada');
+        cargarReservas();
+        cargarInicio();
+    } catch(e) { toast(e.message, true); }
+}
+
+async function editarReserva(id) {
+    const nuevoInicio = prompt('Nueva fecha de inicio (YYYY-MM-DDTHH:MM):');
+    if (nuevoInicio === null) return;
+    const nuevoFin = prompt('Nueva fecha de fin (YYYY-MM-DDTHH:MM):');
+    if (nuevoFin === null) return;
+    try {
+        await apiFetch(`/reservas/${id}`, 'PUT', {
+            fecha_hora_inicio: new Date(nuevoInicio).toISOString(),
+            fecha_hora_fin: new Date(nuevoFin).toISOString()
+        });
+        toast('Reserva actualizada');
+        cargarReservas();
+        cargarInicio();
+    } catch(e) { toast(e.message, true); }
+}
+
+async function eliminarReserva(id) {
+    if (!confirm('¿Eliminar esta reserva permanentemente?')) return;
+    try {
+        await apiFetch(`/reservas/${id}`, 'DELETE');
+        toast('Reserva eliminada');
+        cargarReservas();
+        cargarInicio();
+    } catch(e) { toast(e.message, true); }
+}
+
+// ─── FUNCIONES AUXILIARES DE RESERVA (como en mapa) ────────
+function actualizarDuracionLabelDashboard() {
+    const slider = document.getElementById('res-dashboard-duracion');
+    const label = document.getElementById('res-dashboard-duracion-label');
+    if (slider && label) {
+        label.textContent = slider.value + ' h';
+        actualizarFechasReservaDashboard();
+    }
+}
+
+function ponerHoraActualDashboard() {
+    const inicioInput = document.getElementById('res-dashboard-inicio');
+    if (!inicioInput) return;
+    const ahora = new Date();
+    ahora.setMinutes(0, 0, 0);
+    ahora.setHours(ahora.getHours() + 1);
+    inicioInput.value = ahora.toISOString().slice(0, 16);
+    actualizarFechasReservaDashboard();
+}
+
+function actualizarFechasReservaDashboard() {
+    const inicioInput = document.getElementById('res-dashboard-inicio');
+    const finInput = document.getElementById('res-dashboard-fin');
+    const duracionSelect = document.getElementById('res-dashboard-duracion');
+    if (!inicioInput || !finInput || !duracionSelect) return;
+
+    if (!inicioInput.value) {
+        const ahora = new Date();
+        ahora.setMinutes(0, 0, 0);
+        ahora.setHours(ahora.getHours() + 1);
+        inicioInput.value = ahora.toISOString().slice(0, 16);
+    }
+
+    const inicio = new Date(inicioInput.value);
+    if (isNaN(inicio)) return;
+    const duracionHoras = parseInt(duracionSelect.value);
+    const fin = new Date(inicio.getTime() + duracionHoras * 60 * 60 * 1000);
+    finInput.value = fin.toISOString().slice(0, 16);
+
+    const ahora = new Date();
+    if (inicio < ahora) {
+        finInput.style.borderColor = '#e74c3c';
+        finInput.style.border = '1px solid #e74c3c';
+    } else {
+        finInput.style.border = '1px solid #555';
+    }
+}
+
+async function crearReservaDashboard() {
+    const btn = document.getElementById('btn-guardar-reserva');
+    if (btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Procesando...';
+    }
+
+    try {
+        const estacion_ocm_id = document.getElementById('r-estacion').value.trim();
+        const estacion_nombre = document.getElementById('r-estacion-nombre').value.trim();
+        const inicioInput = document.getElementById('res-dashboard-inicio');
+        const finInput = document.getElementById('res-dashboard-fin');
+
+        if (!estacion_ocm_id) {
+            document.getElementById('reserva-alert').textContent = 'El ID de la estación es obligatorio';
+            document.getElementById('reserva-alert').style.color = '#e74c3c';
+            return;
+        }
+
+        if (!inicioInput || !finInput) {
+            document.getElementById('reserva-alert').textContent = 'Error al cargar el formulario de reserva.';
+            document.getElementById('reserva-alert').style.color = '#e74c3c';
+            return;
+        }
+
+        if (!inicioInput.value || !finInput.value) {
+            actualizarFechasReservaDashboard();
+            if (!inicioInput.value || !finInput.value) {
+                document.getElementById('reserva-alert').textContent = 'Por favor, selecciona la fecha y hora de inicio y fin de la reserva.';
+                document.getElementById('reserva-alert').style.color = '#e74c3c';
+                return;
+            }
+        }
+
+        const inicio = inicioInput.value;
+        const fin = finInput.value;
+
+        if (!inicio || !fin) {
+            document.getElementById('reserva-alert').textContent = 'Por favor, selecciona la fecha y hora de inicio y fin de la reserva.';
+            document.getElementById('reserva-alert').style.color = '#e74c3c';
+            return;
+        }
+
+        const fechaInicio = new Date(inicio);
+        const fechaFin = new Date(fin);
+
+        if (fechaInicio >= fechaFin) {
+            document.getElementById('reserva-alert').textContent = 'La fecha de inicio debe ser anterior a la de fin.';
+            document.getElementById('reserva-alert').style.color = '#e74c3c';
+            return;
+        }
+        if (fechaInicio < new Date()) {
+            document.getElementById('reserva-alert').textContent = 'No se puede reservar en el pasado. Elige una fecha futura.';
+            document.getElementById('reserva-alert').style.color = '#e74c3c';
+            return;
+        }
+
+        await apiFetch('/reservar', 'POST', {
+            estacion_ocm_id,
+            estacion_nombre: estacion_nombre || 'Estación',
+            fecha_hora_inicio: fechaInicio.toISOString(),
+            fecha_hora_fin: fechaFin.toISOString()
+        });
+
+        toast('¡Reserva confirmada con éxito!');
+        toggleForm('form-reserva');
+        // Limpiar campos
+        document.getElementById('r-estacion').value = '';
+        document.getElementById('r-estacion-nombre').value = '';
+        document.getElementById('res-dashboard-inicio').value = '';
+        document.getElementById('res-dashboard-fin').value = '';
+        document.getElementById('res-dashboard-duracion').value = '2';
+        document.getElementById('res-dashboard-duracion-label').textContent = '2 h';
+        document.getElementById('reserva-alert').textContent = '';
+        cargarReservas();
+        cargarInicio();
+
+    } catch(e) {
+        document.getElementById('reserva-alert').textContent = e.message;
+        document.getElementById('reserva-alert').style.color = '#e74c3c';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Crear reserva';
+        }
+    }
+}
+// ─── FIN RESERVAS ──────────────────────────────────────────
+
+// ─── PAGOS ────────────────────────────────────────────────────
+async function cargarPagos() {
+    try {
+        const data = await apiFetch('/pagos');
+        pagosList = data;
+        const tbody = document.getElementById('tbody-pagos');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty">Sin métodos de pago.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(p => `
+            <tr>
+                <td>${p.tipo}</td>
+                <td>${p.numero}</td>
+                <td><span class="badge-estado ${p.estado ? 'resuelto' : 'abierto'}">${p.estado ? 'Activo' : 'Inactivo'}</span></td>
+                <td>
+                    <button class="btn-tbl" onclick="editarPago('${p.id}')">✏️</button>
+                    <button class="btn-tbl danger" onclick="eliminarPago('${p.id}')">🗑</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+async function guardarPago() {
+    const btn = document.getElementById('btn-guardar-pago');
+    if (btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+    }
+    try {
+        const tipo = document.getElementById('p-tipo').value;
+        const numero = document.getElementById('p-numero').value.trim();
+        const estado = document.getElementById('p-estado').value === 'true';
+        if (!numero) {
+            document.getElementById('pago-alert').textContent = 'Número es obligatorio';
+            document.getElementById('pago-alert').style.color = '#e74c3c';
+            return;
+        }
+        const existente = pagosList.find(p => p.numero === numero);
+        if (existente) {
+            document.getElementById('pago-alert').textContent = 'Este método de pago ya se encuentra registrado.';
+            document.getElementById('pago-alert').style.color = '#e74c3c';
+            return;
+        }
+        await apiFetch('/pagos', 'POST', { tipo, numero, estado });
+        toast('Método guardado');
+        toggleForm('form-pago');
+        document.getElementById('p-tipo').selectedIndex = 0;
+        document.getElementById('p-numero').value = '';
+        document.getElementById('p-estado').value = 'true';
+        cargarPagos();
+        cargarInicio();
+    } catch(e) {
+        document.getElementById('pago-alert').textContent = e.message;
+        document.getElementById('pago-alert').style.color = '#e74c3c';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Guardar';
+        }
+    }
+}
+async function editarPago(id) {
+    const nuevoNumero = prompt('Nuevo número (enmascarado):');
+    if (nuevoNumero && nuevoNumero.trim()) {
+        try {
+            await apiFetch(`/pagos/${id}`, 'PUT', { numero: nuevoNumero.trim() });
+            toast('Método actualizado');
+            cargarPagos();
+            cargarInicio();
+        } catch(e) { toast(e.message, true); }
+    }
+}
+async function eliminarPago(id) {
+    if (!confirm('¿Eliminar este método de pago?')) return;
+    try {
+        await apiFetch(`/pagos/${id}`, 'DELETE');
+        toast('Método eliminado');
+        cargarPagos();
+        cargarInicio();
+    } catch(e) { toast(e.message, true); }
+}
+
+// ─── FAVORITOS ──────────────────────────────────────────────
+async function cargarFavoritos() {
+    try {
+        const data = await apiFetch('/favoritos');
+        const tbody = document.getElementById('tbody-favoritos');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="2" class="empty">Sin favoritos.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(f => `
+            <tr>
+                <td><strong>${f.estacion_nombre || f.estacion_ocm_id}</strong></td>
+                <td><button class="btn-tbl danger" onclick="eliminarFavorito('${f.estacion_ocm_id}')">🗑 Quitar</button></td>
+            </tr>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+async function eliminarFavorito(estacionId) {
+    if (!confirm('¿Quitar esta estación de favoritos?')) return;
+    try {
+        await apiFetch(`/favoritos/${estacionId}`, 'DELETE');
+        toast('Favorito eliminado');
+        cargarFavoritos();
+        cargarInicio();
+    } catch(e) { toast(e.message, true); }
+}
+
+// ─── REPORTES ──────────────────────────────────────────────
+async function cargarReportes() {
+    try {
+        const data = await apiFetch('/mis-reportes');
+        const tbody = document.getElementById('tbody-reportes');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty">No has reportado ningún problema.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(r => `
+            <tr>
+                <td><strong>${r.estacion_nombre || r.estacion_ocm_id}</strong></td>
+                <td><span class="badge-tipo">${r.tipo}</span></td>
+                <td>${r.descripcion || '—'}</td>
+                <td><span class="badge-estado ${r.estado}">${r.estado}</span></td>
+                <td>${fechaCorta(r.fecha)}</td>
+                <td>
+                    ${r.estado === 'abierto' ? `
+                        <button class="btn-tbl" onclick="mostrarEditarReporte('${r.id}')">✏️</button>
+                        <button class="btn-tbl danger" onclick="eliminarReporte('${r.id}')">🗑</button>
+                    ` : '<span style="color:#555;">—</span>'}
+                </td>
+            </tr>
+        `).join('');
+    } catch(e) {
+        console.error(e);
+        document.getElementById('tbody-reportes').innerHTML = '<tr><td colspan="6" class="empty">Error al cargar reportes.</td></tr>';
+    }
+}
+function mostrarEditarReporte(id) {
+    document.getElementById('form-reporte').style.display = 'none';
+    const form = document.getElementById('form-editar-reporte');
+    form.style.display = 'block';
+    document.getElementById('editar-reporte-alert').textContent = '';
+    reporteEditandoId = id;
+    apiFetch('/mis-reportes')
+        .then(data => {
+            const r = data.find(item => item.id === id);
+            if (r) {
+                document.getElementById('er-tipo').value = r.tipo;
+                document.getElementById('er-desc').value = r.descripcion || '';
+                document.getElementById('er-id').value = r.id;
+            }
+        })
+        .catch(e => alert(e.message));
+}
+function ocultarEditarReporte() {
+    document.getElementById('form-editar-reporte').style.display = 'none';
+    reporteEditandoId = null;
+    document.getElementById('editar-reporte-alert').textContent = '';
+}
+async function actualizarReporte() {
+    const id = document.getElementById('er-id').value;
+    const tipo = document.getElementById('er-tipo').value;
+    const descripcion = document.getElementById('er-desc').value.trim();
+    try {
+        await apiFetch(`/reportes/${id}`, 'PUT', { tipo, descripcion });
+        toast('Reporte actualizado');
+        ocultarEditarReporte();
+        cargarReportes();
+    } catch(e) {
+        document.getElementById('editar-reporte-alert').textContent = e.message;
+        document.getElementById('editar-reporte-alert').style.color = '#e74c3c';
+    }
+}
+async function guardarReporte() {
+    const btn = document.getElementById('btn-guardar-reporte');
+    if (btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+    }
+    try {
+        const estacion_ocm_id = document.getElementById('rep-estacion').value.trim();
+        const estacion_nombre = document.getElementById('rep-nombre').value.trim();
+        const tipo = document.getElementById('rep-tipo').value;
+        const descripcion = document.getElementById('rep-desc').value.trim();
+        if (!estacion_ocm_id) {
+            document.getElementById('reporte-alert').textContent = 'ID de estación es obligatorio';
+            document.getElementById('reporte-alert').style.color = '#e74c3c';
+            return;
+        }
+        await apiFetch('/reportes', 'POST', { estacion_ocm_id, estacion_nombre, tipo, descripcion });
+        toast('Reporte enviado');
+        toggleForm('form-reporte');
+        document.getElementById('rep-estacion').value = '';
+        document.getElementById('rep-nombre').value = '';
+        document.getElementById('rep-tipo').selectedIndex = 0;
+        document.getElementById('rep-desc').value = '';
+        cargarReportes();
+    } catch(e) {
+        document.getElementById('reporte-alert').textContent = e.message;
+        document.getElementById('reporte-alert').style.color = '#e74c3c';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Enviar';
+        }
+    }
+}
+async function eliminarReporte(id) {
+    if (!confirm('¿Eliminar este reporte? (Solo si está abierto)')) return;
+    try {
+        await apiFetch(`/reportes/${id}`, 'DELETE');
+        toast('Reporte eliminado');
+        cargarReportes();
+    } catch(e) { toast(e.message, true); }
+}
+
+// ─── CALIFICACIONES ──────────────────────────────────────────
+async function cargarCalificaciones() {
+    try {
+        const data = await apiFetch('/mis-calificaciones');
+        const tbody = document.getElementById('tbody-calificaciones');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">No has calificado ninguna estación.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(c => {
+            const stars = '★'.repeat(c.puntaje) + '☆'.repeat(5 - c.puntaje);
+            return `
+                <tr>
+                    <td><strong>${c.estacion_nombre || c.estacion_ocm_id}</strong></td>
+                    <td><span style="color:#f39c12; font-size:16px;">${stars}</span></td>
+                    <td>${c.comentario || '—'}</td>
+                    <td>${fechaCorta(c.fecha)}</td>
+                    <td>
+                        <button class="btn-tbl" onclick="mostrarEditarCalificacion('${c.id}')">✏️</button>
+                        <button class="btn-tbl danger" onclick="eliminarCalificacion('${c.id}')">🗑</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch(e) {
+        console.error(e);
+        document.getElementById('tbody-calificaciones').innerHTML = '<tr><td colspan="5" class="empty">Error al cargar calificaciones.</td></tr>';
+    }
+}
+function mostrarEditarCalificacion(id) {
+    document.getElementById('form-calificacion').style.display = 'none';
+    const form = document.getElementById('form-editar-calificacion');
+    form.style.display = 'block';
+    document.getElementById('editar-calificacion-alert').textContent = '';
+    calificacionEditandoId = id;
+    apiFetch('/mis-calificaciones')
+        .then(data => {
+            const c = data.find(item => item.id === id);
+            if (c) {
+                document.getElementById('ec-puntaje').value = c.puntaje;
+                document.getElementById('ec-comentario').value = c.comentario || '';
+                document.getElementById('ec-id').value = c.id;
+            }
+        })
+        .catch(e => alert(e.message));
+}
+function ocultarEditarCalificacion() {
+    document.getElementById('form-editar-calificacion').style.display = 'none';
+    calificacionEditandoId = null;
+    document.getElementById('editar-calificacion-alert').textContent = '';
+}
+async function actualizarCalificacion() {
+    const id = document.getElementById('ec-id').value;
+    const puntaje = parseInt(document.getElementById('ec-puntaje').value);
+    const comentario = document.getElementById('ec-comentario').value.trim();
+    try {
+        await apiFetch(`/calificaciones/${id}`, 'PUT', { puntaje, comentario });
+        toast('Calificación actualizada');
+        ocultarEditarCalificacion();
+        cargarCalificaciones();
+    } catch(e) {
+        document.getElementById('editar-calificacion-alert').textContent = e.message;
+        document.getElementById('editar-calificacion-alert').style.color = '#e74c3c';
+    }
+}
+async function guardarCalificacion() {
+    const btn = document.getElementById('btn-guardar-calificacion');
+    if (btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+    }
+    try {
+        const estacion_ocm_id = document.getElementById('cal-estacion').value.trim();
+        const estacion_nombre = document.getElementById('cal-nombre').value.trim();
+        const puntaje = parseInt(document.getElementById('cal-puntaje').value);
+        const comentario = document.getElementById('cal-comentario').value.trim();
+        if (!estacion_ocm_id) {
+            document.getElementById('calificacion-alert').textContent = 'ID de estación es obligatorio';
+            document.getElementById('calificacion-alert').style.color = '#e74c3c';
+            return;
+        }
+        await apiFetch('/calificaciones', 'POST', { estacion_ocm_id, estacion_nombre, puntaje, comentario });
+        toast('Calificación enviada');
+        toggleForm('form-calificacion');
+        document.getElementById('cal-estacion').value = '';
+        document.getElementById('cal-nombre').value = '';
+        document.getElementById('cal-puntaje').selectedIndex = 0;
+        document.getElementById('cal-comentario').value = '';
+        cargarCalificaciones();
+    } catch(e) {
+        document.getElementById('calificacion-alert').textContent = e.message;
+        document.getElementById('calificacion-alert').style.color = '#e74c3c';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Enviar';
+        }
+    }
+}
+async function eliminarCalificacion(id) {
+    if (!confirm('¿Eliminar esta calificación?')) return;
+    try {
+        await apiFetch(`/calificaciones/${id}`, 'DELETE');
+        toast('Calificación eliminada');
+        cargarCalificaciones();
+    } catch(e) { toast(e.message, true); }
+}
+
+// ─── PERFIL ───────────────────────────────────────────────────
+async function cargarPerfil() {
+    try {
+        const perfil = await apiFetch('/auth/perfil');
+        const user = perfil.usuario;
+        
+        document.getElementById('perfil-nombre').textContent = user.nombre;
+        document.getElementById('perfil-apellido').textContent = user.apellido || '—';
+        document.getElementById('perfil-email').textContent = user.email;
+        document.getElementById('perfil-creado').textContent = fechaCorta(user.created_at);
+        
+        actualizarInfoUsuario(user);
+
+        document.getElementById('edit-nombre').value = user.nombre;
+        document.getElementById('edit-apellido').value = user.apellido || '';
+        document.getElementById('edit-email').value = user.email;
+
+        const stats = await apiFetch('/cargas/estadisticas');
+        document.getElementById('perfil-total-cargas').textContent = stats.total_sesiones || 0;
+        document.getElementById('perfil-total-kwh').textContent = stats.total_kwh || 0;
+
+        const reservas = await apiFetch('/mis-reservas');
+        document.getElementById('perfil-total-reservas').textContent = reservas.length || 0;
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function guardarPerfil() {
+    const nombre = document.getElementById('edit-nombre').value.trim();
+    const apellido = document.getElementById('edit-apellido').value.trim();
+    const email = document.getElementById('edit-email').value.trim();
+    
+    if (!nombre || !email) {
+        document.getElementById('perfil-msg').textContent = 'Nombre y correo son obligatorios';
+        document.getElementById('perfil-msg').style.color = '#e74c3c';
+        return;
+    }
+    
+    const data = { nombre, email };
+    if (apellido) data.apellido = apellido;
+    
+    try {
+        const result = await apiFetch('/auth/perfil', 'PUT', data);
+        const user = result.usuario;
+        document.getElementById('perfil-nombre').textContent = user.nombre;
+        document.getElementById('perfil-apellido').textContent = user.apellido || '—';
+        document.getElementById('perfil-email').textContent = user.email;
+        actualizarInfoUsuario(user);
+        document.getElementById('perfil-msg').textContent = '✅ Perfil actualizado';
+        document.getElementById('perfil-msg').style.color = '#39a900';
+    } catch(e) {
+        document.getElementById('perfil-msg').textContent = e.message;
+        document.getElementById('perfil-msg').style.color = '#e74c3c';
+    }
+}
+
+async function cambiarPassword() {
+    const old_pass = document.getElementById('edit-old-pass').value;
+    const new_pass = document.getElementById('edit-new-pass').value;
+    
+    if (!old_pass || !new_pass) {
+        document.getElementById('pass-msg').textContent = 'Completa ambos campos';
+        document.getElementById('pass-msg').style.color = '#e74c3c';
+        return;
+    }
+    if (new_pass.length < 8) {
+        document.getElementById('pass-msg').textContent = 'La nueva contraseña debe tener al menos 8 caracteres';
+        document.getElementById('pass-msg').style.color = '#e74c3c';
+        return;
+    }
+    
+    try {
+        await apiFetch('/auth/password', 'PUT', { old_password: old_pass, new_password: new_pass });
+        document.getElementById('pass-msg').textContent = '✅ Contraseña actualizada';
+        document.getElementById('pass-msg').style.color = '#39a900';
+        document.getElementById('edit-old-pass').value = '';
+        document.getElementById('edit-new-pass').value = '';
+    } catch(e) {
+        document.getElementById('pass-msg').textContent = e.message;
+        document.getElementById('pass-msg').style.color = '#e74c3c';
+    }
+}
+
+// ─── AUTENTICACIÓN ────────────────────────────────────────────
+async function checkAuth() {
+    const token = localStorage.getItem('ev_token');
+    if (!token) {
+        window.location.href = 'index.html';
+        return;
+    }
+    try {
+        const perfil = await apiFetch('/auth/perfil');
+        currentUser = perfil.usuario;
+        actualizarInfoUsuario(currentUser);
+        cargarInicio();
+        return perfil;
+    } catch(e) {
+        localStorage.removeItem('ev_token');
+        window.location.href = 'index.html';
+        throw e;
+    }
+}
+
+function activarPanelPorHash() {
+    const hash = window.location.hash;
+    if (hash) {
+        const panelId = hash.replace('#', '');
+        if (document.getElementById(panelId)) {
+            const menuLink = document.querySelector(`.anav[onclick*="showPanel('${panelId}'"]`);
+            showPanel(panelId, menuLink || null);
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuth()
+        .then(() => {
+            setTimeout(activarPanelPorHash, 50);
+        })
+        .catch(() => {});
+});
+</script>
+</body>
+</html>

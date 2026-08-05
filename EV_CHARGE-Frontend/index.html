@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EV Charge — Movilidad eléctrica en Colombia</title>
+
+  <!-- Fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<!-- NAV (sin cambios) -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#inicio">
+      <img src="./img/logo.png" alt="EV Charge">
+    </a>
+    <ul class="nav-links">
+      <li><a href="#inicio"    class="nav-link active">Inicio</a></li>
+      <li><a href="#servicios" class="nav-link">Servicios</a></li>
+      <li><a href="#nosotros"  class="nav-link">Quiénes somos</a></li>
+      <li><a href="#cifras"    class="nav-link">En números</a></li>
+      <li><a href="#contacto"  class="nav-link">Contacto</a></li>
+    </ul>
+
+    <div class="auth-actions" id="auth-actions">
+       <button class="btn-nav-outline" onclick="abrirAuthModal('login')">Iniciar sesión</button>
+       <button class="btn-nav-outline" onclick="abrirAuthModal('registro')">Registrarse</button>
+    </div>
+
+    <div class="user-greeting" id="user-greeting" style="display: none;">
+        <span>Bienvenido, <span class="username" id="welcome-username"></span></span>
+        <button class="btn-nav-outline-logout" onclick="doLogoutIndex()">Salir</button>
+    </div>
+
+    <a class="btn-nav" href="mapa.html">Abrir mapa →</a>
+    <button class="hamburger" id="hamburger" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO (sin cambios) -->
+<section id="inicio" class="section hero-section">
+  <div class="glow-orb orb1"></div>
+  <div class="glow-orb orb2"></div>
+
+  <div class="hero-content">
+    <img src="./img/logo.png" alt="EV Charge" class="hero-logo">
+    <p class="hero-eyebrow">Movilidad eléctrica · Colombia</p>
+    <h1 class="hero-title">
+      Carga donde<br>
+      <span class="accent">necesitas,</span><br>
+      cuando necesitas.
+    </h1>
+    <p class="hero-sub">
+      Encuentra estaciones de carga compatibles con tu vehículo,
+      traza rutas inteligentes y conecta con la comunidad EV de Bogotá.
+    </p>
+    <div class="hero-actions">
+      <a href="mapa.html" class="btn-primary-lg">
+        <span class="btn-icon">⚡</span> Iniciar navegación
+      </a>
+      <a href="#nosotros" class="btn-ghost-lg" onclick="smoothTo('nosotros', event)">
+        Conoce más
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-scroll-hint" onclick="smoothTo('nosotros', event)">
+    <span>Desplázate</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- SERVICIOS (sin cambios) -->
+<section id="servicios" class="section servicios-section">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <p class="eyebrow">Lo que hacemos</p>
+      <h2>Todo lo que necesita<br>tu vehículo eléctrico</h2>
+    </div>
+    <div class="services-grid">
+      <div class="service-card reveal">
+        <div class="card-image"><img src="./img/seccion1.png" alt="Mapa en tiempo real"></div>
+        <div class="card-content">
+          <h3>🗺️ Mapa en tiempo real</h3>
+          <p>Visualiza todas las estaciones de carga cerca de ti en Bogotá, con información actualizada.</p>
+        </div>
+      </div>
+      <div class="service-card reveal">
+        <div class="card-image"><img src="./img/seccion2.png" alt="Filtro por tu vehículo"></div>
+        <div class="card-content">
+          <h3>🚗 Filtro por tu vehículo</h3>
+          <p>Registra tu auto y el sistema filtra automáticamente las estaciones compatibles.</p>
+        </div>
+      </div>
+      <div class="service-card reveal">
+        <div class="card-image"><img src="./img/seccion3.png" alt="Planificador de viaje"></div>
+        <div class="card-content">
+          <h3>🧭 Planificador de viaje</h3>
+          <p>Calcula las paradas de recarga óptimas según tu autonomía usando rutas viales reales.</p>
+        </div>
+      </div>
+      <div class="service-card reveal">
+        <div class="card-image"><img src="./img/seccion4.png" alt="Comunidad activa"></div>
+        <div class="card-content">
+          <h3>⭐ Comunidad activa</h3>
+          <p>Califica estaciones, reporta cargadores dañados y consulta la experiencia de otros conductores.</p>
+        </div>
+      </div>
+      <div class="service-card reveal">
+        <div class="card-image"><img src="./img/seccion5.png" alt="Historial de cargas"></div>
+        <div class="card-content">
+          <h3>📋 Historial de cargas</h3>
+          <p>Lleva el registro de cada sesión: kWh cargados, costo estimado y estación utilizada.</p>
+        </div>
+      </div>
+      <div class="service-card reveal">
+        <div class="card-image"><img src="./img/seccion6.png" alt="Reservas inteligentes"></div>
+        <div class="card-content">
+          <h3>📅 Reservas inteligentes</h3>
+          <p>Programa tus recargas con anticipación, reserva estaciones disponibles y organiza tus viajes de forma eficiente.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NOSOTROS (sin cambios) -->
+<section id="nosotros" class="section nosotros-section">
+  <div class="nosotros-bg">
+    <div class="banner-headline">EV CHARGE</div>
+    <div class="banner-spotlight"></div>
+    <div class="banner-diamond"></div>
+    <div class="banner-car-wrap">
+      <img src="./img/ChatGPT Image 26 jun 2026, 08_44_00 a.m..png" class="banner-car-img" alt="EV Car with charger"/>
+    </div>
+  </div>
+
+  <div class="nosotros-content-wrapper">
+    <div class="nosotros-content">
+      <p class="nosotros-eyebrow reveal">Quiénes somos</p>
+      <h2 class="nosotros-title reveal">EV Charge</h2>
+      <p class="nosotros-desc reveal">
+        Proyecto desarrollado por aprendices ADSO del SENA.
+      </p>
+      <p class="nosotros-desc reveal">
+        Impulsamos la movilidad eléctrica mediante una plataforma inteligente para localizar estaciones de carga, administrar vehículos, gestionar reservas y ofrecer una mejor experiencia a los conductores de vehículos eléctricos.
+      </p>
+      <a href="#contacto" class="btn-primary-lg nosotros-btn reveal" onclick="smoothTo('contacto', event)">
+        Conoce más
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- CIFRAS (sin cambios) -->
+<section id="cifras" class="section cifras-section">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <p class="eyebrow">En números</p>
+      <h2>La red eléctrica que ya existe</h2>
+    </div>
+    <div class="cifras-grid">
+      <div class="cifra-item reveal">
+        <div class="cifra-num" data-target="47">0</div>
+        <div class="cifra-label">Estaciones en Bogotá</div>
+      </div>
+      <div class="cifra-item reveal">
+        <div class="cifra-num" data-target="20">0</div>
+        <div class="cifra-label">km de radio cubierto</div>
+      </div>
+      <div class="cifra-item reveal">
+        <div class="cifra-num" data-target="5">0</div>
+        <div class="cifra-label">Tipos de conector</div>
+      </div>
+      <div class="cifra-item reveal">
+        <div class="cifra-num" data-target="100">0</div>
+        <div class="cifra-label">% open source</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACTO (sin cambios) -->
+<section id="contacto" class="section contacto-section">
+  <div class="section-inner contacto-inner">
+    <div class="section-head reveal">
+      <p class="eyebrow">Contacto</p>
+      <h2>¿Tienes una estación de carga<br>que quieras registrar?</h2>
+      <p class="section-sub">Escríbenos y la agregamos al mapa.</p>
+    </div>
+    <form class="contacto-form reveal" onsubmit="enviarContacto(event)">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Nombre</label>
+          <input type="text" placeholder="Tu nombre" required>
+        </div>
+        <div class="form-field">
+          <label>Correo</label>
+          <input type="email" placeholder="correo@ejemplo.com" required>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Mensaje</label>
+        <textarea rows="4" placeholder="Cuéntanos sobre la estación o tu consulta..." required></textarea>
+      </div>
+      <button type="submit" class="btn-primary-lg" style="width:auto;padding:14px 36px">
+        Enviar mensaje ↗
+      </button>
+      <p id="contacto-msg" style="margin-top:12px;font-size:13px;color:#39a900;display:none">
+        ¡Mensaje enviado! Te contactaremos pronto.
+      </p>
+    </form>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="./img/logo.png" alt="EV Charge" class="footer-logo">
+      <p style="font-size:15px; font-weight:600; color:#fff; margin:6px 0 4px;">EV Charge</p>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.6; max-width:320px;">
+        Plataforma para localizar y gestionar estaciones de carga para vehículos eléctricos en Colombia.
+      </p>
+    </div>
+
+    <div class="footer-links">
+      <p class="footer-title">Navegación</p>
+      <a href="index.html#inicio">Inicio</a>
+      <a href="index.html#servicios">Servicios</a>
+      <a href="index.html#nosotros">Quiénes somos</a>
+      <a href="index.html#contacto">Contacto</a>
+    </div>
+
+    <div class="footer-links">
+      <p class="footer-title">Contacto</p>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--text-muted);">
+        <span>📧 contacto@evcharge.co</span>
+        <span>📍 Bogotá D.C., Colombia</span>
+        <span>📞 +57 300 123 4567</span>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <p class="footer-title">Información</p>
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 4px;">Versión 2.0</p>
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 4px;">Proyecto académico SENA ADSO</p>
+      <p style="font-size:13px; color:var(--text-muted); margin:0;">
+        Última actualización: <span class="footer-year" style="font-weight:600; color:#fff;"></span>
+      </p>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>
+      © <span class="footer-year"></span> EV Charge • Todos los derechos reservados.
+    </p>
+  </div>
+</footer>
+<!-- ==================== FIN FOOTER ==================== -->
+
+<!-- MODAL AUTH — con campos Nombre + Apellido -->
+<div id="auth-modal" style="display:none">
+  <div class="auth-backdrop" onclick="cerrarAuthModal()"></div>
+  <div class="auth-card">
+    <button class="auth-close" onclick="cerrarAuthModal()">✕</button>
+    <img src="./img/logo.png" alt="Logo" class="auth-logo">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Iniciar sesión</button>
+      <button class="auth-tab" onclick="switchAuthTab('registro')">Registrarse</button>
+    </div>
+    <div id="auth-alert" class="alert" style="display:none"></div>
+    <div id="form-login">
+      <div class="form-group">
+        <label>Correo</label>
+        <input type="email" id="login-email" placeholder="correo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="password-box">
+          <input type="password" id="login-pass" placeholder="••••••••">
+          <span class="password-eye" onclick="togglePasswordVisibility('login-pass', this)">👁</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
+    </div>
+    <div id="form-registro" style="display:none">
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="reg-nombre" placeholder="Tu nombre">
+      </div>
+      <div class="form-group">
+        <label>Apellido</label>
+        <input type="text" id="reg-apellido" placeholder="Tu apellido">
+      </div>
+      <div class="form-group">
+        <label>Correo</label>
+        <input type="email" id="reg-email" placeholder="correo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="password-box">
+          <input type="password" id="reg-pass" placeholder="Crea tu contraseña">
+          <span class="password-eye" onclick="togglePasswordVisibility('reg-pass', this)">👁</span>
+        </div>
+        <div class="strength-bar" id="strength-bar">
+          <div class="strength-progress" id="strength-progress"></div>
+        </div>
+        <ul class="password-requisitos" id="password-requisitos">
+          <li id="req-min">❌ Mínimo 8 caracteres</li>
+          <li id="req-may">❌ Una mayúscula</li>
+          <li id="req-low">❌ Una minúscula</li>
+          <li id="req-num">❌ Un número</li>
+          <li id="req-sim">❌ Un símbolo</li>
+          <li id="req-same">❌ Las contraseñas coinciden</li>
+        </ul>
+      </div>
+      <div class="form-group">
+        <label>Confirmar contraseña</label>
+        <input type="password" id="reg-pass-confirm" placeholder="Repite tu contraseña"
+          onpaste="return false" oncopy="return false" oncut="return false" autocomplete="off">
+      </div>
+      <button id="btn-crear-cuenta" class="btn btn-primary btn-block" onclick="doRegistro()" disabled>Crear cuenta</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// UTILIDADES (sin cambios)
+// ════════════════════════════════════════════════
+function smoothTo(id, e) {
+  if (e) e.preventDefault();
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const navLinks = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('.section');
+const navbar   = document.getElementById('navbar');
+
+const observerNav = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      document.querySelector(`.nav-link[href="#${entry.target.id}"]`)?.classList.add('active');
+    }
+  });
+}, { threshold: 0.4 });
+sections.forEach(s => observerNav.observe(s));
+
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 40);
+});
+
+const observerReveal = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observerReveal.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observerReveal.observe(el));
+
+document.querySelectorAll('.cifra-num').forEach(el => {
+  const v = parseInt(el.dataset.target);
+  el.textContent = v === 100 ? v + '%' : v + '+';
+});
+
+document.getElementById('hamburger').addEventListener('click', () => {
+  document.querySelector('.nav-links').classList.toggle('open');
+});
+
+function enviarContacto(e) {
+  e.preventDefault();
+  const msg = document.getElementById('contacto-msg');
+  msg.style.display = 'block';
+  e.target.reset();
+  setTimeout(() => { msg.style.display = 'none'; }, 5000);
+}
+
+// ════════════════════════════════════════════════
+// AUTH (con Nombre + Apellido)
+// ════════════════════════════════════════════════
+const API = 'http://127.0.0.1:8000';
+
+function abrirAuthModal(tab) {
+    document.getElementById('auth-modal').style.display = 'flex';
+    switchAuthTab(tab || 'login');
+    document.body.style.overflow = 'hidden';
+}
+function cerrarAuthModal() {
+    document.getElementById('auth-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+function switchAuthTab(tab) {
+    document.getElementById('form-login').style.display   = tab === 'login'    ? 'block' : 'none';
+    document.getElementById('form-registro').style.display = tab === 'registro' ? 'block' : 'none';
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i===0) === (tab==='login')));
+    clearAlert('auth-alert');
+}
+function togglePasswordVisibility(inputId, eyeEl) {
+    const input = document.getElementById(inputId);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    eyeEl.style.opacity = input.type === 'text' ? '1' : '0.6';
+}
+function validarFortalezaPassword() {
+    const val  = document.getElementById('reg-pass').value;
+    const conf = document.getElementById('reg-pass-confirm').value;
+    const barra = document.getElementById('strength-bar');
+    const progreso = document.getElementById('strength-progress');
+    const requisitos = document.getElementById('password-requisitos');
+    const btnCrear = document.getElementById('btn-crear-cuenta');
+    if (val.length === 0) {
+        barra.classList.remove('show'); requisitos.classList.remove('show');
+        progreso.style.width = '0%'; btnCrear.disabled = true; return false;
+    }
+    barra.classList.add('show'); requisitos.classList.add('show');
+    const reglas = {
+        'req-min': val.length >= 8, 'req-may': /[A-Z]/.test(val),
+        'req-low': /[a-z]/.test(val), 'req-num': /\d/.test(val),
+        'req-sim': /[!@#$%^&*(),.?":{}|<>_\-+=]/.test(val),
+        'req-same': val === conf && val !== ''
+    };
+    let score = 0;
+    for (const id in reglas) {
+        marcarRequisito(id, reglas[id]); if (reglas[id]) score++;
+    }
+    const percent = (score / 6) * 100;
+    progreso.style.width = percent + '%';
+    if (percent < 40) progreso.style.background = '#e74c3c';
+    else if (percent < 80) progreso.style.background = '#f39c12';
+    else progreso.style.background = '#39a900';
+    const completo = score === 6;
+    btnCrear.disabled = !completo;
+    return completo;
+}
+function marcarRequisito(id, ok) {
+    const el = document.getElementById(id);
+    el.classList.toggle('ok', ok);
+    el.textContent = (ok ? '✔ ' : '❌ ') + el.textContent.slice(2);
+}
+document.getElementById('reg-pass').addEventListener('input', validarFortalezaPassword);
+document.getElementById('reg-pass-confirm').addEventListener('input', validarFortalezaPassword);
+
+async function doLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-pass').value;
+    if (!email || !pass) return showAlert('auth-alert', 'Completa todos los campos', 'error');
+    try {
+        const form = new URLSearchParams({ username: email, password: pass });
+        const res  = await fetch(`${API}/auth/login`, { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error de autenticación');
+        localStorage.setItem('ev_token', data.access_token);
+        cerrarAuthModal();
+        window.location.href = 'mapa.html';
+    } catch(e) { showAlert('auth-alert', e.message, 'error'); }
+}
+
+async function doRegistro() {
+    const nombre = document.getElementById('reg-nombre').value.trim();
+    const apellido = document.getElementById('reg-apellido').value.trim();
+    const email  = document.getElementById('reg-email').value.trim();
+    const pass   = document.getElementById('reg-pass').value;
+    if (!nombre || !email || !pass) return showAlert('auth-alert', 'Completa todos los campos', 'error');
+    if (!validarFortalezaPassword()) return showAlert('auth-alert', 'Tu contraseña no cumple todos los requisitos', 'error');
+    try {
+        const res  = await fetch(`${API}/auth/registro`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, apellido, email, password: pass })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al registrar');
+        showAlert('auth-alert', '✅ ¡Registro exitoso! Ahora inicia sesión.', 'success');
+        document.getElementById('reg-nombre').value = '';
+        document.getElementById('reg-apellido').value = '';
+        document.getElementById('reg-email').value = '';
+        document.getElementById('reg-pass').value = '';
+        document.getElementById('reg-pass-confirm').value = '';
+        document.getElementById('strength-bar').classList.remove('show');
+        document.getElementById('password-requisitos').classList.remove('show');
+        document.getElementById('strength-progress').style.width = '0%';
+        document.getElementById('btn-crear-cuenta').disabled = true;
+        switchAuthTab('login');
+        document.getElementById('login-email').value = email;
+        document.getElementById('login-pass').focus();
+    } catch(e) {
+        showAlert('auth-alert', e.message, 'error');
+    }
+}
+
+async function checkLoginStatusIndex() {
+    const token = localStorage.getItem('ev_token');
+    const authActions = document.getElementById('auth-actions');
+    const userGreeting = document.getElementById('user-greeting');
+    const welcomeSpan = document.getElementById('welcome-username');
+
+    if (token) {
+        try {
+            const p = await apiFetchIndex('/auth/perfil');
+            const user = p.usuario;
+            if (authActions) authActions.style.display = 'none';
+            if (userGreeting) {
+                userGreeting.style.display = 'flex';
+                if (welcomeSpan) {
+                    const nombreCompleto = user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre;
+                    welcomeSpan.textContent = nombreCompleto;
+                }
+            }
+        } catch(e) {
+            localStorage.removeItem('ev_token');
+            if (authActions) authActions.style.display = 'flex';
+            if (userGreeting) userGreeting.style.display = 'none';
+        }
+    } else {
+        if (authActions) authActions.style.display = 'flex';
+        if (userGreeting) userGreeting.style.display = 'none';
+    }
+}
+
+async function apiFetchIndex(path, method = 'GET', body = null) {
+    const token = localStorage.getItem('ev_token');
+    const opts = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(`${API}${path}`, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error en la solicitud');
+    return data;
+}
+
+function doLogoutIndex() {
+    localStorage.removeItem('ev_token');
+    window.location.reload();
+}
+
+function showAlert(id, msg, type) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `alert alert-${type}`;
+    el.style.display = 'block';
+}
+function clearAlert(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+}
+
+// ════════════════════════════════════════════════
+// FECHA DINÁMICA PARA EL FOOTER
+// ════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+    const year = new Date().getFullYear();
+    document.querySelectorAll('.footer-year').forEach(function(el) {
+        el.textContent = year;
+    });
+});
+
+document.addEventListener('DOMContentLoaded', checkLoginStatusIndex);
+</script>
+
+</body>
+</html>

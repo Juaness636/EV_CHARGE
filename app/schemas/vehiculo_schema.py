@@ -12,4 +12,4 @@ class VehiculoSchema(BaseModel):
     activo: Optional[bool] = True
 
     class Config:
-        from_attributes = True
+        from_attributes = True 
