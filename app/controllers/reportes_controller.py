@@ -1,48 +1,67 @@
-from models.models import Reportes
+# Backend/controllers/reportes_controller.py
+from datetime import timedelta
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
-def get_reportes(db):
-    return db.query(Reportes).all()
+from app.models.reporte_model import Reportes
+from app.models.utils import ahora_utc
+from app.schemas.reportes_schema import ReporteCreate, ReporteUpdate
 
-def get_reporte(id, db):
-    return db.query(Reportes).filter(Reportes.id == id).first()
 
-def create_reporte(data, db):
-    try:
-        new = Reportes(**data.model_dump())  # 🔥 cambio aquí
-        db.add(new)
-        db.commit()
-        db.refresh(new)
-        return new
-    except Exception as e:
-        return {"error": str(e)}
+def crear_reporte(db: Session, usuario_id: str, data: ReporteCreate):
+    cinco_min = ahora_utc() - timedelta(minutes=5)
+    reciente = db.query(Reportes).filter(
+        Reportes.usuario_id == usuario_id,
+        Reportes.estacion_ocm_id == data.estacion_ocm_id,
+        Reportes.tipo == data.tipo,
+        Reportes.fecha >= cinco_min,
+        Reportes.estado == "abierto",
+    ).first()
+    if reciente:
+        raise HTTPException(status_code=400, detail="Ya reportaste esta estación con el mismo tipo hace menos de 5 minutos")
 
-def update_reporte(id, data, db):
-    try:
-        item = db.query(Reportes).filter(Reportes.id == id).first()
+    rep = Reportes(usuario_id=usuario_id, **data.model_dump())
+    db.add(rep)
+    db.commit()
+    return {"ok": True}
 
-        if not item:
-            return {"error": "No encontrado"}
 
-        for key, value in data.model_dump().items():  # 🔥 cambio aquí
-            setattr(item, key, value)
+def mis_reportes(db: Session, usuario_id: str):
+    return db.query(Reportes).filter(Reportes.usuario_id == usuario_id).order_by(Reportes.fecha.desc()).all()
 
-        db.commit()
-        db.refresh(item)
-        return item
 
-    except Exception as e:
-        return {"error": str(e)}
+def actualizar_reporte(db: Session, usuario_id: str, rid: str, data: ReporteUpdate):
+    reporte = db.query(Reportes).filter(Reportes.id == rid, Reportes.usuario_id == usuario_id).first()
+    if not reporte:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    if reporte.estado != "abierto":
+        raise HTTPException(status_code=403, detail="Solo se pueden editar reportes abiertos")
 
-def delete_reporte(id, db):
-    try:
-        item = db.query(Reportes).filter(Reportes.id == id).first()
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(reporte, key, value)
 
-        if not item:
-            return {"error": "No encontrado"}
+    db.commit()
+    db.refresh(reporte)
+    return reporte
 
-        db.delete(item)
-        db.commit()
-        return {"message": "Eliminado"}
 
-    except Exception as e:
-        return {"error": str(e)}
+def eliminar_reporte(db: Session, usuario_id: str, rid: str):
+    reporte = db.query(Reportes).filter(Reportes.id == rid, Reportes.usuario_id == usuario_id).first()
+    if not reporte:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    if reporte.estado != "abierto":
+        raise HTTPException(status_code=403, detail="Solo se pueden eliminar reportes abiertos")
+
+    db.delete(reporte)
+    db.commit()
+    return {"ok": True}
+
+
+def reportes_estacion(db: Session, estacion_id: str):
+    return (
+        db.query(Reportes)
+        .filter(Reportes.estacion_ocm_id == estacion_id, Reportes.estado == "abierto")
+        .order_by(Reportes.fecha.desc())
+        .limit(10)
+        .all()
+    )

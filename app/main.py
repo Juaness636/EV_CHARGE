@@ -1,27 +1,27 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from config.database import Base, engine
-from middleware.error_handler import ErrorHandler
-import models.models
+
+# Configuración e intermedios con prefijo app.
+from app.config.database import Base, engine
+from app.middleware.error_handler import ErrorHandler
+import app.models
 
 # ==========================================
 # IMPORTACIÓN DE ROUTERS
 # ==========================================
-from routes.user_routes import router as user_router
-from routes.vehiculos_routes import router as vehicle_router
-from routes.empresa_routes import router as company_router
-from routes.estaciones_propias_routes import router as own_station_router
-# 🔥 AGREGADO: Importamos el nuevo router de autenticación
-from routes.auth_routes import router as auth_router
+from app.routes.auth_routes import router as auth_router
+from app.routes.vehiculos_routes import router as vehicle_router
+from app.routes.admin_routes import router as admin_router
+from app.routes import mapa_routes
 
-# NUEVOS ROUTERS (6 TABLAS)
-from routes.metodos_pago_routes import router as metodo_pago_router
-from routes.reservas_routes import router as reservas_router
-from routes.reportes_routes import router as reportes_router
-from routes.favoritos_routes import router as favoritos_router
-from routes.cargas_routes import router as cargas_router
-from routes.calificaciones_routes import router as calificaciones_router
+from app.routes.metodos_pago_routes import router as metodo_pago_router
+from app.routes.reservas_routes import router as reservas_router
+from app.routes.reportes_routes import router as reportes_router
+from app.routes.favoritos_routes import router as favoritos_router
+from app.routes.cargas_routes import router as cargas_router
+from app.routes.calificaciones_routes import router as calificaciones_router
+from app.routes.estado_routes import router as estado_router
 
 
 # ==========================================
@@ -40,7 +40,7 @@ app = FastAPI(
 
 
 # ==========================================
-# CONFIGURACIÓN CORS
+# CONFIGURACIÓN CORS Y MIDDLEWARE
 # ==========================================
 app.add_middleware(
     CORSMiddleware,
@@ -56,20 +56,18 @@ app.add_middleware(ErrorHandler)
 # ==========================================
 # REGISTRO DE RUTAS
 # ==========================================
-app.include_router(user_router)
-app.include_router(vehicle_router)
-app.include_router(company_router)
-app.include_router(own_station_router)
-# 🔥 AGREGADO: Registramos la ruta en la app para que FastAPI la reconozca
+app.include_router(mapa_routes.router)
 app.include_router(auth_router)
+app.include_router(vehicle_router)
+app.include_router(admin_router)
 
-# NUEVAS RUTAS
 app.include_router(metodo_pago_router)
 app.include_router(reservas_router)
 app.include_router(reportes_router)
 app.include_router(favoritos_router)
 app.include_router(cargas_router)
 app.include_router(calificaciones_router)
+app.include_router(estado_router)
 
 
 # ==========================================

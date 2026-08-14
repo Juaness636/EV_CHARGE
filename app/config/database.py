@@ -11,32 +11,37 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 load_dotenv()
 
 # ==========================================
-# VARIABLES DE ENTORNO (SIN DEFAULTS PELIGROSOS)
+# VARIABLES DE ENTORNO
 # ==========================================
-
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
-# Validación básica
+
+# Validación estricta
 if not all([DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME]):
-    raise ValueError("❌ Faltan variables de entorno en el .env")
+    raise ValueError("❌ Faltan variables de entorno requeridas en el archivo .env")
 
 # ==========================================
-# URL CONEXIÓN
+# URL CONEXIÓN POSTGRESQL
 # ==========================================
 SQLALCHEMY_DATABASE_URL = (
     f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 # ==========================================
-# ENGINE
+# ENGINE OPTIMIZADO
 # ==========================================
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    pool_size=10,         # Conexiones base
+    max_overflow=20,      # Conexiones adicionales máximas
+    pool_pre_ping=True    # Reconecta si la sesión expiró en Postgres
+)
 
 # ==========================================
-# SESIONES
+# SESIONES Y BASE ORM
 # ==========================================
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -44,13 +49,10 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-# ==========================================
-# BASE ORM
-# ==========================================
 Base = declarative_base()
 
 # ==========================================
-# DEPENDENCIA DB
+# DEPENDENCIA DB PARA FASTAPI
 # ==========================================
 def get_db():
     db = SessionLocal()

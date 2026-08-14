@@ -1,38 +1,38 @@
 # Backend/routes/vehiculos_routes.py
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from config.database import get_db
 
-from controllers.vehiculo_controller import (
-    get_vehicles,
-    get_vehicle,
-    create_vehicle,
-    update_vehicle,
-    delete_vehicle
+from app.config.database import get_db
+from app.utils.jwt import get_current_user
+from app.controllers.vehiculo_controller import (
+    listar_vehiculos,
+    crear_vehiculo,
+    actualizar_vehiculo,
+    eliminar_vehiculo,
 )
-from schemas.vehiculo_schema import VehiculoSchema
+from app.schemas.vehiculo_schema import VehiculoCreate, VehiculoUpdate, VehiculoOut
 
 router = APIRouter(
-    prefix="/vehicles",
+    prefix="/vehiculos",
     tags=["Vehículos"]
 )
 
-@router.get("")
-def vehicles(db: Session = Depends(get_db)):
-    return get_vehicles(db)
 
-@router.get("/{id}")
-def vehicle(id: str, db: Session = Depends(get_db)):
-    return get_vehicle(id, db)
+@router.get("", response_model=list[VehiculoOut])
+def vehiculos_listar(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    return listar_vehiculos(db, current_user.id)
+
 
 @router.post("")
-def store_vehicle(vehicle: VehiculoSchema, db: Session = Depends(get_db)):
-    return create_vehicle(vehicle, db)
+def vehiculo_crear(data: VehiculoCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    return crear_vehiculo(db, current_user.id, data)
 
-@router.put("/{id}")
-def edit_vehicle(id: str, vehicle: VehiculoSchema, db: Session = Depends(get_db)):
-    return update_vehicle(id, vehicle, db)
 
-@router.delete("/{id}")
-def destroy_vehicle(id: str, db: Session = Depends(get_db)):
-    return delete_vehicle(id, db)
+@router.put("/{vid}")
+def vehiculo_actualizar(vid: str, data: VehiculoUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    return actualizar_vehiculo(db, current_user.id, vid, data)
+
+
+@router.delete("/{vid}")
+def vehiculo_eliminar(vid: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    return eliminar_vehiculo(db, current_user.id, vid)

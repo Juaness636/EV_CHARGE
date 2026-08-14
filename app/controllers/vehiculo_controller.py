@@ -1,69 +1,56 @@
 # Backend/controllers/vehiculo_controller.py
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models.models import vehiculos  
-from schemas.vehiculo_schema import VehiculoSchema
-import uuid
 
-def validar_uuid(id_string: str):
-    try:
-        uuid.UUID(id_string)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="El formato del ID (UUID) suministrado no es válido.")
+from app.models.vehiculo_model import vehiculos
+from app.schemas.vehiculo_schema import VehiculoCreate, VehiculoUpdate
 
-def get_vehicles(db: Session):
-    return db.query(vehiculos).all()
 
-def get_vehicle(id: str, db: Session):
-    validar_uuid(id)
-    vehiculo = db.query(vehiculos).filter(vehiculos.id == id).first()
-    if not vehiculo:
-        raise HTTPException(status_code=404, detail="Vehículo no encontrado.")
-    return vehiculo
+def listar_vehiculos(db: Session, usuario_id: str):
+    return db.query(vehiculos).filter(vehiculos.usuario_id == usuario_id).all()
 
-def create_vehicle(vehicle: VehiculoSchema, db: Session):
-    validar_uuid(vehicle.usuario_id)
-    
-    nuevo_vehiculo = vehiculos(
-        usuario_id=vehicle.usuario_id,
-        marca=vehicle.marca,
-        modelo=vehicle.modelo,
-        anio=vehicle.anio,
-        autonomia_km=vehicle.autonomia_km,
-        tipo_conector=vehicle.tipo_conector,
-        activo=vehicle.activo
-    )
-    db.add(nuevo_vehiculo)
+
+def crear_vehiculo(db: Session, usuario_id: str, data: VehiculoCreate):
+    existente = db.query(vehiculos).filter(
+        vehiculos.usuario_id == usuario_id,
+        vehiculos.marca == data.marca,
+        vehiculos.modelo == data.modelo,
+        vehiculos.tipo_conector == data.tipo_conector,
+    ).first()
+    if existente:
+        raise HTTPException(status_code=400, detail="Ya tienes un vehículo con esa marca, modelo y conector")
+
+    if data.activo:
+        db.query(vehiculos).filter(vehiculos.usuario_id == usuario_id).update({"activo": False})
+
+    v = vehiculos(usuario_id=usuario_id, **data.model_dump())
+    db.add(v)
     db.commit()
-    db.refresh(nuevo_vehiculo)
-    return {"mensaje": "Vehículo registrado con éxito ✅", "vehiculo": nuevo_vehiculo}
+    db.refresh(v)
+    return v
 
-def update_vehicle(id: str, vehicle: VehiculoSchema, db: Session):
-    validar_uuid(id)
-    validar_uuid(vehicle.usuario_id)
-    
-    vehiculo = db.query(vehiculos).filter(vehiculos.id == id).first()
-    if not vehiculo:
-        raise HTTPException(status_code=404, detail="Vehículo no encontrado.")
-    
-    vehiculo.usuario_id = vehicle.usuario_id
-    vehiculo.marca = vehicle.marca
-    vehiculo.modelo = vehicle.modelo
-    vehiculo.anio = vehicle.anio
-    vehiculo.autonomia_km = vehicle.autonomia_km
-    vehiculo.tipo_conector = vehicle.tipo_conector
-    vehiculo.activo = vehicle.activo
-    
-    db.commit()
-    db.refresh(vehiculo)
-    return {"mensaje": "Vehículo actualizado correctamente ✅", "vehiculo": vehiculo}
 
-def delete_vehicle(id: str, db: Session):
-    validar_uuid(id)
-    vehiculo = db.query(vehiculos).filter(vehiculos.id == id).first()
-    if not vehiculo:
-        raise HTTPException(status_code=404, detail="Vehículo no encontrado.")
-    
-    db.delete(vehiculo)
+def actualizar_vehiculo(db: Session, usuario_id: str, vid: str, data: VehiculoUpdate):
+    v = db.query(vehiculos).filter(vehiculos.id == vid, vehiculos.usuario_id == usuario_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(v, key, value)
+
+    if data.activo is True:
+        db.query(vehiculos).filter(vehiculos.usuario_id == usuario_id, vehiculos.id != vid).update({"activo": False})
+
     db.commit()
-    return {"mensaje": f"Vehículo con ID {id} eliminado permanentemente ❌"}
+    db.refresh(v)
+    return v
+
+
+def eliminar_vehiculo(db: Session, usuario_id: str, vid: str):
+    v = db.query(vehiculos).filter(vehiculos.id == vid, vehiculos.usuario_id == usuario_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+
+    db.delete(v)
+    db.commit()
+    return {"ok": True}

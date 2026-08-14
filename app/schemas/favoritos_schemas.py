@@ -1,5 +1,8 @@
+# Backend/schemas/favoritos_schemas.py
 from pydantic import BaseModel
+from typing import Optional
 
-class FavoritoSchema(BaseModel):
-    usuario_id: str
-    estacion_id: str
+
+class FavoritoCreate(BaseModel):
+    estacion_ocm_id: str
+    estacion_nombre: Optional[str] = ""

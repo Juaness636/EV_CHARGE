@@ -1,31 +1,40 @@
-from models.models import Favoritos
+# Backend/controllers/favoritos_controller.py
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
-def get_favoritos(db):
-    return db.query(Favoritos).all()
+from app.models.favorito_model import Favoritos
+from app.schemas.favoritos_schemas import FavoritoCreate
 
-def get_favorito(id, db):
-    return db.query(Favoritos).filter(Favoritos.id == id).first()
 
-def create_favorito(data, db):
-    try:
-        new = Favoritos(**data.model_dump())  # 🔥 cambio clave
-        db.add(new)
-        db.commit()
-        db.refresh(new)
-        return new
-    except Exception as e:
-        return {"error": str(e)}
+def listar_favoritos(db: Session, usuario_id: str):
+    favoritos = db.query(Favoritos).filter(Favoritos.usuario_id == usuario_id).all()
+    return [
+        {"id": f.id, "estacion_ocm_id": f.estacion_ocm_id, "estacion_nombre": f.estacion_nombre}
+        for f in favoritos
+    ]
 
-def delete_favorito(id, db):
-    try:
-        item = db.query(Favoritos).filter(Favoritos.id == id).first()
 
-        if not item:
-            return {"error": "No encontrado"}
+def agregar_favorito(db: Session, usuario_id: str, data: FavoritoCreate):
+    existe = db.query(Favoritos).filter(
+        Favoritos.usuario_id == usuario_id,
+        Favoritos.estacion_ocm_id == data.estacion_ocm_id,
+    ).first()
+    if existe:
+        raise HTTPException(status_code=400, detail="La estación ya está en tus favoritos.")
 
-        db.delete(item)
-        db.commit()
-        return {"message": "Eliminado"}
+    db.add(Favoritos(usuario_id=usuario_id, **data.model_dump()))
+    db.commit()
+    return {"ok": True}
 
-    except Exception as e:
-        return {"error": str(e)}
+
+def quitar_favorito(db: Session, usuario_id: str, estacion_id: str):
+    fav = db.query(Favoritos).filter(
+        Favoritos.usuario_id == usuario_id,
+        Favoritos.estacion_ocm_id == estacion_id,
+    ).first()
+    if not fav:
+        raise HTTPException(status_code=404, detail="No encontrado")
+
+    db.delete(fav)
+    db.commit()
+    return {"ok": True}

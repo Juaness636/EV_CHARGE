@@ -1,7 +1,15 @@
+# Backend/schemas/calificaciones_schema.py
 from pydantic import BaseModel
+from typing import Optional
 
-class CalificacionSchema(BaseModel):
-    usuario_id: str
-    estacion_id: str
-    puntuacion: int
-    comentario: str
+
+class CalificacionCreate(BaseModel):
+    estacion_ocm_id: str
+    estacion_nombre: Optional[str] = ""
+    puntaje: int
+    comentario: Optional[str] = ""
+
+
+class CalificacionUpdate(BaseModel):
+    puntaje: int
+    comentario: Optional[str] = None
