@@ -9,13 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "latest",
+    "leaflet": "latest",
+    "react-router-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "vite": "latest",
     "typescript": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "react-router-dom": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "@types/leaflet": "latest"
   }
 }

@@ -1,9 +1,23 @@
-// Cliente HTTP centralizado. Reemplaza las funciones sueltas tipo
-// `apiFetchIndex` que hoy viven repetidas en index.html/mapa.html/dashboard.
-//
-// Todos los archivos en src/api/*.api.ts deben usar `apiFetch`, nunca `fetch` directo.
+// Cliente HTTP centralizado con Axios.
+// Todos los archivos en src/api/*.api.ts deben usar `api` (esta instancia), nunca fetch directo.
+
+import axios, { type AxiosError } from 'axios';
 
 export const API_BASE_URL = 'http://127.0.0.1:8000';
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Adjunta el token guardado en localStorage a cada request saliente.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ev_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export class ApiError extends Error {
   status: number;
@@ -13,26 +27,18 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T = unknown>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const token = localStorage.getItem('ev_token');
+// Normaliza cualquier error de Axios a ApiError, usando el `detail` que manda FastAPI.
+// Si el token expiró (401) lo limpia para forzar login de nuevo.
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ detail?: string }>) => {
+    const status = error.response?.status ?? 0;
+    const message = error.response?.data?.detail || error.message || 'Error en la solicitud';
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
+    if (status === 401) {
+      localStorage.removeItem('ev_token');
+    }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-
-  // /auth/login responde 200 sin cuerpo JSON en algunos casos raros; se maneja aparte si hace falta
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new ApiError(data.detail || 'Error en la solicitud', response.status);
-  }
-
-  return data as T;
-}
+    return Promise.reject(new ApiError(message, status));
+  },
+);

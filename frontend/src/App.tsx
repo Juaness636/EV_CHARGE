@@ -1,17 +1,16 @@
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
 import './styles.css';
+import { login, registro, obtenerPerfil, logout as logoutApi, ApiError, type Usuario } from './api/auth.api';
 
 type AuthTab = 'login' | 'registro';
 type AlertType = 'error' | 'success';
-
-const API = 'http://127.0.0.1:8000';
 
 function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<AuthTab>('login');
   const [alert, setAlert] = useState<{ message: string; type: AlertType } | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ nombre: string; apellido?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
@@ -79,7 +78,7 @@ function App() {
     const token = localStorage.getItem('ev_token');
     if (!token) return;
 
-    apiFetchIndex('/auth/perfil')
+    obtenerPerfil()
       .then((data) => setCurrentUser(data.usuario))
       .catch(() => {
         localStorage.removeItem('ev_token');
@@ -132,15 +131,11 @@ function App() {
 
     setAuthLoading(true);
     try {
-      const form = new URLSearchParams({ username: email, password: pass });
-      const response = await fetch(`${API}/auth/login`, { method: 'POST', body: form });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Error de autenticación');
-      localStorage.setItem('ev_token', data.access_token);
+      await login(email, pass);
       closeAuthModal();
       window.location.href = '/mapa.html';
     } catch (error) {
-      setAlert({ message: error instanceof Error ? error.message : 'Error de autenticación', type: 'error' });
+      setAlert({ message: error instanceof ApiError ? error.message : 'Error de autenticación', type: 'error' });
     } finally {
       setAuthLoading(false);
     }
@@ -164,13 +159,7 @@ function App() {
 
     setAuthLoading(true);
     try {
-      const response = await fetch(`${API}/auth/registro`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, apellido, email, password: pass }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Error al registrar');
+      await registro(nombre, apellido, email, pass);
 
       setAlert({ message: '✅ ¡Registro exitoso! Ahora inicia sesión.', type: 'success' });
       setRegNombre('');
@@ -189,7 +178,7 @@ function App() {
   };
 
   const logout = () => {
-    localStorage.removeItem('ev_token');
+    logoutApi();
     setCurrentUser(null);
     window.location.reload();
   };
@@ -333,16 +322,6 @@ function App() {
       <a href="https://wa.me/573165155780" className="whatsapp-btn" target="_blank" rel="noreferrer" aria-label="Contactar por WhatsApp"><i className="fa-brands fa-whatsapp"></i></a>
     </>
   );
-}
-
-async function apiFetchIndex(path: string, method = 'GET', body: unknown = null) {
-  const token = localStorage.getItem('ev_token');
-  const options: RequestInit = { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } };
-  if (body) options.body = JSON.stringify(body);
-  const response = await fetch(`${API}${path}`, options);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || 'Error en la solicitud');
-  return data;
 }
 
 export default App;

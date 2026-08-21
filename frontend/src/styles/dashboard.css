@@ -98,18 +98,29 @@ h1, h2, h3, h4, h5, h6 {
     flex-wrap: wrap;
 }
 .filter-select {
-    background: #1e1e1e;
+    background-color: #1e1e1e;
     color: #fff;
     border: 1px solid #444;
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 6px 34px 6px 12px;
     font-size: 13px;
     outline: none;
     font-family: var(--font-body);
     height: 36px;
-    max-width: 150px;
+    max-width: 170px;
     cursor: pointer;
     transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 11px 7px;
+}
+.filter-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 .filter-select:focus {
     border-color: var(--green);
