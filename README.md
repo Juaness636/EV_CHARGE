@@ -209,7 +209,7 @@ git push origin tu_rama
 
     Kevyn Andres Roa
 
-    Julian Stiven Cruz
+    Julian Estiben Cruz
 
     Jhon Alexander Muñoz
 
