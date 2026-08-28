@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EV Charge — Terpel</title>
+
+  <!-- Fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+  <div id="admin-sidebar">
+    <div class="admin-brand"><img src="./img/logo.png" alt="EV Charge"><span>Terpel</span></div>
+
+    <div class="admin-user-info-sidebar" style="padding: 12px 20px; border-bottom: 1px solid var(--border);">
+      <div style="font-size:14px; font-weight:600; color:var(--text);" id="sidebar-username">—</div>
+      <div style="font-size:12px; color:var(--muted);" id="sidebar-user-role">—</div>
+    </div>
+
+    <nav class="admin-nav">
+      <a class="anav active" href="#" onclick="showPanel('panel-resumen',this)">📊 Resumen</a>
+      <a class="anav" href="#" onclick="showPanel('panel-usuarios',this)">👤 Usuarios</a>
+      <a class="anav" href="#" onclick="showPanel('panel-reportes',this)">📢 Reportes</a>
+      <a class="anav" href="#" onclick="showPanel('panel-estaciones',this)">📍 Estaciones</a>
+      <a class="anav" href="#" onclick="showPanel('panel-reservas',this)">📋 Gestión de Reservas</a>
+      <a class="anav" href="#" onclick="showPanel('panel-calificaciones',this)">⭐ Calificaciones</a>
+      <a class="anav" href="#" onclick="showPanel('panel-perfil',this)">👤 Mi Perfil</a>
+    </nav>
+    <div class="admin-nav-bottom">
+      <a class="anav" href="mapa.html">🗺 Volver al mapa</a>
+      <a class="anav danger" href="#" onclick="doLogout()">🚪 Cerrar sesión</a>
+    </div>
+  </div>
+
+  <div id="admin-content">
+    <div id="admin-header">
+      <div>
+        <h1 id="panel-title">Resumen</h1>
+        <p id="panel-sub">Vista general del sistema</p>
+      </div>
+      <div id="admin-user-info"></div>
+    </div>
+
+    <!-- PANEL RESUMEN -->
+    <div id="panel-resumen" class="panel active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">👤</div>
+          <div class="kpi-num" id="k-usuarios">—</div>
+          <div class="kpi-label">Usuarios</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📢</div>
+          <div class="kpi-num" id="k-reportes">—</div>
+          <div class="kpi-label">Reportes</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">⭐</div>
+          <div class="kpi-num" id="k-cals">—</div>
+          <div class="kpi-label">Calificaciones</div>
+        </div>
+      </div>
+      <div class="section-row" style="grid-template-columns: 1fr;">
+        <div class="section-box">
+          <div class="box-title">Últimos reportes</div>
+          <div id="res-reportes">
+            <p class="empty">Cargando...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL USUARIOS -->
+    <div id="panel-usuarios" class="panel">
+      <div class="panel-toolbar"><input type="text" id="buscar-usuario" placeholder="Buscar por nombre o correo..."
+          oninput="filtrarUsuarios()"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Registro</th>
+              <th>Rol</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-usuarios">
+            <tr>
+              <td colspan="4" class="empty">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL REPORTES -->
+    <div id="panel-reportes" class="panel">
+      <div class="panel-toolbar">
+        <div class="filter-pills"><button class="pill active"
+            onclick="filtrarReportes('todos',this)">Todos</button><button class="pill"
+            onclick="filtrarReportes('abierto',this)">Pendientes</button><button class="pill"
+            onclick="filtrarReportes('resuelto',this)">Resueltos</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Estación</th>
+              <th>Tipo</th>
+              <th>Usuario</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-reportes">
+            <tr>
+              <td colspan="6" class="empty">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL ESTACIONES -->
+    <div id="panel-estaciones" class="panel">
+      <div class="admin-form-grid">
+        <div class="box-title full-width" style="margin-bottom:0;">Agregar estación propia</div>
+        <div><label>Nombre</label><input type="text" id="e-nombre" placeholder="Nombre de la estación"></div>
+        <div><label>Dirección</label><input type="text" id="e-direccion" placeholder="Dirección"></div>
+        <div><label>Latitud</label><input type="number" id="e-lat" step="0.0001" placeholder="4.6651"></div>
+        <div><label>Longitud</label><input type="number" id="e-lon" step="0.0001" placeholder="-74.1204"></div>
+        <div><label>Conector</label>
+          <select id="e-conector">
+            <option>CCS</option>
+            <option>CHAdeMO</option>
+            <option>Type 2</option>
+            <option>GB/T</option>
+          </select>
+        </div>
+        <div><label>Potencia (kW)</label><input type="number" id="e-potencia" placeholder="50"></div>
+        <div class="full-width"><label>Descripción</label><input type="text" id="e-descripcion"
+            placeholder="Descripción opcional"></div>
+        <div class="full-width" style="margin-top:4px;">
+          <button class="btn-save-estacion" onclick="crearEstacion()">Guardar estación</button>
+          <div id="estacion-alert" style="margin-top:8px;font-size:13px;display:none;color:#39a900;"></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Dirección</th>
+              <th>Conector</th>
+              <th>kW</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-estaciones">
+            <tr>
+              <td colspan="6" class="empty">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL GESTIÓN DE RESERVAS -->
+    <div id="panel-reservas" class="panel">
+      <div class="panel-toolbar">
+        <input type="text" id="buscar-reserva" placeholder="Buscar por usuario o estación..." oninput="filtrarReservasAdmin()">
+        <div class="filter-pills">
+          <button class="pill active" onclick="filtrarReservasAdmin('todos',this)">Todas</button>
+          <button class="pill" onclick="filtrarReservasAdmin('activa',this)">Activas</button>
+          <button class="pill" onclick="filtrarReservasAdmin('cancelada',this)">Canceladas</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Estación</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-reservas">
+            <tr>
+              <td colspan="6" class="empty">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL CALIFICACIONES (Admin) -->
+    <div id="panel-calificaciones" class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Estación</th>
+              <th>Puntaje</th>
+              <th>Comentario</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-admin-calificaciones">
+            <tr><td colspan="5" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL PERFIL -->
+    <div id="panel-perfil" class="panel">
+      <div class="admin-form-grid">
+        <div class="box-title full-width" style="margin-bottom:4px;">Datos de la cuenta</div>
+        <div><label>Nombre</label><input type="text" id="admin-conf-nombre" disabled></div>
+        <div><label>Apellido</label><input type="text" id="admin-conf-apellido" disabled></div>
+        <div><label>Correo</label><input type="email" id="admin-conf-email" disabled></div>
+        <div class="full-width"><label>Contraseña</label><input type="password" value="********" disabled></div>
+        <div class="full-width" style="margin-top:8px;">
+          <button class="btn-save-estacion" disabled style="opacity:0.5;">Guardar cambios</button>
+          <span style="font-size:11px;color:#666;margin-left:12px;">(Edición deshabilitada en esta demo)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="./img/logo.png" alt="EV Charge" class="footer-logo">
+        <p style="font-size:15px; font-weight:600; color:#fff; margin:6px 0 4px;">EV Charge</p>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; max-width:320px;">
+          Plataforma para localizar y gestionar estaciones de carga para vehículos eléctricos en Colombia.
+        </p>
+      </div>
+
+      <div class="footer-links">
+        <p class="footer-title">Navegación</p>
+        <a href="index.html#inicio">Inicio</a>
+        <a href="index.html#servicios">Servicios</a>
+        <a href="index.html#nosotros">Quiénes somos</a>
+        <a href="index.html#contacto">Contacto</a>
+      </div>
+
+      <div class="footer-links">
+        <p class="footer-title">Contacto</p>
+        <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--text-muted);">
+          <span>📧 contacto@evcharge.co</span>
+          <span>📍 Bogotá D.C., Colombia</span>
+          <span>📞 +57 300 123 4567</span>
+        </div>
+      </div>
+
+      <div class="footer-links">
+        <p class="footer-title">Información</p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0 0 4px;">Versión 2.0</p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0 0 4px;">Proyecto académico SENA ADSO</p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">
+          Última actualización: <span class="footer-year" style="font-weight:600; color:#fff;"></span>
+        </p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>
+        © <span class="footer-year"></span> EV Charge • Todos los derechos reservados.
+      </p>
+    </div>
+  </footer>
+  <script>
+    document.querySelectorAll('.footer-year').forEach(function(el) {
+      el.textContent = new Date().getFullYear();
+    });
+  </script>
+  <!-- ==================== FIN FOOTER ==================== -->
+
+  <div id="toast"></div>
+
+  <script>
+    const API = 'http://127.0.0.1:8000';
+    let authToken = localStorage.getItem('ev_token') || null,
+        currentUser = null,
+        todosUsuarios = [],
+        todosReportes = [],
+        todasReservas = [];
+
+    function nombreCompleto(user) {
+        if (!user) return 'Usuario eliminado';
+        if (user.apellido && user.apellido.trim()) {
+            return user.nombre + ' ' + user.apellido;
+        }
+        return user.nombre;
+    }
+
+    function actualizarInfoUsuario(user) {
+        const nombreCompletoUser = nombreCompleto(user);
+        const roleLabel = user.is_admin ? 'Admin' : 'Usuario';
+        document.getElementById('admin-user-info').innerHTML = `
+            <span style="font-size:13px;color:#666; display:flex; align-items:center; gap:8px;">
+                <span>${nombreCompletoUser}</span>
+                <span style="background:${user.is_admin ? 'rgba(57,169,0,0.15)' : 'rgba(255,255,255,0.05)'}; 
+                      color:${user.is_admin ? '#39a900' : '#999'}; 
+                      padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600;">
+                    ${roleLabel}
+                </span>
+            </span>
+        `;
+        document.getElementById('sidebar-username').textContent = nombreCompletoUser;
+        document.getElementById('sidebar-user-role').textContent = user.is_admin ? 'Administrador' : 'Usuario';
+    }
+
+    async function boot() {
+      if (!authToken) return redirect();
+      try {
+        const p = await apiFetch('/auth/perfil');
+        if (!p.usuario.is_admin) {
+          window.location.href = 'mapa.html';
+          return;
+        }
+        currentUser = p.usuario;
+        actualizarInfoUsuario(currentUser);
+
+        cargarResumen();
+        cargarUsuarios();
+        cargarReportes();
+        cargarEstaciones();
+        cargarReservasAdmin();
+        cargarCalificacionesAdmin();
+        cargarPerfilAdmin();
+        
+        activarPanelPorHash();
+      } catch (e) { redirect(); }
+    }
+
+    function redirect() { window.location.href = 'index.html'; }
+    function doLogout() { localStorage.removeItem('ev_token'); window.location.href = 'index.html'; }
+
+    const panelTitles = {
+      'panel-resumen': ['Resumen', 'Vista general del sistema'],
+      'panel-usuarios': ['Usuarios', 'Gestiona cuentas'],
+      'panel-reportes': ['Reportes', 'Problemas comunitarios'],
+      'panel-estaciones': ['Estaciones', 'Gestiona estaciones propias'],
+      'panel-reservas': ['Gestión de Reservas', 'Administra todas las reservas'],
+      'panel-calificaciones': ['Calificaciones', 'Todas las calificaciones de usuarios'],
+      'panel-perfil': ['Mi Perfil', 'Datos de tu cuenta de administrador']
+    };
+
+    function showPanel(id, el) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.anav').forEach(a => a.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if (el) el.classList.add('active');
+      const [title, sub] = panelTitles[id] || [id, ''];
+      document.getElementById('panel-title').textContent = title;
+      document.getElementById('panel-sub').textContent = sub;
+      if (id === 'panel-reservas') cargarReservasAdmin();
+      if (id === 'panel-calificaciones') cargarCalificacionesAdmin();
+      if (id === 'panel-perfil') cargarPerfilAdmin();
+    }
+
+    function activarPanelPorHash() {
+        const hash = window.location.hash;
+        if (hash) {
+            const panelId = hash.replace('#', '');
+            if (document.getElementById(panelId)) {
+                const menuLink = document.querySelector(`.anav[onclick*="showPanel('${panelId}'"]`);
+                showPanel(panelId, menuLink || null);
+            }
+        }
+    }
+
+    window.addEventListener('load', function() {
+        activarPanelPorHash();
+    });
+
+    function cargarPerfilAdmin() {
+      if (!currentUser) return;
+      document.getElementById('admin-conf-nombre').value = currentUser.nombre;
+      document.getElementById('admin-conf-apellido').value = currentUser.apellido || '';
+      document.getElementById('admin-conf-email').value = currentUser.email;
+    }
+
+    // ─── ADMIN: CALIFICACIONES ──────────────────────────────────────────
+    async function cargarCalificacionesAdmin() {
+      try {
+        const data = await apiFetch('/admin/calificaciones');
+        const tbody = document.getElementById('tbody-admin-calificaciones');
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay calificaciones.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(c => {
+          const stars = '★'.repeat(c.puntaje) + '☆'.repeat(5 - c.puntaje);
+          const usuarioNombre = c.usuario ? nombreCompleto(c.usuario) : 'Usuario eliminado';
+          return `
+            <tr>
+              <td><strong>${usuarioNombre}</strong></td>
+              <td>${c.estacion_nombre || c.estacion_ocm_id}</td>
+              <td><span style="color:#f39c12; font-size:16px;">${stars}</span></td>
+              <td>${c.comentario || '—'}</td>
+              <td>${fechaCorta(c.fecha)}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch(e) {
+        console.error(e);
+        document.getElementById('tbody-admin-calificaciones').innerHTML = '<tr><td colspan="5" class="empty">Error al cargar calificaciones.</td></tr>';
+      }
+    }
+
+    // ─── RESTO DE FUNCIONES ──────────────────────────────────────────────
+    async function cargarResumen() {
+      try {
+        const s = await apiFetch('/admin/estadisticas');
+        document.getElementById('k-usuarios').textContent = s.total_usuarios;
+        document.getElementById('k-reportes').textContent = s.total_reportes;
+        document.getElementById('k-cals').textContent = s.total_calificaciones;
+        const reps = await apiFetch('/admin/reportes');
+        document.getElementById('res-reportes').innerHTML = reps.filter(r => r.estado === 'abierto').slice(0, 5).length ?
+          reps.filter(r => r.estado === 'abierto').slice(0, 5).map(r =>
+            `<div class="res-row"><div><span class="badge-tipo">${r.tipo}</span> ${r.estacion_nombre || r.estacion_ocm_id}</div><span class="res-fecha">${fechaCorta(r.fecha)}</span></div>`
+            ).join('') :
+          '<p class="empty">Sin reportes pendientes</p>';
+      } catch (e) { console.error(e); }
+    }
+
+    async function cargarUsuarios() {
+      todosUsuarios = await apiFetch('/admin/usuarios');
+      renderUsuarios(todosUsuarios);
+    }
+
+    function filtrarUsuarios() {
+      const q = document.getElementById('buscar-usuario').value.toLowerCase();
+      renderUsuarios(todosUsuarios.filter(u => 
+        u.nombre.toLowerCase().includes(q) || 
+        (u.apellido && u.apellido.toLowerCase().includes(q)) ||
+        u.email.toLowerCase().includes(q)
+      ));
+    }
+
+    function renderUsuarios(lista) {
+      document.getElementById('tbody-usuarios').innerHTML = lista.map(u => {
+        const nombreCompletoUser = nombreCompleto(u);
+        return `<tr><td><strong>${nombreCompletoUser}</strong></td><td style="color:#888">${u.email}</td><td style="color:#555">${fechaCorta(u.created_at)}</td><td><span class="badge-rol ${u.is_admin ? 'admin' : 'user'}">${u.is_admin ? 'Admin' : 'Usuario'}</span></td></tr>`;
+      }).join('');
+    }
+
+    async function cargarReportes() {
+      todosReportes = await apiFetch('/admin/reportes');
+      renderReportes(todosReportes);
+    }
+
+    function filtrarReportes(estado, btn) {
+      document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      renderReportes(estado === 'todos' ? todosReportes : todosReportes.filter(r => r.estado === estado));
+    }
+
+    function renderReportes(lista) {
+      document.getElementById('tbody-reportes').innerHTML = lista.length ? lista.map(r => {
+        const usuarioNombre = r.usuario ? nombreCompleto(r.usuario) : 'Usuario eliminado';
+        return `<tr>
+          <td><strong>${r.estacion_nombre || r.estacion_ocm_id}</strong></td>
+          <td><span class="badge-tipo">${r.tipo}</span></td>
+          <td style="color:#888">${usuarioNombre}</td>
+          <td style="color:#555">${fechaCorta(r.fecha)}</td>
+          <td><span class="badge-estado ${r.estado}">${r.estado}</span></td>
+          <td>${r.estado === 'abierto' ? `<button class="btn-tbl btn-resolver" onclick="resolverReporte('${r.id}',this)">Resolver</button>` : '<span style="color:#555">—</span>'}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="6" class="empty">Sin reportes</td></tr>';
+    }
+
+    async function resolverReporte(rid, btn) {
+      try {
+        await apiFetch(`/admin/reportes/${rid}/resolver`, 'PATCH');
+        toast('Reporte resuelto');
+        cargarReportes();
+        cargarResumen();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    async function cargarEstaciones() {
+      try {
+        const estaciones = await apiFetch('/admin/estaciones');
+        const tbody = document.getElementById('tbody-estaciones');
+        if (!estaciones.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin estaciones propias</td></tr>'; return; }
+        tbody.innerHTML = estaciones.map(e =>
+          `<tr>
+            <td><strong>${e.nombre}</strong></td>
+            <td style="color:#888">${e.direccion || '—'}</td>
+            <td><span class="badge-tipo">${e.tipo_conector || '—'}</span></td>
+            <td style="color:#39a900">${e.potencia_kw || '—'} kW</td>
+            <td><span class="badge-estado ${e.activa ? 'resuelto' : 'abierto'}">${e.activa ? 'Disponible' : 'Mantenimiento'}</span></td>
+            <td><button class="btn-tbl" onclick="toggleMantenimiento('${e.id}', ${e.activa})">${e.activa ? '🛠 Mant.' : '✅ Act.'}</button>
+            <button class="btn-tbl" onclick="eliminarEstacion('${e.id}')">🗑</button></td>
+          </tr>`
+          ).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function toggleMantenimiento(eid, activa) {
+      try {
+        await apiFetch(`/admin/estaciones/${eid}/estado`, 'PATCH', { activa: !activa });
+        toast(activa ? 'Estación en mantenimiento' : 'Estación activa');
+        cargarEstaciones();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    async function crearEstacion() {
+      if (!document.getElementById('e-nombre').value.trim() || isNaN(parseFloat(document.getElementById('e-lat').value)) ||
+        isNaN(parseFloat(document.getElementById('e-lon').value)))
+        return mostrarAlertaEstacion('Faltan datos', true);
+      try {
+        await apiFetch('/admin/estaciones', 'POST', {
+          nombre: document.getElementById('e-nombre').value.trim(),
+          direccion: document.getElementById('e-direccion').value.trim(),
+          lat: parseFloat(document.getElementById('e-lat').value),
+          lon: parseFloat(document.getElementById('e-lon').value),
+          tipo_conector: document.getElementById('e-conector').value,
+          potencia_kw: parseFloat(document.getElementById('e-potencia').value),
+          descripcion: document.getElementById('e-descripcion').value.trim()
+        });
+        mostrarAlertaEstacion('Creada', false);
+        cargarEstaciones();
+        ['e-nombre', 'e-direccion', 'e-lat', 'e-lon', 'e-potencia', 'e-descripcion'].forEach(id => document.getElementById(id)
+          .value = '');
+      } catch (e) { mostrarAlertaEstacion(e.message, true); }
+    }
+
+    async function eliminarEstacion(eid) {
+      if (confirm('¿Desactivar?')) {
+        try {
+          await apiFetch(`/admin/estaciones/${eid}`, 'DELETE');
+          toast('Desactivada');
+          cargarEstaciones();
+        } catch (e) { toast(e.message, true); }
+      }
+    }
+
+    function mostrarAlertaEstacion(msg, error) {
+      const el = document.getElementById('estacion-alert');
+      el.textContent = msg;
+      el.style.display = 'block';
+      el.style.color = error ? '#e74c3c' : '#39a900';
+      setTimeout(() => el.style.display = 'none', 5000);
+    }
+
+    // ─── ADMIN: RESERVAS ──────────────────────────────────────────────────────
+    async function cargarReservasAdmin() {
+      try {
+        todasReservas = await apiFetch('/admin/reservas');
+        renderReservasAdmin(todasReservas);
+      } catch (e) { console.error(e); }
+    }
+
+    function filtrarReservasAdmin(estado, btn) {
+      if (estado && btn) {
+        document.querySelectorAll('#panel-reservas .filter-pills .pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      const q = document.getElementById('buscar-reserva').value.toLowerCase();
+      let filtradas = todasReservas;
+      if (estado && estado !== 'todos') {
+        filtradas = filtradas.filter(r => r.estado === estado);
+      }
+      if (q) {
+        filtradas = filtradas.filter(r =>
+          (r.usuario && nombreCompleto(r.usuario).toLowerCase().includes(q)) ||
+          (r.estacion_nombre && r.estacion_nombre.toLowerCase().includes(q))
+        );
+      }
+      renderReservasAdmin(filtradas);
+    }
+
+    function renderReservasAdmin(lista) {
+      const tbody = document.getElementById('tbody-reservas');
+      if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin reservas</td></tr>'; return; }
+      tbody.innerHTML = lista.map(r => {
+        const usuarioNombre = r.usuario ? nombreCompleto(r.usuario) : 'Usuario eliminado';
+        return `<tr>
+          <td>${usuarioNombre}</td>
+          <td>${r.estacion_nombre || r.estacion_ocm_id}</td>
+          <td>${fechaCorta(r.fecha_hora_inicio)}</td>
+          <td>${fechaCorta(r.fecha_hora_fin)}</td>
+          <td><span class="badge-estado ${r.estado}">${r.estado}</span></td>
+          <td>
+            ${r.estado === 'activa' ? `<button class="btn-tbl" onclick="cambiarEstadoReservaAdmin('${r.id}','cancelada')">Cancelar</button>` : ''}
+            <button class="btn-tbl" onclick="eliminarReservaAdmin('${r.id}')">🗑</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function cambiarEstadoReservaAdmin(rid, nuevoEstado) {
+      if (!confirm(`¿Cambiar estado a ${nuevoEstado}?`)) return;
+      try {
+        await apiFetch(`/admin/reservas/${rid}`, 'PUT', { estado: nuevoEstado });
+        toast(`Reserva ${nuevoEstado}`);
+        cargarReservasAdmin();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    async function eliminarReservaAdmin(rid) {
+      if (!confirm('¿Eliminar esta reserva?')) return;
+      try {
+        await apiFetch(`/admin/reservas/${rid}`, 'DELETE');
+        toast('Reserva eliminada');
+        cargarReservasAdmin();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    // ─── UTILIDADES ─────────────────────────────────────────────────────────────
+    async function apiFetch(path, method = 'GET', body = null) {
+      const token = localStorage.getItem('ev_token');
+      const opts = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(`${API}${path}`, opts);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Error');
+      }
+      return res.json();
+    }
+
+    function fechaCorta(iso) {
+      return new Date(iso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    let toastTimer;
+    function toast(msg, err = false) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = err ? 'show error' : 'show';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.className = '', 3000);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
