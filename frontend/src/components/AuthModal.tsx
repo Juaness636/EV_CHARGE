@@ -190,11 +190,11 @@ export function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
         {authTab === 'login' ? (
           <form onSubmit={doLogin}>
             <div className="form-group">
-              <label>Correo</label>
+              <label>Correo<span className="asterisco">*</span></label>
               <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="correo@ejemplo.com" />
             </div>
             <div className="form-group">
-              <label>Contraseña</label>
+              <label>Contraseña<span className="asterisco">*</span></label>
               <div className="password-box">
                 <input type={showLoginPass ? 'text' : 'password'} value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="••••••••" />
                 <button type="button" className="password-eye" aria-label={showLoginPass ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowLoginPass((v) => !v)}>
@@ -215,11 +215,11 @@ export function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
           </form>
         ) : (
           <form onSubmit={doRegistro}>
-            <div className="form-group"><label>Nombre</label><input type="text" value={regNombre} onChange={(e) => setRegNombre(e.target.value)} placeholder="Tu nombre" /></div>
-            <div className="form-group"><label>Apellido</label><input type="text" value={regApellido} onChange={(e) => setRegApellido(e.target.value)} placeholder="Tu apellido" /></div>
-            <div className="form-group"><label>Correo</label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" /></div>
-            <div className="form-group">
-              <label>Contraseña</label>
+           <div className="form-group"><label>Nombre<span className="asterisco">*</span></label><input type="text" value={regNombre} onChange={(e) => setRegNombre(e.target.value)} placeholder="Tu nombre" /></div>
+           <div className="form-group"><label>Apellido<span className="asterisco">*</span></label><input type="text" value={regApellido} onChange={(e) => setRegApellido(e.target.value)} placeholder="Tu apellido" /></div>
+           <div className="form-group"><label>Correo<span className="asterisco">*</span></label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" /></div>
+           <div className="form-group">
+              <label>Contraseña<span className="asterisco">*</span></label>
               <div className="password-box">
                 <input type={showRegPass ? 'text' : 'password'} value={regPass} onChange={(e) => setRegPass(e.target.value)} placeholder="Crea tu contraseña" />
                 <button type="button" className="password-eye" aria-label={showRegPass ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowRegPass((v) => !v)}>
@@ -238,7 +238,7 @@ export function AuthModal({ initialTab = 'login', onClose }: AuthModalProps) {
               </ul>
             </div>
             <div className="form-group">
-              <label>Confirmar contraseña</label>
+              <label>Confirmar contraseña<span className="asterisco">*</span></label>
               <div className="password-box">
                 <input type={showRegPassConfirm ? 'text' : 'password'} value={regPassConfirm} onChange={(e) => setRegPassConfirm(e.target.value)} placeholder="Repite tu contraseña" onPaste={(e) => e.preventDefault()} onCopy={(e) => e.preventDefault()} onCut={(e) => e.preventDefault()} autoComplete="off" />
                 <button type="button" className="password-eye" aria-label={showRegPassConfirm ? 'Ocultar confirmación' : 'Mostrar confirmación'} onClick={() => setShowRegPassConfirm((v) => !v)}>

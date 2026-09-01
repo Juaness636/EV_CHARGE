@@ -1224,10 +1224,73 @@ body, #navbar, .service-card, .producto-card, .categoria-card, .cifra-item, .her
   box-shadow: 0 16px 48px rgba(0,0,0,0.1);
 }
 
+[data-theme="light"] .auth-close {
+  color: #666;
+}
+
+[data-theme="light"] .auth-close:hover {
+  color: #0f172a;
+}
+
+[data-theme="light"] .auth-logo {
+  filter: none;
+}
+
+[data-theme="light"] .auth-tabs {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .auth-tab {
+  color: #888;
+}
+
+[data-theme="light"] .auth-tab.active {
+  color: #39a900;
+  border-bottom-color: #39a900;
+}
+
+[data-theme="light"] .form-group label {
+  color: #475569;
+}
+
 [data-theme="light"] .form-group input {
-  background: #f1f5f9;
+  background: #f8fafc;
   border: 1px solid #cbd5e1;
   color: #0f172a;
+}
+
+[data-theme="light"] .form-group input:focus {
+  border-color: #39a900;
+  box-shadow: 0 0 0 2px rgba(57,169,0,0.15);
+  background: #ffffff;
+}
+
+[data-theme="light"] .password-eye {
+  color: #475569;
+}
+
+[data-theme="light"] .strength-bar {
+  background: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .password-requisitos li {
+  color: #e74c3c;
+}
+
+[data-theme="light"] .password-requisitos li.ok {
+  color: #39a900;
+}
+
+[data-theme="light"] .alert-error {
+  background: rgba(231,76,60,0.1);
+  border: 1px solid rgba(231,76,60,0.3);
+  color: #c9302c;
+}
+
+[data-theme="light"] .alert-success {
+  background: rgba(57,169,0,0.1);
+  border: 1px solid rgba(57,169,0,0.3);
+  color: #27ae60;
 }
 
 /* 7. Navbar en Modo Claro */
@@ -1244,8 +1307,7 @@ body, #navbar, .service-card, .producto-card, .categoria-card, .cifra-item, .her
 
 /* 8. Visibilidad de Logos (Invierte color de blanco a oscuro preservando el verde) */
 [data-theme="light"] .nav-logo img,
-[data-theme="light"] .footer-logo,
-[data-theme="light"] .auth-logo {
+[data-theme="light"] .footer-logo {
   filter: invert(1) hue-rotate(180deg) brightness(0.2);
 }
 /* =========================================================
@@ -1741,4 +1803,8 @@ body, #navbar, .service-card, .producto-card, .categoria-card, .cifra-item, .her
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+.asterisco {
+  color: red;
+  font-size: 1.2rem;
 }

@@ -13,6 +13,8 @@ import {
   type UserAdmin,
 } from '../../api/admin.api';
 
+type ThemeMode = 'dark' | 'light' | 'system';
+
 type Panel = 'Resumen' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Calificaciones' | 'Contactos' | 'Perfil';
 type Row = Record<string, unknown>;
 const panels: Panel[] = ['Resumen', 'Usuarios', 'Reportes', 'Estaciones', 'Reservas', 'Calificaciones', 'Contactos', 'Perfil'];
@@ -33,6 +35,35 @@ export function AdminPage() {
   const [stats, setStats] = useState<AdminEstadisticas | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Estado para el tema
+  const [themeMode, setThemeMode] = useState<ThemeMode>(
+    () => (localStorage.getItem('ev_theme') as ThemeMode) || 'system'
+  );
+
+  // Efecto para aplicar el tema
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const aplicarTema = (mode: ThemeMode) => {
+      let temaEfectivo = mode;
+      if (mode === 'system') {
+        temaEfectivo = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      root.setAttribute('data-theme', temaEfectivo);
+      localStorage.setItem('ev_theme', mode);
+    };
+
+    aplicarTema(themeMode);
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      if (themeMode === 'system') aplicarTema('system');
+    };
+
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
+  }, [themeMode]);
 
   const load = async () => {
     setLoading(true);
@@ -95,6 +126,17 @@ export function AdminPage() {
           {loading ? <p className="empty">Cargando...</p> : panel === 'Resumen' ? <Summary stats={stats} /> : panel === 'Usuarios' ? <Users rows={rows} /> : panel === 'Reportes' ? <Reports rows={rows as unknown as ReporteAdmin[]} run={run} /> : panel === 'Estaciones' ? <StationsAdmin rows={rows} run={run} /> : panel === 'Reservas' ? <Reservations rows={rows as unknown as AdminReservaDetail[]} run={run} /> : panel === 'Calificaciones' ? <Ratings rows={rows as unknown as CalificacionAdmin[]} /> : panel === 'Contactos' ? <Contacts rows={rows as unknown as ContactoAdmin[]} run={run} /> : <ProfilePanel usuario={usuario} />}
         </section>
       </main>
+      <div className="theme-floating-widget">
+        <button className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`} onClick={() => setThemeMode('dark')} title="Modo Oscuro">
+          <i className="fa-solid fa-moon"></i>
+        </button>
+        <button className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`} onClick={() => setThemeMode('light')} title="Modo Claro">
+          <i className="fa-solid fa-sun"></i>
+        </button>
+        <button className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`} onClick={() => setThemeMode('system')} title="Tema del Sistema">
+          <i className="fa-solid fa-circle-half-stroke"></i>
+        </button>
+      </div>
     </div>
   );
 }

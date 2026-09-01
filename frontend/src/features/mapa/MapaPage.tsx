@@ -194,7 +194,7 @@ export function MapaPage() {
           }
           
           if (plan.paradas_sugeridas > 0) {
-            infoTexto += ` · 🔌 ${plan.paradas_sugeridas} parada(s) sugerida(s)`;
+            infoTexto += ` ·  ${plan.paradas_sugeridas} parada(s) sugerida(s)`;
           }
 
           setInfoRuta(infoTexto);

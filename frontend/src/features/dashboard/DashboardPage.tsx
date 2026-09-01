@@ -11,6 +11,8 @@ import { misReportes, crearReporte, actualizarReporte, eliminarReporte, type Rep
 import { misCalificaciones, calificar, actualizarCalificacion, eliminarCalificacion, type Calificacion } from '../../api/calificaciones.api';
 import { obtenerPerfil, actualizarPerfil, cambiarPassword } from '../../api/auth.api';
 
+type ThemeMode = 'dark' | 'light' | 'system';
+
 const paneles = ['Inicio', 'Vehículos', 'Reservas', 'Pagos', 'Favoritos', 'Reportes', 'Calificaciones', 'Mi perfil'];
 type Panel = typeof paneles[number];
 
@@ -50,6 +52,35 @@ export function DashboardPage() {
   const [reservaForm, setReservaForm] = useState({ estacion_ocm_id: '', estacion_nombre: '', inicio: '', fin: '' });
   const [reporteForm, setReporteForm] = useState({ estacion_ocm_id: '', estacion_nombre: '', tipo: 'averia', descripcion: '' });
   const [calificacionForm, setCalificacionForm] = useState({ estacion_ocm_id: '', estacion_nombre: '', puntaje: '5', comentario: '' });
+  
+  // Estado para el tema
+  const [themeMode, setThemeMode] = useState<ThemeMode>(
+    () => (localStorage.getItem('ev_theme') as ThemeMode) || 'system'
+  );
+
+  // Efecto para aplicar el tema
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const aplicarTema = (mode: ThemeMode) => {
+      let temaEfectivo = mode;
+      if (mode === 'system') {
+        temaEfectivo = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      root.setAttribute('data-theme', temaEfectivo);
+      localStorage.setItem('ev_theme', mode);
+    };
+
+    aplicarTema(themeMode);
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      if (themeMode === 'system') aplicarTema('system');
+    };
+
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
+  }, [themeMode]);
 
   const formatearFechaLocal = (value: string | Date) => {
     const fecha = typeof value === 'string' ? new Date(value) : value;
@@ -288,6 +319,17 @@ export function DashboardPage() {
         </>}
       </section>
     </main>
+    <div className="theme-floating-widget">
+      <button className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`} onClick={() => setThemeMode('dark')} title="Modo Oscuro">
+        <i className="fa-solid fa-moon"></i>
+      </button>
+      <button className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`} onClick={() => setThemeMode('light')} title="Modo Claro">
+        <i className="fa-solid fa-sun"></i>
+      </button>
+      <button className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`} onClick={() => setThemeMode('system')} title="Tema del Sistema">
+        <i className="fa-solid fa-circle-half-stroke"></i>
+      </button>
+    </div>
     <DashboardFooter />
   </div>;
 }
@@ -382,7 +424,7 @@ function ProfileForm() {
         email: form.email.trim(),
       });
       setForm({ nombre: form.nombre.trim(), apellido: form.apellido.trim(), email: form.email.trim() });
-      mostrarNotificacion('✅ Perfil actualizado', 'exito');
+      mostrarNotificacion('Perfil actualizado', 'exito');
       await obtenerPerfil();
     } catch (e) {
       const errorMsg = errorMessage(e);
@@ -432,7 +474,7 @@ function ProfileForm() {
     try {
       await cambiarPassword(passwords.actual, passwords.nueva);
       setPasswords({ actual: '', nueva: '', confirmacion: '' });
-      mostrarNotificacion('✅ Contraseña actualizada correctamente', 'exito', true);
+      mostrarNotificacion(' Contraseña actualizada correctamente', 'exito', true);
     } catch (e) {
       const errorMsg = errorMessage(e);
       if (errorMsg.includes('incorrecta') || errorMsg.includes('incorrectas')) {

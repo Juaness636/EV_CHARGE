@@ -324,12 +324,12 @@ function App() {
         setCaptchaRequired(true);
         setCaptchaSolved(false);
         setCaptchaKey((prev) => prev  + 1);
-        setAlert({ message: '⚠️ Demasiados intentos. Verifica que no eres un robot.', type: 'error' });
+        setAlert({ message: 'Demasiados intentos. Verifica que no eres un robot.', type: 'error' });
       } else if (errorMsg.includes('minutos')) {
         setCaptchaRequired(false);
-        setAlert({ message: `🚫 ${errorMsg}`, type: 'error' });
+        setAlert({ message: `${errorMsg}`, type: 'error' });
       } else if (error instanceof ApiError && (error.status === 401 || error.status === 400 || error.status === 422)) {
-        setAlert({ message: '❌ Correo o contraseña incorrectos', type: 'error' });
+        setAlert({ message: ' Correo o contraseña incorrectos', type: 'error' });
         if (captchaRequired) {
           setCaptchaSolved(false);
           setCaptchaKey((prev) => prev + 1);
@@ -364,7 +364,7 @@ function App() {
     try {
       await registro(nombre, apellido, email, pass);
 
-      setAlert({ message: '✅ ¡Registro exitoso! Ahora inicia sesión.', type: 'success' });
+      setAlert({ message: ' ¡Registro exitoso! Ahora inicia sesión.', type: 'success' });
       setRegNombre('');
       setRegApellido('');
       setRegEmail('');
@@ -375,7 +375,7 @@ function App() {
       window.setTimeout(() => document.getElementById('login-pass')?.focus(), 0);
     } catch (error: any) {
       if (error instanceof ApiError && (error.status === 400 || error.status === 409 || error.status === 422)) {
-        setAlert({ message: '⚠️ Este correo ya está registrado, intente con otro.', type: 'error' });
+        setAlert({ message: 'Este correo ya está registrado, intente con otro.', type: 'error' });
       } else {
         closeAuthModal();
         setErrorSistema({ visible: true, mensaje: '' });
@@ -646,10 +646,10 @@ function App() {
               </div>
             )}
 
-            {authTab === 'login' && (
+          {authTab === 'login' && (
               <form id="form-login" onSubmit={doLogin}>
                 <div className="form-group">
-                  <label>Correo</label>
+                  <label>Correo<span className="asterisco">*</span></label>
                   <input 
                     type="email" 
                     id="login-email" 
@@ -661,7 +661,7 @@ function App() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Contraseña</label>
+                  <label>Contraseña<span className="asterisco">*</span></label>
                   <div className="password-box">
                     <input 
                       id="login-pass" 
@@ -725,13 +725,12 @@ function App() {
             )}
 
             {authTab === 'registro' && (
-              <form id="form-registro" onSubmit={doRegistro}>
-                <div className="form-group"><label>Nombre</label><input type="text" value={regNombre} onChange={(e) => setRegNombre(e.target.value)} placeholder="Tu nombre" disabled={authLoading} /></div>
-                <div className="form-group"><label>Apellido</label><input type="text" value={regApellido} onChange={(e) => setRegApellido(e.target.value)} placeholder="Tu apellido" disabled={authLoading} /></div>
-                <div className="form-group"><label>Correo</label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" disabled={authLoading} /></div>
-                <div className="form-group"><label>Contraseña</label><div className="password-box"><input type={showRegPass ? 'text' : 'password'} value={regPass} onChange={(e) => setRegPass(e.target.value)} placeholder="Crea tu contraseña" disabled={authLoading} /><span className="password-eye" onClick={() => !authLoading && setShowRegPass((value) => !value)}><i className={`fa-solid ${showRegPass ? 'fa-eye-slash' : 'fa-eye'}`}></i></span></div><div className={`strength-bar${regPass.length ? ' show' : ''}`}><div className="strength-progress" style={{ width: `${passwordPercent}%`, background: passwordPercent < 40 ? '#e74c3c' : passwordPercent < 80 ? '#f39c12' : '#39a900' }}></div></div><ul className={`password-requisitos${regPass.length ? ' show' : ''}`}>{requirementsList.map(([key, text]) => <li key={key} className={requirements[key] ? 'ok' : ''}><i className={`fa-solid ${requirements[key] ? 'fa-check' : 'fa-xmark'}`}></i> {text}</li>)}</ul></div>
-                <div className="form-group"><label>Confirmar contraseña</label><input type="password" value={regPassConfirm} onChange={(e) => setRegPassConfirm(e.target.value)} placeholder="Repite tu contraseña" disabled={authLoading} onPaste={(e) => e.preventDefault()} onCopy={(e) => e.preventDefault()} onCut={(e) => e.preventDefault()} autoComplete="off" /></div>
-                
+            <form id="form-registro" onSubmit={doRegistro}>
+    <div className="form-group"><label>Nombre<span className="asterisco">*</span></label><input type="text" value={regNombre} onChange={(e) => setRegNombre(e.target.value)} placeholder="Tu nombre" disabled={authLoading} /></div>
+    <div className="form-group"><label>Apellido<span className="asterisco">*</span></label><input type="text" value={regApellido} onChange={(e) => setRegApellido(e.target.value)} placeholder="Tu apellido" disabled={authLoading} /></div>
+    <div className="form-group"><label>Correo</label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="correo@ejemplo.com" disabled={authLoading} /></div>
+    <div className="form-group"><label>Contraseña<span className="asterisco">*</span></label><div className="password-box"><input type={showRegPass ? 'text' : 'password'} value={regPass} onChange={(e) => setRegPass(e.target.value)} placeholder="Crea tu contraseña" disabled={authLoading} /><span className="password-eye" onClick={() => !authLoading && setShowRegPass((value) => !value)}><i className={`fa-solid ${showRegPass ? 'fa-eye-slash' : 'fa-eye'}`}></i></span></div><div className={`strength-bar${regPass.length ? ' show' : ''}`}><div className="strength-progress" style={{ width: `${passwordPercent}%`, background: passwordPercent < 40 ? '#e74c3c' : passwordPercent < 80 ? '#f39c12' : '#39a900' }}></div></div><ul className={`password-requisitos${regPass.length ? ' show' : ''}`}>{requirementsList.map(([key, text]) => <li key={key} className={requirements[key] ? 'ok' : ''}><i className={`fa-solid ${requirements[key] ? 'fa-check' : 'fa-xmark'}`}></i> {text}</li>)}</ul></div>
+    <div className="form-group"><label>Confirmar contraseña<span className="asterisco">*</span></label><input type="password" value={regPassConfirm} onChange={(e) => setRegPassConfirm(e.target.value)} placeholder="Repite tu contraseña" disabled={authLoading} onPaste={(e) => e.preventDefault()} onCopy={(e) => e.preventDefault()} onCut={(e) => e.preventDefault()} autoComplete="off" /></div>
                 <button type="submit" id="btn-crear-cuenta" className="btn btn-primary btn-block" disabled={authLoading}>
                   {authLoading ? (
                     <span className="btn-loading-content">
