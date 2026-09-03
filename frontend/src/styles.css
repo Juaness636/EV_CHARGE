@@ -1,0 +1,9 @@
+@import url("./styles/estilos.css");
+/* Pantalla ligera mientras se descarga el código de una página secundaria. */
+.page-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--text, #39a900);
+  font-weight: 600;
+}
