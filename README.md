@@ -119,6 +119,22 @@ WHERE email = 'TU_CORREO';
 
 El proyecto no crea administradores automáticamente.
 
+## Asistente de EV Charge
+
+El asistente aparece en las páginas públicas y privadas. Puede orientar sobre reservas, vehículos, estaciones, pagos, compras, reportes y el resto de las funciones disponibles. No ejecuta cambios ni guarda conversaciones permanentemente.
+
+Es opcional. Si `OPENAI_API_KEY` queda vacío, funciona con respuestas locales y el sistema sigue operativo. Para habilitar respuestas generadas por IA, agrega al `.env`:
+
+```env
+OPENAI_API_KEY=TU_CLAVE_PRIVADA
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_API_URL=https://api.openai.com/v1/chat/completions
+AI_TIMEOUT_SECONDS=20
+AI_RATE_LIMIT_PER_MINUTE=20
+```
+
+La clave se lee únicamente desde FastAPI. Nunca la coloques en archivos del frontend ni la subas a GitHub.
+
 El mapa consulta estaciones externas mediante `OCM_API_KEY`. Si la clave no está configurada o el servicio externo no responde, el sistema intenta mostrar las estaciones propias guardadas en la base de datos. Para ver estaciones externas, agrega una clave válida en `.env` y reinicia el backend.
 
 ## Errores comunes

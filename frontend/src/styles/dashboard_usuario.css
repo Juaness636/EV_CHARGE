@@ -466,8 +466,9 @@ h1, h2, h3, h4, h5, h6 {
 .dashboard-shell > .footer {
     position: relative;
     left: 0;
-    width: 100vw !important;
-    margin-left: 0 !important;
+    width: calc(100% - var(--sidebar, 220px)) !important;
+    margin-left: var(--sidebar, 220px) !important;
+    box-sizing: border-box;
 }
 .dashboard-shell > .footer .footer-inner {
     width: 100%;
@@ -497,6 +498,10 @@ h1, h2, h3, h4, h5, h6 {
     .dashboard-shell #admin-content {
         width: 100%;
         min-height: auto;
+    }
+    .dashboard-shell > .footer {
+        width: 100% !important;
+        margin-left: 0 !important;
     }
     .dashboard-shell #admin-header {
         position: relative;

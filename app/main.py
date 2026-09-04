@@ -39,6 +39,7 @@ from app.routes.contacto_routes import router as contacto_router
 from app.routes.estado_routes import router as estado_router
 from app.routes import pagos
 from app.routes.compras_routes import router as compras_router
+from app.routes import asistente_routes
 
 # ==========================================
 # CREACIÓN AUTOMÁTICA DE TABLAS
@@ -109,6 +110,7 @@ app.include_router(contacto_router)
 app.include_router(estado_router)
 app.include_router(pagos.router)
 app.include_router(compras_router)
+app.include_router(asistente_routes.router)
 
 # ==========================================
 # RUTA RAÍZ

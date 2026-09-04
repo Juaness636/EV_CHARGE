@@ -1,5 +1,5 @@
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './styles.css';
 import { login, registro, obtenerPerfil, logout as logoutApi, ApiError, type Usuario } from './api/auth.api';
 import { OlvidarContrasena } from './components/OlvidarContrasena';
@@ -67,6 +67,7 @@ const SimulatedCaptcha = ({ onVerify, refreshKey }: { onVerify: (v: boolean) => 
 
 type CategoriaKey = 'Cargadores' | 'Llantas' | 'Baterías' | 'Cables y conectores';
 type ProductoCompra = { nombre: string; desc: string; precio: string; monto: number; img: string };
+type ProductoCatalogo = ProductoCompra & { categoria: CategoriaKey; etiqueta: string; tipo: string; potencia: string; conector: string };
 
 const productosPorCategoria: Record<CategoriaKey, ProductoCompra[]> = {
   'Cargadores': [
@@ -75,20 +76,33 @@ const productosPorCategoria: Record<CategoriaKey, ProductoCompra[]> = {
     { nombre: 'Cargador Portátil 7.4 kW', desc: 'Llévalo contigo en el baúl a todas partes.', precio: '$1.200.000 COP', monto: 1200000, img: '/img/cargador-portatil-74kw.png' }
   ],
   'Llantas': [
-    { nombre: 'Llanta Michelin Pilot Sport EV 20"', desc: 'Alto rendimiento, bajo ruido y diseñada para el torque eléctrico.', precio: '$1.250.000 COP', monto: 1250000, img: '/img/banner.png' },
-    { nombre: 'Llanta Hankook iON evo 22"', desc: 'Optimiza la autonomía de la batería con menor resistencia a la rodadura.', precio: '$1.480.000 COP', monto: 1480000, img: '/img/banner.png' }
+    { nombre: 'Llanta Michelin Pilot Sport EV 20"', desc: 'Alto rendimiento, bajo ruido y diseñada para el torque eléctrico.', precio: '$1.250.000 COP', monto: 1250000, img: '/img/producto-llanta.svg' },
+    { nombre: 'Llanta Hankook iON evo 22"', desc: 'Optimiza la autonomía de la batería con menor resistencia a la rodadura.', precio: '$1.480.000 COP', monto: 1480000, img: '/img/producto-llanta.svg' }
   ],
   'Baterías': [
-    { nombre: 'Módulo de Batería 48V', desc: 'Repuesto original de celdas de iones de litio de alta densidad.', precio: '$2.800.000 COP', monto: 2800000, img: '/img/banner.png' },
-    { nombre: 'Batería Auxiliar 12V EV', desc: 'Soporte para los sistemas electrónicos y pantalla del vehículo.', precio: '$450.000 COP', monto: 450000, img: '/img/banner.png' }
+    { nombre: 'Módulo de Batería 48V', desc: 'Repuesto original de celdas de iones de litio de alta densidad.', precio: '$2.800.000 COP', monto: 2800000, img: '/img/producto-bateria.svg' },
+    { nombre: 'Batería Auxiliar 12V EV', desc: 'Soporte para los sistemas electrónicos y pantalla del vehículo.', precio: '$450.000 COP', monto: 450000, img: '/img/producto-bateria.svg' }
   ],
   'Cables y conectores': [
-    { nombre: 'Cable Tipo 2 a Tipo 2 (5m)', desc: 'Soporta carga trifásica de hasta 22kW.', precio: '$480.000 COP', monto: 480000, img: '/img/banner.png' },
-    { nombre: 'Adaptador CCS2 a GB/T', desc: 'Compatibilidad total con el estándar de carga chino.', precio: '$750.000 COP', monto: 750000, img: '/img/banner.png' }
+    { nombre: 'Cable Tipo 2 a Tipo 2 (5m)', desc: 'Soporta carga trifásica de hasta 22kW.', precio: '$480.000 COP', monto: 480000, img: '/img/producto-cable.svg' },
+    { nombre: 'Adaptador CCS2 a GB/T', desc: 'Compatibilidad total con el estándar de carga chino.', precio: '$750.000 COP', monto: 750000, img: '/img/producto-cable.svg' }
   ]
 };
 
+const catalogoProductos: ProductoCatalogo[] = [
+  { ...productosPorCategoria.Cargadores[0], categoria: 'Cargadores', etiqueta: 'Carga rápida', tipo: 'CARGADOR DC', potencia: '150 kW', conector: 'CCS2' },
+  { ...productosPorCategoria.Cargadores[1], categoria: 'Cargadores', etiqueta: 'Uso residencial', tipo: 'WALLBOX', potencia: '22 kW', conector: 'Tipo 2' },
+  { ...productosPorCategoria.Cargadores[2], categoria: 'Cargadores', etiqueta: 'Portátil', tipo: 'CARGADOR PORTÁTIL', potencia: '7,4 kW', conector: 'Tipo 2' },
+  { ...productosPorCategoria.Llantas[0], categoria: 'Llantas', etiqueta: 'Rendimiento', tipo: 'LLANTAS EV', potencia: '20 pulgadas', conector: 'Vehículos eléctricos' },
+  { ...productosPorCategoria.Llantas[1], categoria: 'Llantas', etiqueta: 'Eficiencia', tipo: 'LLANTAS EV', potencia: '22 pulgadas', conector: 'Vehículos eléctricos' },
+  { ...productosPorCategoria.Baterías[0], categoria: 'Baterías', etiqueta: 'Alto rendimiento', tipo: 'BATERÍA EV', potencia: '48 V', conector: 'Iones de litio' },
+  { ...productosPorCategoria.Baterías[1], categoria: 'Baterías', etiqueta: 'Auxiliar', tipo: 'BATERÍA EV', potencia: '12 V', conector: 'Auxiliar' },
+  { ...productosPorCategoria['Cables y conectores'][0], categoria: 'Cables y conectores', etiqueta: 'Carga segura', tipo: 'CABLE', potencia: '22 kW', conector: 'Tipo 2' },
+  { ...productosPorCategoria['Cables y conectores'][1], categoria: 'Cables y conectores', etiqueta: 'Adaptador', tipo: 'ADAPTADOR', potencia: 'CCS2', conector: 'GB/T' },
+];
+
 function App() {
+  const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<AuthTab>('login');
   const [alert, setAlert] = useState<{ message: string; type: AlertType } | null>(null);
@@ -116,6 +130,7 @@ function App() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
   const [productoCompra, setProductoCompra] = useState<ProductoCompra | null>(null);
+  const [productoDetalle, setProductoDetalle] = useState<ProductoCatalogo | null>(null);
   const [metodosPagoCompra, setMetodosPagoCompra] = useState<MetodoPago[]>([]);
 
   const unreadCount = notificaciones.filter(n => !n.leida).length;
@@ -142,6 +157,9 @@ function App() {
   };
 
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<CategoriaKey | null>(null);
+  const [productoBusqueda, setProductoBusqueda] = useState('');
+  const [productoOrden, setProductoOrden] = useState<'relevancia' | 'precio-menor' | 'precio-mayor' | 'nombre'>('relevancia');
+  const [productoCategoria, setProductoCategoria] = useState<'Todas' | CategoriaKey>('Todas');
 
   const [errorSistema, setErrorSistema] = useState<{ visible: boolean; mensaje: string }>({
     visible: false,
@@ -151,6 +169,21 @@ function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(
     () => (localStorage.getItem('ev_theme') as ThemeMode) || 'system'
   );
+
+  const productosVisibles = useMemo(() => {
+    const busqueda = productoBusqueda.trim().toLowerCase();
+    const filtrados = catalogoProductos.filter((producto) => {
+      const coincideCategoria = productoCategoria === 'Todas' || producto.categoria === productoCategoria;
+      const coincideBusqueda = !busqueda || [producto.nombre, producto.desc, producto.categoria, producto.tipo, producto.conector].some((valor) => valor.toLowerCase().includes(busqueda));
+      return coincideCategoria && coincideBusqueda;
+    });
+    return [...filtrados].sort((a, b) => {
+      if (productoOrden === 'precio-menor') return a.monto - b.monto;
+      if (productoOrden === 'precio-mayor') return b.monto - a.monto;
+      if (productoOrden === 'nombre') return a.nombre.localeCompare(b.nombre, 'es');
+      return 0;
+    });
+  }, [productoBusqueda, productoOrden, productoCategoria]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -256,9 +289,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = (authModalOpen || categoriaSeleccionada || errorSistema.visible) ? 'hidden' : '';
+    document.body.style.overflow = (authModalOpen || categoriaSeleccionada || productoDetalle || errorSistema.visible) ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [authModalOpen, categoriaSeleccionada, errorSistema.visible]);
+  }, [authModalOpen, categoriaSeleccionada, productoDetalle, errorSistema.visible]);
 
   const openAuthModal = (tab: AuthTab) => {
     setAuthTab(tab);
@@ -450,7 +483,6 @@ function App() {
             <li><a href="#inicio" className="nav-link active" onClick={() => setMobileMenuOpen(false)}>Inicio</a></li>
             <li><a href="#categoria" className="nav-link" onClick={() => setMobileMenuOpen(false)}>Categoría</a></li>
             <li><a href="#servicios" className="nav-link" onClick={() => setMobileMenuOpen(false)}>Servicios</a></li>
-            <li><a href="#productos" className="nav-link" onClick={() => setMobileMenuOpen(false)}>Productos</a></li>
             <li><a href="#nosotros" className="nav-link" onClick={() => setMobileMenuOpen(false)}>Quiénes somos</a></li>
             <li><a href="#cifras" className="nav-link" onClick={() => setMobileMenuOpen(false)}>En números</a></li>
             <li><a href="#contacto" className="nav-link" onClick={() => setMobileMenuOpen(false)}>Contacto</a></li>
@@ -561,26 +593,26 @@ function App() {
           </div>
 
           <div className="categoria-grid">
-            <div className="categoria-card reveal" role="button" tabIndex={0} onClick={() => setCategoriaSeleccionada('Cargadores')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setCategoriaSeleccionada('Cargadores'); }}>
+            <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Cargadores')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Cargadores'); }}>
               <div className="categoria-img-box"><img src="/img/wallbox-22kw.png" alt="Cargadores" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Cargadores</h3>
               <p>Cargadores para vehículos eléctricos de diferentes potencias y necesidades.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
             </div>
-            <div className="categoria-card reveal" role="button" tabIndex={0} onClick={() => setCategoriaSeleccionada('Llantas')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setCategoriaSeleccionada('Llantas'); }}>
-              <div className="categoria-img-box"><img src="/img/banner.png" alt="Llantas" className="categoria-img" loading="lazy" decoding="async" /></div>
+            <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Llantas')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Llantas'); }}>
+              <div className="categoria-img-box"><img src="/img/producto-llanta.svg" alt="Llantas" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Llantas</h3>
               <p>Llantas diseñadas para ofrecer seguridad y rendimiento en tu vehículo eléctrico.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
             </div>
-            <div className="categoria-card reveal" role="button" tabIndex={0} onClick={() => setCategoriaSeleccionada('Baterías')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setCategoriaSeleccionada('Baterías'); }}>
-              <div className="categoria-img-box"><img src="/img/banner.png" alt="Baterias" className="categoria-img" loading="lazy" decoding="async" /></div>
+            <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Baterías')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Baterías'); }}>
+              <div className="categoria-img-box"><img src="/img/producto-bateria.svg" alt="Baterias" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Baterías</h3>
               <p>Soluciones de energía y baterías para mejorar la autonomía de tu vehículo.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
             </div>
-            <div className="categoria-card reveal" role="button" tabIndex={0} onClick={() => setCategoriaSeleccionada('Cables y conectores')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setCategoriaSeleccionada('Cables y conectores'); }}>
-              <div className="categoria-img-box"><img src="/img/banner.png" alt="Cables y Conectores" className="categoria-img" loading="lazy" decoding="async" /></div>
+            <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Cables%20y%20conectores')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Cables%20y%20conectores'); }}>
+              <div className="categoria-img-box"><img src="/img/producto-cable.svg" alt="Cables y Conectores" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Cables y conectores</h3>
               <p>Cables, conectores y accesorios para realizar tus cargas de forma segura.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
@@ -610,24 +642,6 @@ function App() {
         </div>
       </section>
 
-      <section id="productos" className="section productos-section">
-        <div className="section-inner">
-          <div className="section-head reveal"><p className="eyebrow">Nuestros productos</p><h2>Soluciones para tu<br />movilidad eléctrica</h2><p className="section-sub">Conoce nuestras soluciones de carga diseñadas para vehículos eléctricos.</p></div>
-          <div className="productos-grid">
-            {[
-              ['/img/cargador-rapido-150kw.png', 'Cargador rápido DC 150 kW', 'Cargador de alta potencia diseñado para realizar cargas rápidas y eficientes en vehículos eléctricos.', 'Carga rápida', 'CARGADOR DC', '150 kW', 'CCS2', 8500000],
-              ['/img/wallbox-22kw.png', 'Cargador Wallbox 22 kW', 'Solución compacta para cargar tu vehículo eléctrico en casa, parqueaderos o espacios privados.', 'Uso residencial', 'WALLBOX', '22 kW', 'Tipo 2', 3500000],
-              ['/img/cargador-portatil-74kw.png', 'Cargador Portátil 7,4 kW', 'Una alternativa práctica para realizar cargas de tu vehículo eléctrico en diferentes lugares.', 'Portátil', 'CARGADOR PORTÁTIL', '7,4 kW', 'Tipo 2', 1200000],
-            ].map(([image, title, description, badge, type, power, connector, monto]) => (
-              <div className="producto-card reveal" key={title}>
-                <div className="producto-image"><img src={String(image)} alt={String(title)} loading="lazy" decoding="async" /><span className="producto-badge">{badge}</span></div>
-                <div className="producto-content"><p className="producto-type">{type}</p><h3>{title}</h3><p className="producto-desc">{description}</p><div className="producto-info"><span><i className="fa-solid fa-bolt"></i> {power}</span><span><i className="fa-solid fa-plug"></i> {connector}</span></div><div className="producto-footer"><span className="producto-price">${Number(monto).toLocaleString('es-CO')} COP</span><button type="button" className="producto-btn" onClick={() => void iniciarCompra({ nombre: String(title), desc: String(description), precio: `$${Number(monto).toLocaleString('es-CO')} COP`, monto: Number(monto), img: String(image) })}>Comprar <i className="fa-solid fa-arrow-right"></i></button></div></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="nosotros" className="section nosotros-section">
         <div className="nosotros-bg"><div className="banner-headline">EV CHARGE</div><div className="banner-spotlight"></div><div className="banner-diamond"></div><div className="banner-car-wrap"><img src="/img/ChatGPT Image 26 jun 2026, 08_44_00 a.m..png" className="banner-car-img" alt="EV Car with charger" loading="lazy" decoding="async" /></div></div>
         <div className="nosotros-content-wrapper"><div className="nosotros-content"><p className="nosotros-eyebrow reveal">Quiénes somos</p><h2 className="nosotros-title reveal">EV Charge</h2><p className="nosotros-desc reveal">Proyecto desarrollado por aprendices ADSO del SENA.</p><p className="nosotros-desc reveal">Impulsamos la movilidad eléctrica mediante una plataforma inteligente para localizar estaciones de carga, administrar vehículos, gestionar reservas y ofrecer una mejor experiencia a los conductores de vehículos eléctricos.</p><a href="#contacto" className="btn-primary-lg nosotros-btn reveal" onClick={(e) => smoothTo('contacto', e)}>Conoce más</a></div></div>
@@ -646,7 +660,7 @@ function App() {
       </section>
 
       <footer className="footer"><div className="footer-inner"><div className="footer-brand"><img src="/img/logo.png" alt="EV Charge" className="footer-logo" /><p style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '6px 0 4px' }}>EV Charge</p><p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 320 }}>Plataforma para localizar y gestionar estaciones de carga para vehículos eléctricos en Colombia.</p></div>
-        <div className="footer-links"><p className="footer-title">Navegación</p><a href="#inicio">Inicio</a><a href="#categoria">Categoria</a><a href="#servicios">Servicios</a><a href="#productos">Productos</a><a href="#nosotros">Quiénes somos</a><a href="#contacto">Contacto</a></div>
+        <div className="footer-links"><p className="footer-title">Navegación</p><a href="#inicio">Inicio</a><a href="#categoria">Categoria</a><a href="#servicios">Servicios</a><Link to="/productos">Productos</Link><a href="#nosotros">Quiénes somos</a><a href="#contacto">Contacto</a></div>
         <div className="footer-links"><p className="footer-title">Contacto</p><div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}><span><i className="fa-solid fa-envelope"></i> eevcharge@gmail.com
 </span><span><i className="fa-solid fa-location-dot"></i> Bogotá D.C., Colombia</span><span><i className="fa-solid fa-phone"></i> +57 300 123 4567</span></div></div>
         <div className="footer-links"><p className="footer-title">Información</p><p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 4px' }}>Versión 2.0</p><p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 4px' }}>Proyecto académico SENA ADSO</p><p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Última actualización: <span className="footer-year" style={{ fontWeight: 600, color: '#fff' }}>{year}</span></p></div>
@@ -821,6 +835,17 @@ function App() {
         </div>
       )}
 
+      {productoDetalle && (
+        <div className="producto-detail-modal" role="dialog" aria-modal="true" aria-label={`Detalles de ${productoDetalle.nombre}`}>
+          <div className="auth-backdrop" onClick={() => setProductoDetalle(null)}></div>
+          <div className="producto-detail-card">
+            <button className="auth-close" onClick={() => setProductoDetalle(null)} aria-label="Cerrar detalles">✕</button>
+            <img src={productoDetalle.img} alt={productoDetalle.nombre} loading="lazy" />
+            <div><p className="producto-type">{productoDetalle.tipo}</p><h2>{productoDetalle.nombre}</h2><p>{productoDetalle.desc}</p><div className="producto-info"><span><i className="fa-solid fa-bolt"></i> {productoDetalle.potencia}</span><span><i className="fa-solid fa-plug"></i> {productoDetalle.conector}</span></div><strong className="producto-detail-price">${productoDetalle.monto.toLocaleString('es-CO')} COP</strong><button type="button" className="btn-primary btn-block" onClick={() => { setProductoDetalle(null); void iniciarCompra(productoDetalle); }}>Comprar ahora</button></div>
+          </div>
+        </div>
+      )}
+
       {productoCompra && (
         <ModalPago
           tipo="producto"
@@ -862,7 +887,6 @@ function App() {
         </div>
       )}
 
-      <a href="https://wa.me/573165155780" className="whatsapp-btn" target="_blank" rel="noreferrer" aria-label="Contactar por WhatsApp"><i className="fa-brands fa-whatsapp"></i></a>
     </> 
   );
 }
