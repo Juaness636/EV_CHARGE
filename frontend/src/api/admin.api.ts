@@ -24,6 +24,15 @@ export interface EstacionPropiaCreate {
   activa?: boolean;
   estado?: 'activa' | 'mantenimiento' | 'inactiva';
   operador?: string;
+  cargadores?: EstacionCargadorData[];
+}
+
+export interface EstacionCargadorData {
+  id?: string;
+  tipo_conector: string;
+  potencia_kw: number;
+  corriente?: string;
+  bahias?: number;
 }
 
 export interface AdminEstacionOcm {

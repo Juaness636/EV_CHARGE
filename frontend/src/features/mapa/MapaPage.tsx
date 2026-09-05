@@ -276,25 +276,35 @@ export function MapaPage() {
     const cargarEstaciones = () => {
       const cargar = (url: string, params?: Record<string, number>) => api.get<EstacionOCM[]>(url, { params });
       const solicitud = usuario?.is_admin ? cargar('/estaciones-mapa') : cargar('/estaciones-bogota');
+      const cacheKey = `ev-charge:estaciones:${usuario?.is_admin ? 'admin' : 'bogota'}`;
+      const mostrarEstaciones = (data: EstacionOCM[], guardar = false) => {
+        const validas = data.filter((estacion) => {
+          const lat = estacion.AddressInfo?.Latitude;
+          const lon = estacion.AddressInfo?.Longitude;
+          return Number.isFinite(lat) && Number.isFinite(lon);
+        });
+        setEstaciones(validas);
+        if (guardar) {
+          try { window.localStorage.setItem(cacheKey, JSON.stringify(validas)); } catch { /* La cache es opcional. */ }
+        }
+        if (validas.length) {
+          const puntos = validas.map((estacion) => [
+            estacion.AddressInfo!.Latitude,
+            estacion.AddressInfo!.Longitude,
+          ] as [number, number]);
+          map.fitBounds(L.latLngBounds(puntos), { padding: [40, 40], maxZoom: 14 });
+        }
+      };
+      try {
+        const cache = window.localStorage.getItem(cacheKey);
+        if (cache) mostrarEstaciones(JSON.parse(cache) as EstacionOCM[]);
+      } catch { /* Si la cache está dañada, se ignora y se usa la API. */ }
       solicitud
         .then(({ data }) => {
-          const validas = data.filter((estacion) => {
-            const lat = estacion.AddressInfo?.Latitude;
-            const lon = estacion.AddressInfo?.Longitude;
-            return Number.isFinite(lat) && Number.isFinite(lon);
-          });
-          setEstaciones(validas);
-          if (validas.length) {
-            const puntos = validas.map((estacion) => [
-              estacion.AddressInfo!.Latitude,
-              estacion.AddressInfo!.Longitude,
-            ] as [number, number]);
-            map.fitBounds(L.latLngBounds(puntos), { padding: [40, 40], maxZoom: 14 });
-          }
+          mostrarEstaciones(data, true);
         })
         .catch((e: Error) => {
           console.error('Error cargando estaciones:', e);
-          setEstaciones([]);
         });
     };
 

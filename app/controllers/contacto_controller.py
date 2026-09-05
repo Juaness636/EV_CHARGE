@@ -31,6 +31,8 @@ def responder_contacto(db: Session, cid: str, respuesta: str):
     contacto = db.query(Contacto).filter(Contacto.id == cid).first()
     if not contacto:
         raise HTTPException(status_code=404, detail="Mensaje de contacto no encontrado.")
+    if contacto.respuesta and contacto.respuesta.strip():
+        raise HTTPException(status_code=400, detail="Este mensaje de contacto ya fue respondido.")
     respuesta = respuesta.strip()
     if not respuesta:
         raise HTTPException(status_code=400, detail="La respuesta no puede estar vacía.")

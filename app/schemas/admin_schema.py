@@ -4,6 +4,14 @@ from typing import Optional
 from datetime import datetime
 
 
+class EstacionCargadorData(BaseModel):
+    id: Optional[str] = None
+    tipo_conector: str
+    potencia_kw: float
+    corriente: Optional[str] = "No especificada"
+    bahias: int = 1
+
+
 class AdminEstadisticas(BaseModel):
     total_usuarios: int
     total_vehiculos: int
@@ -25,6 +33,7 @@ class EstacionPropiaCreate(BaseModel):
     operador: Optional[str] = "EV Charge"
     activa: Optional[bool] = True
     estado: Optional[str] = "activa"
+    cargadores: Optional[list[EstacionCargadorData]] = None
 
 
 class EstacionPropiaUpdate(BaseModel):
@@ -38,6 +47,7 @@ class EstacionPropiaUpdate(BaseModel):
     descripcion: Optional[str] = None
     operador: Optional[str] = None
     estado: Optional[str] = None
+    cargadores: Optional[list[EstacionCargadorData]] = None
 
 
 class EstadoUpdate(BaseModel):

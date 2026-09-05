@@ -10,6 +10,7 @@ import {
   crearEstacion, actualizarEstacion, cambiarEstadoEstacion, eliminarEstacionAdmin,
   cambiarEstadoEstacionOcm, actualizarEstacionOcm, eliminarEstacionOcmAdmin,
   actualizarUsuarioAdmin, listarNotificacionesAdmin,
+  type EstacionCargadorData,
   type AdminEstadisticas, type AdminReservaDetail, type ReporteAdmin, type CalificacionAdmin, type ContactoAdmin,
   type UserAdmin, type AdminNotificacion,
 } from '../../api/admin.api';
@@ -18,6 +19,7 @@ type ThemeMode = 'dark' | 'light' | 'system';
 
 type Panel = 'Resumen' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
 type Row = Record<string, unknown>;
+const TIPOS_CARGADOR = ['CCS', 'Type 2', 'CHAdeMO', 'GB/T', 'J1772'] as const;
 const panels: Panel[] = ['Resumen', 'Usuarios', 'Reportes', 'Estaciones', 'Reservas', 'Notificaciones', 'Calificaciones', 'Contactos', 'Perfil'];
 const date = (value?: string) => value ? new Date(value).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sin fecha';
 const getStatusClass = (status?: string) => {
@@ -27,6 +29,13 @@ const getStatusClass = (status?: string) => {
   if (value.includes('mantenimiento') || value.includes('pendiente')) return 'status-pending';
   return 'status-default';
 };
+const getReportStatusLabel = (status: string) => ({
+  todos: 'Todos',
+  abierto: 'Abiertos',
+  mantenimiento: 'Mantenimiento',
+  resuelto: 'Resueltos',
+  fuera_servicio: 'Fuera de servicio',
+}[status] || status);
 
 export function AdminPage() {
   const { usuario, logout } = useAuth();
@@ -205,7 +214,7 @@ function Reports({ rows, run }: { rows: ReporteAdmin[]; run: (f: () => Promise<u
     <div className="panel-toolbar">
       <div className="filter-pills">
         {(['todos', 'abierto', 'mantenimiento', 'resuelto', 'fuera_servicio'] as const).map((estado) => (
-          <button key={estado} className={`pill ${filtro === estado ? 'active' : ''}`} onClick={() => setFiltro(estado)}>{estado === 'todos' ? 'Todos' : estado}</button>
+          <button key={estado} className={`pill ${filtro === estado ? 'active' : ''}`} onClick={() => setFiltro(estado)}>{getReportStatusLabel(estado)}</button>
         ))}
       </div>
     </div>
@@ -243,7 +252,10 @@ function Contacts({ rows, run }: { rows: ContactoAdmin[]; run: (f: () => Promise
   const [open, setOpen] = useState<string | null>(null);
   const [reply, setReply] = useState('');
 
-  return <Table headers={['Usuario', 'Mensaje', 'Fecha', 'Respuesta']}>{rows.map((r) => <tr key={r.id}><td><strong>{r.nombre} {r.apellido || ''}</strong><br /><small>{r.correo}</small></td><td>{r.mensaje}</td><td>{date(r.fecha_envio)}<br /><span className={`status-badge ${getStatusClass(r.estado)}`}>{r.estado}</span></td><td>{open === r.id ? <><textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Escribe la respuesta" /><button className="btn-tbl" disabled={!reply.trim()} onClick={() => { void run(() => responderContactoAdmin(r.id, reply.trim())); setOpen(null); setReply(''); }}>Enviar</button></> : <><div>{r.respuesta || 'Sin respuesta'}</div><button className="btn-tbl" onClick={() => { setOpen(r.id); setReply(r.respuesta || ''); }}>Responder</button></>}</td></tr>)}</Table>;
+  return <Table headers={['Usuario', 'Mensaje', 'Fecha', 'Respuesta']}>{rows.map((r) => {
+    const respondido = Boolean(r.respuesta?.trim());
+    return <tr key={r.id}><td><strong>{r.nombre} {r.apellido || ''}</strong><br /><small>{r.correo}</small></td><td>{r.mensaje}</td><td>{date(r.fecha_envio)}<br /><span className={`status-badge ${getStatusClass(r.estado)}`}>{r.estado}</span></td><td>{open === r.id && !respondido ? <><textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Escribe la respuesta" /><button className="btn-tbl" disabled={!reply.trim()} onClick={() => { void run(() => responderContactoAdmin(r.id, reply.trim())); setOpen(null); setReply(''); }}>Enviar</button></> : <><div>{r.respuesta || 'Sin respuesta'}</div>{respondido ? <span className="status-badge status-active">Respondido</span> : <button className="btn-tbl" onClick={() => { setOpen(r.id); setReply(''); }}>Responder</button>}</>}</td></tr>;
+  })}</Table>;
 }
 
 function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unknown>) => Promise<void> }) {
@@ -252,6 +264,8 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingOrigin, setEditingOrigin] = useState<string | null>(null);
+  const [cargadores, setCargadores] = useState<EstacionCargadorData[]>([]);
+  const stationFormRef = useRef<HTMLFormElement>(null);
   const [query, setQuery] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'activa' | 'mantenimiento' | 'inactiva'>('todos');
 
@@ -265,7 +279,21 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
     setForm({ id: '', nombre: '', direccion: '', lat: '', lon: '', tipo_conector: 'CCS', potencia_kw: '', descripcion: '', operador: 'EV Charge', estado: 'activa' });
     setEditingId(null);
     setEditingOrigin(null);
+    setCargadores([]);
   };
+
+  useEffect(() => {
+    if (!editingId) return;
+    requestAnimationFrame(() => {
+      const formulario = stationFormRef.current;
+      if (!formulario) return;
+      const encabezado = document.getElementById('admin-header');
+      const alturaEncabezado = encabezado?.getBoundingClientRect().height || 0;
+      const posicion = formulario.getBoundingClientRect().top + window.scrollY - alturaEncabezado - 16;
+      window.scrollTo({ top: Math.max(0, posicion), behavior: 'smooth' });
+      formulario.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({ preventScroll: true });
+    });
+  }, [editingId]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -280,6 +308,7 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
       descripcion: form.descripcion.trim() || '',
       operador: form.operador.trim() || 'EV Charge',
       estado: form.estado as 'activa' | 'mantenimiento' | 'inactiva',
+      cargadores: editingOrigin === 'OpenChargeMap' ? undefined : cargadores.filter((cargador) => cargador.tipo_conector.trim() && Number.isFinite(cargador.potencia_kw)),
     };
 
     if (!payload.nombre || Number.isNaN(payload.lat) || Number.isNaN(payload.lon) || Number.isNaN(payload.potencia_kw)) {
@@ -306,7 +335,7 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
   };
 
   return <>
-    <form className="admin-form-grid station-form" onSubmit={handleSubmit}>
+    <form ref={stationFormRef} className="admin-form-grid station-form" onSubmit={handleSubmit}>
       <div><label>ID de estación</label><input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} placeholder="Ej. EV-001" /></div>
       <div><label>Nombre</label><input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre de la estación" required /></div>
       <div><label>Proveedor</label><input value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })} placeholder="EV Charge" /></div>
@@ -315,6 +344,7 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
       <div><label>Longitud</label><input type="number" step="any" value={form.lon} onChange={(e) => setForm({ ...form, lon: e.target.value })} placeholder="-74.072" /></div>
       <div><label>Tipo de conector</label><input value={form.tipo_conector} onChange={(e) => setForm({ ...form, tipo_conector: e.target.value })} placeholder="CCS" /></div>
       <div><label>Potencia (kW)</label><input type="number" step="any" value={form.potencia_kw} onChange={(e) => setForm({ ...form, potencia_kw: e.target.value })} placeholder="22" /></div>
+      {editingOrigin !== 'OpenChargeMap' && <div className="full-width charger-editor"><div className="charger-editor-header"><label>Cargadores de la estación</label><button type="button" className="btn-tbl" onClick={() => setCargadores(cargadores.length ? [...cargadores, { tipo_conector: 'CCS', potencia_kw: 22, corriente: 'AC', bahias: 1 }] : [{ tipo_conector: form.tipo_conector || 'CCS', potencia_kw: Number(form.potencia_kw) || 22, corriente: 'No especificada', bahias: 1 }, { tipo_conector: 'CCS', potencia_kw: 22, corriente: 'AC', bahias: 1 }])}>+ Agregar cargador</button></div>{cargadores.map((cargador, index) => <div className="charger-editor-row" key={`${cargador.id || 'nuevo'}-${index}`}><label>Tipo de conector<select aria-label={`Tipo de conector ${index + 1}`} value={cargador.tipo_conector} onChange={(e) => setCargadores(cargadores.map((item, itemIndex) => itemIndex === index ? { ...item, tipo_conector: e.target.value } : item))}>{TIPOS_CARGADOR.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}</select></label><label>Potencia (kW)<input aria-label={`Potencia del cargador ${index + 1}`} type="number" min="0" step="any" value={cargador.potencia_kw} onChange={(e) => setCargadores(cargadores.map((item, itemIndex) => itemIndex === index ? { ...item, potencia_kw: Number(e.target.value) } : item))} placeholder="22" /></label><label>Bahías<input aria-label={`Bahías del cargador ${index + 1}`} type="number" min="1" step="1" value={cargador.bahias ?? 1} onChange={(e) => setCargadores(cargadores.map((item, itemIndex) => itemIndex === index ? { ...item, bahias: Number(e.target.value) } : item))} placeholder="1" /></label>{cargadores.length > 1 && <button type="button" className="btn-tbl danger" onClick={() => setCargadores(cargadores.filter((_, itemIndex) => itemIndex !== index))}>Quitar</button>}</div>)}{!cargadores.length && <small>Agrega los cargadores disponibles en esta estación.</small>}</div>}
       <div className="full-width"><label>Descripción</label><textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} rows={3} placeholder="Detalles relevantes de la estación" /></div>
       <div><label>Estado</label><select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}><option value="activa">Activa</option><option value="mantenimiento">Mantenimiento</option><option value="inactiva">Inactiva</option></select></div>
       <div className="full-width station-form-actions">
@@ -333,7 +363,7 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
     </div>
 
     <Table headers={['Estacion', 'Proveedor', 'Estado', 'Acciones']}>
-      {filteredRows.map((r) => { const esExterna = String(r.origen || '') === 'OpenChargeMap'; const id = String(r.id || ''); const estado = String(r.estado || 'activa') as 'activa' | 'mantenimiento' | 'inactiva'; const conectores = r.conectores as Array<{ tipo?: unknown; potencia_kw?: unknown }> | undefined; const etiquetaEstado = estado === 'inactiva' ? 'Fuera de servicio' : estado; return <tr key={`${esExterna ? 'ocm' : 'propia'}-${id}`}><td>{String(r.nombre || '')}<br /><small>ID: {id}</small><br /><small>{esExterna ? 'OpenChargeMap' : 'EV Charge'}</small></td><td>{String(r.operador || '')}</td><td><span className={`status-badge ${getStatusClass(estado)}`}>{etiquetaEstado}</span></td><td><button className="btn-tbl" onClick={() => { setEditingId(id); setEditingOrigin(esExterna ? 'OpenChargeMap' : 'EV Charge'); setForm({ id, nombre: String(r.nombre || ''), direccion: String(r.direccion || ''), lat: String(r.lat ?? ''), lon: String(r.lon ?? ''), tipo_conector: String(r.tipo_conector || conectores?.[0]?.tipo || 'CCS'), potencia_kw: String(r.potencia_kw ?? conectores?.[0]?.potencia_kw ?? ''), descripcion: String(r.descripcion || ''), operador: String(r.operador || 'EV Charge'), estado }); }}>Editar</button> <button className="btn-tbl" onClick={() => void run(() => esExterna ? cambiarEstadoEstacionOcm(id, estado === 'activa' ? 'inactiva' : 'activa') : cambiarEstadoEstacion(id, estado === 'activa' ? 'inactiva' : 'activa'))}>{estado === 'activa' ? 'Fuera de servicio' : 'Activar'}</button> <button className="btn-tbl danger" onClick={() => void run(() => esExterna ? eliminarEstacionOcmAdmin(id) : eliminarEstacionAdmin(id))}>Eliminar</button></td></tr>; })}
+      {filteredRows.map((r) => { const esExterna = String(r.origen || '') === 'OpenChargeMap'; const id = String(r.id || ''); const estado = String(r.estado || 'activa') as 'activa' | 'mantenimiento' | 'inactiva'; const conectores = r.conectores as Array<{ id?: unknown; tipo?: unknown; potencia_kw?: unknown; corriente?: unknown; bahias?: unknown }> | undefined; const etiquetaEstado = estado === 'inactiva' ? 'Fuera de servicio' : estado; return <tr key={`${esExterna ? 'ocm' : 'propia'}-${id}`}><td>{String(r.nombre || '')}<br /><small>ID: {id}</small><br /><small>{esExterna ? 'OpenChargeMap' : 'EV Charge'}</small></td><td>{String(r.operador || '')}</td><td><span className={`status-badge ${getStatusClass(estado)}`}>{etiquetaEstado}</span></td><td><button className="btn-tbl" onClick={() => { setEditingId(id); setEditingOrigin(esExterna ? 'OpenChargeMap' : 'EV Charge'); setCargadores(esExterna ? [] : (conectores || []).map((cargador) => ({ id: String(cargador.id || ''), tipo_conector: String(cargador.tipo || 'CCS'), potencia_kw: Number(cargador.potencia_kw || 0), corriente: String(cargador.corriente || 'No especificada'), bahias: Number(cargador.bahias || 1) }))); setForm({ id, nombre: String(r.nombre || ''), direccion: String(r.direccion || ''), lat: String(r.lat ?? ''), lon: String(r.lon ?? ''), tipo_conector: String(r.tipo_conector || conectores?.[0]?.tipo || 'CCS'), potencia_kw: String(r.potencia_kw ?? conectores?.[0]?.potencia_kw ?? ''), descripcion: String(r.descripcion || ''), operador: String(r.operador || 'EV Charge'), estado }); }}>Editar</button> <button className="btn-tbl" onClick={() => void run(() => esExterna ? cambiarEstadoEstacionOcm(id, estado === 'activa' ? 'inactiva' : 'activa') : cambiarEstadoEstacion(id, estado === 'activa' ? 'inactiva' : 'activa'))}>{estado === 'activa' ? 'Fuera de servicio' : 'Activar'}</button> <button className="btn-tbl danger" onClick={() => void run(() => esExterna ? eliminarEstacionOcmAdmin(id) : eliminarEstacionAdmin(id))}>Eliminar</button></td></tr>; })}
     </Table>
   </>;
 }

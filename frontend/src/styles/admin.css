@@ -501,6 +501,18 @@ h1, h2, h3, h4, h5, h6 {
 .station-form {
   margin-bottom: 20px;
 }
+.station-form { scroll-margin-top: 24px; }
+.charger-editor {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: rgba(255,255,255,0.02);
+}
+.charger-editor-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.charger-editor-header label { margin: 0; }
+.charger-editor-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(110px, 1fr) minmax(90px, .7fr) auto; gap: 8px; margin-top: 8px; align-items: center; }
+.charger-editor-row input { min-width: 0; }
+@media (max-width: 760px) { .charger-editor-row { grid-template-columns: 1fr 1fr; } .charger-editor-row .danger { grid-column: 1 / -1; } }
 .station-filters {
   display: flex;
   flex-wrap: wrap;

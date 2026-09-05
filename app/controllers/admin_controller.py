@@ -12,6 +12,7 @@ from app.models.reporte_model import Reportes
 from app.models.calificacion_model import Calificaciones
 from app.models.notificacion_model import Notificacion
 from app.models.estacion_propia_model import EstacionPropia
+from app.models.estacion_cargador_model import EstacionCargador
 from app.models.estado_estacion_model import EstadoEstacion
 from app.schemas.admin_schema import EstacionPropiaCreate, EstacionPropiaUpdate, EstadoUpdate, AdminReservaUpdate
 from app.models.utils import ahora_utc
@@ -43,6 +44,19 @@ CENTROS_COLOMBIA = [
 ]
 _ESTACIONES_OCM_CACHE: tuple[float, list[tuple[dict, str]]] | None = None
 _ESTACIONES_OCM_CACHE_TTL = 300
+
+
+def operador_visible(valor, contexto: str = "") -> str:
+    """Evita mostrar valores técnicos de OCM como '(Unknown Operator)'."""
+    operador = str(valor or "").strip()
+    desconocidos = {"", "unknown operator", "unknown", "null", "none", "n/a"}
+    if operador.casefold() not in desconocidos:
+        return operador
+    texto = contexto.casefold()
+    for nombre in ("enel x", "enelx", "terpel", "primax", "ecopetrol"):
+        if nombre in texto:
+            return nombre.upper() if nombre in {"enel x", "enelx"} else nombre.title()
+    return "Operador no informado"
 
 
 def listar_usuarios(db: Session, busqueda: str | None = None):
@@ -165,11 +179,21 @@ def listar_estaciones(db: Session, busqueda: str | None = None, estado: str | No
 def crear_estacion(data: EstacionPropiaCreate, db: Session):
     if data.estado not in {"activa", "mantenimiento", "inactiva"}:
         raise HTTPException(status_code=400, detail="Estado de estación no válido.")
-    nueva = EstacionPropia(**data.model_dump())
+    datos = data.model_dump(exclude={"cargadores"})
+    nueva = EstacionPropia(**datos)
     nueva.activa = data.estado == "activa"
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
+    cargadores = data.cargadores or [{
+        "tipo_conector": data.tipo_conector,
+        "potencia_kw": data.potencia_kw,
+        "corriente": "No especificada",
+        "bahias": 1,
+    }]
+    for cargador in cargadores:
+        db.add(EstacionCargador(estacion_id=nueva.id, **cargador.model_dump(exclude={"id"})))
+    db.commit()
     return nueva
 
 
@@ -178,6 +202,7 @@ def actualizar_estacion(eid: str, data: EstacionPropiaUpdate, db: Session):
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación no encontrada.")
     datos = data.model_dump(exclude_unset=True)
+    cargadores = datos.pop("cargadores", None)
     nuevo_id = datos.pop("id", None)
     estado = datos.pop("estado", None)
     if nuevo_id and nuevo_id != eid:
@@ -192,6 +217,13 @@ def actualizar_estacion(eid: str, data: EstacionPropiaUpdate, db: Session):
     for key, value in datos.items():
         if value is not None:
             setattr(estacion, key, value)
+    if cargadores is not None:
+        existentes = db.query(EstacionCargador).filter(EstacionCargador.estacion_id == estacion.id).all()
+        for cargador in existentes:
+            db.delete(cargador)
+        db.flush()
+        for cargador in cargadores:
+            db.add(EstacionCargador(estacion_id=estacion.id, **{key: value for key, value in cargador.items() if key != "id"}))
     db.commit()
     db.refresh(estacion)
     return estacion
@@ -280,7 +312,10 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             "id": eid,
             "nombre": (override.nombre if override and override.nombre else info.get("Title", "Estación")),
             "direccion": (override.direccion if override and override.direccion else info.get("AddressLine1", "")),
-            "operador": (override.operador if override and override.operador else (estacion.get("OperatorInfo") or {}).get("Title", "No informado")),
+            "operador": operador_visible(
+                override.operador if override and override.operador else (estacion.get("OperatorInfo") or {}).get("Title"),
+                f"{info.get('Title', '')} {info.get('AddressLine1', '')}",
+            ),
             "lat": override.lat if override and override.lat is not None else info.get("Latitude"),
             "lon": override.lon if override and override.lon is not None else info.get("Longitude"),
             "estado": override.estado if override else "activa",
@@ -309,23 +344,33 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
                 + (estacion.lon - centros_ciudad[nombre][1]) ** 2
             ),
         )
+        cargadores = db.query(EstacionCargador).filter(EstacionCargador.estacion_id == estacion.id).all()
+        conectores = [{
+            "id": cargador.id,
+            "tipo": cargador.tipo_conector,
+            "potencia_kw": cargador.potencia_kw,
+            "corriente": cargador.corriente or "No especificada",
+            "bahias": cargador.bahias,
+        } for cargador in cargadores]
+        if not conectores:
+            conectores = [{
+                "tipo": estacion.tipo_conector,
+                "potencia_kw": estacion.potencia_kw,
+                "corriente": "No especificada",
+                "bahias": 1,
+            }]
         resultado.append({
             "id": estacion.id,
             "nombre": estacion.nombre,
             "direccion": estacion.direccion or "",
-            "operador": estacion.operador or "EV Charge",
+            "operador": operador_visible(estacion.operador, estacion.nombre),
             "lat": estacion.lat,
             "lon": estacion.lon,
             "estado": estacion.estado or ("activa" if estacion.activa else "inactiva"),
             "ciudad": ciudad_propia,
             "departamento": "",
             "origen": "EV Charge",
-            "conectores": [{
-                "tipo": estacion.tipo_conector,
-                "potencia_kw": estacion.potencia_kw,
-                "corriente": "No especificada",
-                "bahias": 1,
-            }],
+            "conectores": conectores,
         })
     if busqueda:
         termino = busqueda.casefold().strip()
@@ -410,7 +455,7 @@ def actualizar_estacion_ocm(eid: str, data, db: Session):
         setattr(estado, key, value)
     db.commit()
     db.refresh(estado)
-    return {"id": eid, "nombre": estado.nombre, "direccion": estado.direccion, "operador": estado.operador, "lat": estado.lat, "lon": estado.lon, "estado": estado.estado}
+    return {"id": eid, "nombre": estado.nombre, "direccion": estado.direccion, "operador": operador_visible(estado.operador, estado.nombre or ""), "lat": estado.lat, "lon": estado.lon, "estado": estado.estado}
 
 
 def eliminar_estacion_ocm(eid: str, db: Session):
@@ -465,7 +510,7 @@ def actualizar_reserva(rid: str, data: AdminReservaUpdate, db: Session):
 
     reserva.estado = estado
     if estado == "realizada":
-        referencia = f"Carga simulada generada desde la reserva {reserva.id}"
+        referencia = f"Carga generada desde la reserva {reserva.id}"
         carga_existente = db.query(Cargas).filter(Cargas.notas == referencia).first()
         if not carga_existente:
             duracion_horas = max(
@@ -479,7 +524,10 @@ def actualizar_reserva(rid: str, data: AdminReservaUpdate, db: Session):
                 cargador_id=reserva.cargador_id,
                 estacion_nombre=reserva.estacion_nombre or "",
                 kwh_cargados=kwh_simulados,
-                costo_estimado=0,
+                # El pago de una reserva se calcula por horas a 5.000 COP.
+                # Reutilizar la misma regla mantiene el total de Cargas alineado
+                # con el importe aprobado antes de crear la reserva activa.
+                costo_estimado=max(1, round(duracion_horas)) * 5000,
                 notas=referencia,
                 estado="validada",
             ))

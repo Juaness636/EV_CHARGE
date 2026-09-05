@@ -12,6 +12,7 @@ import { cambiarEstadoEstacionOcm } from '../../../api/admin.api';
 import { listarMetodosPago, type MetodoPago } from '../../../api/metodosPago.api';
 import { ModalPago } from '../../../components/ModalPago';
 import { notificar } from '../../../components/GlobalNotifications';
+import { cotizarReserva } from '../../../api/tarifas.api';
 import type { EstacionOCM } from '../types';
 import { contieneLenguajeOfensivo, mensajeContenidoOfensivo } from '../../../utils/contentFilter';
 
@@ -37,6 +38,20 @@ function proximaHoraISO(): string {
   ahora.setMinutes(0, 0, 0);
   ahora.setHours(ahora.getHours() + 1);
   return ahora.toISOString().slice(0, 16);
+}
+
+function etiquetaEstadoReporte(estado?: string) {
+  if (estado === 'resuelto') return 'Resuelto';
+  if (estado === 'mantenimiento') return 'En mantenimiento';
+  if (estado === 'fuera_servicio') return 'Fuera de servicio';
+  return 'Abierto';
+}
+
+function claseEstadoReporte(estado?: string) {
+  if (estado === 'resuelto') return 'report-status-resolved';
+  if (estado === 'mantenimiento') return 'report-status-maintenance';
+  if (estado === 'fuera_servicio') return 'report-status-out-of-service';
+  return 'report-status-open';
 }
 
 export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcularRuta, onClose, filtroConector = 'TODOS', tipoConectorVehiculo = '' }: Props) {
@@ -67,6 +82,8 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
   const [reservaPendiente, setReservaPendiente] = useState<ReservaCreate | null>(null);
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
   const [cargadorSeleccionado, setCargadorSeleccionado] = useState<string | null>(null);
+  const [precioEstimado, setPrecioEstimado] = useState<number | null>(null);
+  const [cargandoPrecio, setCargandoPrecio] = useState(false);
 
   // Calificación
   const [mostrarCalificar, setMostrarCalificar] = useState(false);
@@ -93,6 +110,18 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
     ? estado.estado
     : conexionesCompatibles.length > 0 && !hayCargadorCompatibleDisponible ? 'reservada' : 'disponible';
 
+  const refrescarEstadoEstacion = async () => {
+    try {
+      const actualizado = await obtenerEstadoEstacion(ocmId);
+      setEstado(actualizado);
+      if (actualizado.estado === 'mantenimiento' || actualizado.estado === 'inactiva') setEstadoAdministrativo(actualizado.estado);
+      else setEstadoAdministrativo('activa');
+      return actualizado;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     let cancelado = false;
     setCargando(true);
@@ -110,6 +139,7 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
     setPagoReserva(null);
     setReservaPendiente(null);
     setCargadorSeleccionado(null);
+    setPrecioEstimado(null);
 
     obtenerEstadoEstacion(ocmId)
       .then((data) => {
@@ -140,6 +170,37 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
       cancelado = true;
     };
   }, [ocmId, usuario]);
+
+  useEffect(() => {
+    if (!cargadorSeleccionado) {
+      setPrecioEstimado(null);
+      return;
+    }
+    const indiceCargador = Number(cargadorSeleccionado.split('-').pop()) - 1;
+    const cargador = estacion.Connections?.[indiceCargador];
+    let cancelado = false;
+    setCargandoPrecio(true);
+    cotizarReserva({
+      estacion_nombre: nombre,
+      operador,
+      tipo_cargador: cargador?.ConnectionType?.Title || '',
+      potencia_kw: cargador?.PowerKW,
+      duracion_horas: duracion,
+    }).then((cotizacion) => {
+      if (!cancelado) setPrecioEstimado(cotizacion.total);
+    }).catch(() => {
+      if (!cancelado) setPrecioEstimado(null);
+    }).finally(() => {
+      if (!cancelado) setCargandoPrecio(false);
+    });
+    return () => { cancelado = true; };
+  }, [cargadorSeleccionado, duracion, nombre, operador, ocmId]);
+
+  useEffect(() => {
+    const sincronizarTrasReserva = () => { void refrescarEstadoEstacion(); };
+    window.addEventListener('ev-charge:estaciones-actualizadas', sincronizarTrasReserva);
+    return () => window.removeEventListener('ev-charge:estaciones-actualizadas', sincronizarTrasReserva);
+  }, [ocmId]);
 
   if (!usuario) {
     return (
@@ -213,6 +274,14 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
     if (fechaInicio < new Date()) return notificar({ tipo: 'warning', titulo: 'Reserva', mensaje: 'No se puede reservar en el pasado. Elige una fecha futura.' });
     setReservando(true);
     try {
+      const estadoActual = await refrescarEstadoEstacion();
+      if (estadoActual?.estado === 'mantenimiento' || estadoActual?.estado === 'inactiva') {
+        return notificar({ tipo: 'warning', titulo: 'Reserva', mensaje: 'La estación dejó de estar disponible para reservar.' });
+      }
+      if (estadoActual?.cargadores_reservados?.includes(cargadorSeleccionado)) {
+        setCargadorSeleccionado(null);
+        return notificar({ tipo: 'warning', titulo: 'Cargador no disponible', mensaje: 'Este cargador acaba de ser reservado. Selecciona otro cargador disponible.' });
+      }
       const datosReserva: ReservaCreate = {
         estacion_ocm_id: ocmId,
         cargador_id: cargadorSeleccionado,
@@ -220,8 +289,17 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
         fecha_hora_inicio: fechaInicio.toISOString(),
         fecha_hora_fin: finCalculado.toISOString(),
       };
+      const indiceCargador = Number(cargadorSeleccionado.split('-').pop()) - 1;
+      const cargador = estacion.Connections?.[indiceCargador];
+      const cotizacion = await cotizarReserva({
+        estacion_nombre: nombre,
+        operador,
+        tipo_cargador: cargador?.ConnectionType?.Title || '',
+        potencia_kw: cargador?.PowerKW,
+        duracion_horas: duracion,
+      });
       setReservaPendiente(datosReserva);
-      setPagoReserva({ id: `RESERVA-${Date.now()}`, monto: duracion * 5000 });
+      setPagoReserva({ id: `RESERVA-${Date.now()}`, monto: cotizacion.total });
     } catch (e) {
       notificar({ tipo: 'error', titulo: 'Reserva', mensaje: e instanceof Error ? e.message : 'Error al reservar' });
     } finally {
@@ -241,7 +319,7 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
       ) : estadoPanel === 'mantenimiento' ? (
         <div className="badge badge-yellow"><i className="fa-solid fa-screwdriver-wrench"></i> En mantenimiento</div>
       ) : estadoPanel === 'inactiva' ? (
-        <div className="badge badge-red">Estación inactiva</div>
+        <div className="badge badge-red">Estación fuera de servicio</div>
       ) : null}
 
       {usuario.is_admin && (
@@ -250,7 +328,7 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
           <select value={estadoAdministrativo} onChange={(event) => void actualizarEstadoComoAdmin(event.target.value as 'activa' | 'mantenimiento' | 'inactiva')}>
             <option value="activa">Activa</option>
             <option value="mantenimiento">En mantenimiento</option>
-            <option value="inactiva">Desactivada</option>
+          <option value="inactiva">Fuera de servicio</option>
           </select>
         </label>
       )}
@@ -268,8 +346,9 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
         const reservados = (estado?.cargadores_reservados as string[] | undefined) || [];
         const reservado = reservados.includes(cargadorId);
         const bloqueado = reservado || estadoAdministrativo !== 'activa';
-        return <div className={`connector-card connector-status-${reservado ? 'reservado' : estadoAdministrativo !== 'activa' ? estadoAdministrativo : 'disponible'}${cargadorSeleccionado === cargadorId ? ' connector-selected' : ''}${compatible ? ' connector-compatible' : ' connector-incompatible'}`} key={cargadorId}>
-          <strong><i className="fa-solid fa-plug"></i> {tipoCargador || 'Genérico'}</strong>{' '}
+        const recomendado = compatible && !reservado && estadoAdministrativo === 'activa';
+        return <div className={`connector-card connector-status-${reservado ? 'reservado' : estadoAdministrativo !== 'activa' ? estadoAdministrativo : 'disponible'}${cargadorSeleccionado === cargadorId ? ' connector-selected' : ''}${compatible ? ' connector-compatible' : ' connector-incompatible'}${recomendado ? ' connector-recommended' : ''}`} key={cargadorId}>
+          <div className="connector-heading"><strong><i className="fa-solid fa-plug"></i> {tipoCargador || 'Genérico'}</strong>{recomendado && <span className="connector-recommended-badge"><i className="fa-solid fa-check"></i> Para tu vehículo</span>}</div>
           <small>{c.PowerKW ? `${c.PowerKW} kW` : 'Potencia no especificada'} · {c.CurrentType?.Title || 'AC/DC'}</small>{' '}
           <small>Bahías: {c.Quantity || 1}</small>
           <div className="connector-status-row"><small>ID: {cargadorId}</small><span className={`connector-state ${bloqueado ? (reservado ? 'reserved' : 'unavailable') : 'available'}`}>{reservado ? 'Reservado' : estadoAdministrativo === 'mantenimiento' ? 'Mantenimiento' : estadoAdministrativo === 'inactiva' ? 'Fuera de servicio' : 'Disponible'}</span></div>
@@ -300,7 +379,7 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
 
       <section className="station-ratings" aria-label="Incidencias de la estación">
         <div className="station-ratings-header"><strong>Incidencias reportadas</strong><span>{reportesEstacion.length}</span></div>
-        {reportesEstacion.length === 0 ? <p>No hay incidencias reportadas.</p> : reportesEstacion.slice(0, 5).map((reporte) => <article className="station-rating" key={reporte.id}><strong>{reporte.tipo.replace('_', ' ')}</strong><p>{reporte.descripcion || 'Sin descripción'}</p><small>Estado: {reporte.estado || 'abierto'}</small></article>)}
+        {reportesEstacion.length === 0 ? <p>No hay incidencias reportadas.</p> : reportesEstacion.slice(0, 5).map((reporte) => <article className="station-rating" key={reporte.id}><div className="report-mini-heading"><strong>{reporte.tipo.replace('_', ' ')}</strong><span className={`report-status-mini ${claseEstadoReporte(reporte.estado)}`}><i className="fa-solid fa-circle"></i> {etiquetaEstadoReporte(reporte.estado)}</span></div><p>{reporte.descripcion || 'Sin descripción'}</p></article>)}
       </section>
 
       {estadoPanel === 'disponible' && !usuario.is_admin && (
@@ -323,6 +402,10 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
               value={finCalculado.toISOString().slice(0, 16)}
               style={{ background: '#2a2a2a', opacity: 0.7, border: finInvalido ? '1px solid #e74c3c' : '1px solid #555' }}
             />
+          </div>
+          <div className="reservation-price-preview" aria-live="polite">
+            <span><i className="fa-solid fa-receipt"></i> Costo estimado</span>
+            <strong>{cargandoPrecio ? 'Calculando…' : precioEstimado != null ? `$${precioEstimado.toLocaleString('es-CO')} COP` : 'Selecciona un cargador'}</strong>
           </div>
           <button className="btn btn-primary btn-block" disabled={reservando || !cargadorSeleccionado} onClick={confirmarReserva}>
             {reservando ? 'Procesando...' : 'Confirmar Reserva'}
@@ -399,7 +482,7 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
         </div>
       )}
 
-      {pagoReserva && <ModalPago tipo="reserva" tituloItem={nombre} monto={pagoReserva.monto} idReferencia={pagoReserva.id} metodosGuardados={metodosPago} onCerrar={() => { setPagoReserva(null); setReservaPendiente(null); }} onExito={async () => { if (!reservaPendiente) return; try { await crearReservaConfirmada(reservaPendiente); window.localStorage.setItem('ev-charge:estaciones-actualizadas', String(Date.now())); window.dispatchEvent(new Event('ev-charge:estaciones-actualizadas')); notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada correctamente.' }); } catch (e) { notificar({ tipo: 'error', titulo: 'Reserva', mensaje: e instanceof Error ? e.message : 'El pago fue aprobado, pero no se pudo crear la reserva.' }); } finally { setReservaPendiente(null); } }} />}
+      {pagoReserva && <ModalPago tipo="reserva" tituloItem={nombre} monto={pagoReserva.monto} idReferencia={pagoReserva.id} metodosGuardados={metodosPago} onCerrar={() => { setPagoReserva(null); setReservaPendiente(null); }} onExito={async () => { if (!reservaPendiente) return; try { const reservaConfirmada = await crearReservaConfirmada(reservaPendiente); const cargadoresActualizados = new Set(estado?.cargadores_reservados || []); if (reservaConfirmada.cargador_id) cargadoresActualizados.add(reservaConfirmada.cargador_id); setEstado((actual) => ({ ...(actual || {}), estacion_ocm_id: ocmId, estado: 'disponible', cargadores_reservados: [...cargadoresActualizados] })); setCargadorSeleccionado(null); window.localStorage.setItem('ev-charge:estaciones-actualizadas', String(Date.now())); window.dispatchEvent(new Event('ev-charge:estaciones-actualizadas')); notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada correctamente.' }); } catch (e) { await refrescarEstadoEstacion(); notificar({ tipo: 'error', titulo: 'Reserva', mensaje: e instanceof Error ? e.message : 'El pago fue aprobado, pero no se pudo crear la reserva.' }); } finally { setReservaPendiente(null); } }} />}
 
       <p style={{ fontSize: 10, color: '#444', textAlign: 'center', marginTop: 12 }}>OCM ID: {ocmId}</p>
     </>

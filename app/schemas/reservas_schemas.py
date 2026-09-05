@@ -20,3 +20,11 @@ class ReservaUpdate(BaseModel):
     fecha_hora_inicio: Optional[datetime] = None
     fecha_hora_fin: Optional[datetime] = None
     estado: Optional[str] = None
+
+
+class ReservaCotizacion(BaseModel):
+    estacion_nombre: str = ""
+    operador: str = ""
+    tipo_cargador: str = ""
+    potencia_kw: Optional[float] = None
+    duracion_horas: float

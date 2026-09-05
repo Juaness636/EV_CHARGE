@@ -633,6 +633,83 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid rgba(231,76,60,0.2);
 }
 
+/* Identificadores visibles para estados del dashboard */
+.dashboard-item-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    max-width: 560px;
+}
+
+.table-wrap td:last-child .dashboard-status-badge {
+    margin: 0 10px 0 0;
+    vertical-align: middle;
+}
+
+.dashboard-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-family: var(--font-subtitle);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.dashboard-status-badge.status-active,
+.dashboard-status-badge.status-available {
+    color: #8bea67;
+    background: rgba(57, 169, 0, .16);
+    border-color: rgba(86, 201, 35, .55);
+}
+
+.dashboard-status-badge.status-inactive,
+.dashboard-status-badge.status-out-of-service {
+    color: #ff9188;
+    background: rgba(231, 76, 60, .15);
+    border-color: rgba(231, 76, 60, .55);
+}
+
+.dashboard-status-badge.status-maintenance {
+    color: #ffd36a;
+    background: rgba(241, 180, 35, .15);
+    border-color: rgba(241, 180, 35, .55);
+}
+
+.station-status-badge,
+.charger-status-badge,
+.report-status-badge {
+    margin-top: 8px;
+}
+
+.report-status-badge {
+    font-size: 12px;
+    padding: 6px 11px;
+}
+
+html[data-theme="light"] .dashboard-status-badge.status-active,
+html[data-theme="light"] .dashboard-status-badge.status-available {
+    color: #207400;
+    background: #e8f7e2;
+}
+
+html[data-theme="light"] .dashboard-status-badge.status-inactive,
+html[data-theme="light"] .dashboard-status-badge.status-out-of-service {
+    color: #a52e26;
+    background: #fde9e7;
+}
+
+html[data-theme="light"] .dashboard-status-badge.status-maintenance {
+    color: #8d6500;
+    background: #fff4d5;
+}
+
 .dashboard-rating-stars {
     color: #f39c12;
     font-size: 15px;

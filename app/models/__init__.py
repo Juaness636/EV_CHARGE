@@ -6,6 +6,7 @@
 from app.models.usuario_model import usuarios
 from app.models.vehiculo_model import vehiculos
 from app.models.estacion_propia_model import EstacionPropia
+from app.models.estacion_cargador_model import EstacionCargador
 from app.models.reserva_model import Reservas
 from app.models.metodo_pago_model import MetodosPago
 from app.models.carga_model import Cargas
