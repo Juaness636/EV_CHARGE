@@ -2,12 +2,12 @@ import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './styles.css';
 import { login, registro, obtenerPerfil, logout as logoutApi, ApiError, type Usuario } from './api/auth.api';
-import { OlvidarContrasena } from './components/OlvidarContrasena';
 import { listarNotificaciones, marcarNotificacionesLeidas, type Notificacion } from './api/notificaciones.api';
 import { enviarContacto as enviarContactoApi } from './api/contacto.api';
 import { ModalPago } from './components/ModalPago';
 import { listarMetodosPago, type MetodoPago } from './api/metodosPago.api';
 import { notificar } from './components/GlobalNotifications';
+import { OlvidarContrasena } from './components/OlvidarContrasena';
 
 type AuthTab = 'login' | 'registro' | 'recuperar';
 type AlertType = 'error' | 'success';
@@ -443,7 +443,7 @@ function App() {
     try {
       await registro(nombre, apellido, email, pass);
 
-      setAlert({ message: ' Cuenta creada. Revisa tu correo y confirma el enlace antes de iniciar sesión.', type: 'success' });
+      setAlert({ message: 'Cuenta creada correctamente. Ahora puedes iniciar sesión.', type: 'success' });
       setRegNombre('');
       setRegApellido('');
       setRegEmail('');
@@ -707,16 +707,14 @@ function App() {
             <button className="auth-close" onClick={closeAuthModal}>✕</button>
             <img src="/img/logo.png" alt="Logo" className="auth-logo" />
 
-            {authTab !== 'recuperar' && (
-              <div className="auth-tabs">
+            {authTab !== 'recuperar' && <div className="auth-tabs">
                 <button className={`auth-tab${authTab === 'login' ? ' active' : ''}`} onClick={() => switchAuthTab('login')} disabled={authLoading}>
                   Iniciar sesión
                 </button>
                 <button className={`auth-tab${authTab === 'registro' ? ' active' : ''}`} onClick={() => switchAuthTab('registro')} disabled={authLoading}>
                   Registrarse
                 </button>
-              </div>
-            )}
+            </div>}
 
             {alert && (
               <div 
@@ -784,12 +782,7 @@ function App() {
                       />
                       <span style={{ fontSize: '13px', userSelect: 'none' }}>Recuérdame</span>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => switchAuthTab('recuperar')}
-                      disabled={authLoading}
-                      style={{ background: 'none', border: 'none', color: '#39a900', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
-                    >
+                    <button type="button" onClick={() => switchAuthTab('recuperar')} disabled={authLoading} style={{ background: 'none', border: 'none', color: '#39a900', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
                       ¿Olvidaste tu contraseña?
                     </button>
                   </div>
@@ -834,9 +827,7 @@ function App() {
               </form>
             )}
 
-            {authTab === 'recuperar' && (
-              <OlvidarContrasena onVolverAlLogin={() => switchAuthTab('login')} />
-            )}
+            {authTab === 'recuperar' && <OlvidarContrasena onVolverAlLogin={() => switchAuthTab('login')} />}
           </div>
         </div>
       )}

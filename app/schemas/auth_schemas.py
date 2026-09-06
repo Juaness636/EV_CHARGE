@@ -27,7 +27,6 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str
     usuario: UsuarioOut
-    email_verificacion_token: str | None = None
 
 
 class PerfilUpdate(BaseModel):

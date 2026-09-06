@@ -59,9 +59,6 @@ with engine.begin() as connection:
     connection.execute(text("UPDATE cargas SET estado = 'pendiente' WHERE estado IS NULL"))
     connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
     connection.execute(text("ALTER TABLE cargas ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
-    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado BOOLEAN NOT NULL DEFAULT TRUE"))
-    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacion_token VARCHAR(128)"))
-    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacion_expira TIMESTAMP WITH TIME ZONE"))
 
 
 # ==========================================
@@ -99,9 +96,9 @@ app.add_middleware(ErrorHandler)
 # ==========================================
 app.include_router(mapa_routes.router)
 app.include_router(auth_router)
+app.include_router(olvidar_contraseña.router, prefix="/api/auth", tags=["Recuperación de Contraseña"])
 app.include_router(vehicle_router)
 app.include_router(admin_router)
-app.include_router(olvidar_contraseña.router, prefix="/api/auth", tags=["Recuperación de Contraseña"])
 app.include_router(metodo_pago_router)
 app.include_router(reservas_router)
 app.include_router(reportes_router)

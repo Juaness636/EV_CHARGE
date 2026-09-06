@@ -1275,6 +1275,14 @@ select:-webkit-autofill {
   font-family: var(--font-body);
 }
 .form-group input:focus { border-color: #39a900; box-shadow: 0 0 0 2px rgba(57,169,0,0.15); }
+#auth-modal .form-group input:-webkit-autofill,
+#auth-modal .form-group input:-webkit-autofill:hover,
+#auth-modal .form-group input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff !important;
+  -webkit-box-shadow: 0 0 0 1000px #2a2a2a inset !important;
+  box-shadow: 0 0 0 1000px #2a2a2a inset !important;
+  caret-color: #fff;
+}
 .password-box { position: relative; }
 .password-box input { padding-right: 42px; }
 .password-box input[type="password"]::-ms-reveal,

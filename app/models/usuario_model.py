@@ -16,14 +16,9 @@ class usuarios(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=ahora_utc)
 
-    # --- NUEVOS CAMPOS PARA LA RECUPERACIÓN DE CONTRASEÑA ---
-    reset_pin = Column(String(6), nullable=True) 
+    # Código temporal para recuperar la contraseña dentro de la aplicación.
+    reset_pin = Column(String(6), nullable=True)
     reset_pin_expires = Column(DateTime(timezone=True), nullable=True)
-
-    # Verificación del correo para cuentas nuevas
-    email_verificado = Column(Boolean, nullable=False, default=False)
-    email_verificacion_token = Column(String(128), nullable=True, unique=True)
-    email_verificacion_expira = Column(DateTime(timezone=True), nullable=True)
 
     # Relaciones existentes
     vehiculos_rel = relationship("vehiculos", back_populates="dueno", cascade="all, delete-orphan")

@@ -1,5 +1,5 @@
 # Backend/routes/auth_routes.py
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -18,30 +18,16 @@ from app.schemas.auth_schemas import (
     PerfilUpdate,
     PasswordUpdate,
 )
-from app.utils.email_service import enviar_correo_bienvenida_smtp 
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
 @router.post("/registro", response_model=TokenOut)
 def registro(
-    data: UsuarioRegistro, 
-    background_tasks: BackgroundTasks,
+    data: UsuarioRegistro,
     db: Session = Depends(get_db)
 ):
-    # 1. Guardamos el usuario en la base de datos
-    resultado = register_user(db, data.nombre, data.apellido, data.email, data.password)
-    
-    # 2. Programamos el correo para que se envíe en segundo plano
-    background_tasks.add_task(
-        enviar_correo_bienvenida_smtp,
-        data.email,
-        data.nombre,
-        resultado.get("email_verificacion_token"),
-    )
-    
-    # 3. Retornamos la respuesta (el token) al frontend inmediatamente
-    return resultado
+    return register_user(db, data.nombre, data.apellido, data.email, data.password)
 
 
 @router.post("/login", response_model=TokenOut)
