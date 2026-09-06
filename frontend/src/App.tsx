@@ -69,6 +69,15 @@ type CategoriaKey = 'Cargadores' | 'Llantas' | 'Baterías' | 'Cables y conectore
 type ProductoCompra = { nombre: string; desc: string; precio: string; monto: number; img: string };
 type ProductoCatalogo = ProductoCompra & { categoria: CategoriaKey; etiqueta: string; tipo: string; potencia: string; conector: string };
 
+const preguntasFrecuentes = [
+  { pregunta: '¿Qué es EV Charge?', respuesta: 'Es una plataforma para encontrar estaciones de carga, revisar sus cargadores y organizar la recarga de tu vehículo eléctrico.' },
+  { pregunta: '¿Cómo encuentro un cargador compatible?', respuesta: 'Registra tu vehículo y usa el filtro correspondiente. El mapa resaltará los cargadores que coinciden con el tipo de conector de tu vehículo.' },
+  { pregunta: '¿Cómo hago una reserva?', respuesta: 'Abre el mapa, selecciona una estación y el cargador compatible. Después elige la fecha, la hora y la duración de la recarga.' },
+  { pregunta: '¿Puedo ver el precio antes de reservar?', respuesta: 'Sí. En la información del cargador puedes cambiar la duración y consultar el valor estimado antes de confirmar.' },
+  { pregunta: '¿Qué significan los colores de las estaciones?', respuesta: 'Verde significa que hay disponibilidad, rojo indica mantenimiento o fuera de servicio y azul indica que todos los cargadores están reservados.' },
+  { pregunta: '¿Qué hago si encuentro un problema?', respuesta: 'Puedes reportarlo desde la información de la estación. También puedes calificarla y revisar los reportes de otros usuarios.' },
+];
+
 const productosPorCategoria: Record<CategoriaKey, ProductoCompra[]> = {
   'Cargadores': [
     { nombre: 'Cargador Rápido DC 150 kW', desc: 'Ideal para estaciones comerciales de carga ultra rápida.', precio: '$8.500.000 COP', monto: 8500000, img: '/img/cargador-rapido-150kw.png' },
@@ -125,6 +134,7 @@ function App() {
   const [showRegPass, setShowRegPass] = useState(false);
   const [contactSent, setContactSent] = useState(false);
   const [contactForm, setContactForm] = useState({ nombre: '', apellido: '', correo: '', mensaje: '' });
+  const [preguntaAbierta, setPreguntaAbierta] = useState<number | null>(null);
   const [year] = useState(() => new Date().getFullYear());
   
   const [notifOpen, setNotifOpen] = useState(false);
@@ -433,7 +443,7 @@ function App() {
     try {
       await registro(nombre, apellido, email, pass);
 
-      setAlert({ message: ' ¡Registro exitoso! Ahora inicia sesión.', type: 'success' });
+      setAlert({ message: ' Cuenta creada. Revisa tu correo y confirma el enlace antes de iniciar sesión.', type: 'success' });
       setRegNombre('');
       setRegApellido('');
       setRegEmail('');
@@ -659,8 +669,32 @@ function App() {
         </div>
       </section>
 
+      <section id="preguntas-frecuentes" className="section faq-section">
+        <div className="section-inner faq-inner">
+          <div className="section-head reveal">
+            <p className="eyebrow">Ayuda rápida</p>
+            <h2>Preguntas frecuentes</h2>
+            <p className="section-sub">Resuelve tus dudas sobre el mapa, las reservas y tu vehículo eléctrico.</p>
+          </div>
+          <div className="faq-list">
+            {preguntasFrecuentes.map((item, index) => {
+              const abierta = preguntaAbierta === index;
+              return (
+                <div className={`faq-item${abierta ? ' is-open' : ''}`} key={item.pregunta}>
+                  <button className="faq-question" type="button" aria-expanded={abierta} onClick={() => setPreguntaAbierta(abierta ? null : index)}>
+                    <span>{item.pregunta}</span>
+                    <i className={`fa-solid ${abierta ? 'fa-minus' : 'fa-plus'}`} aria-hidden="true"></i>
+                  </button>
+                  {abierta && <div className="faq-answer"><p>{item.respuesta}</p></div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <footer className="footer"><div className="footer-inner"><div className="footer-brand"><img src="/img/logo.png" alt="EV Charge" className="footer-logo" /><p style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '6px 0 4px' }}>EV Charge</p><p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 320 }}>Plataforma para localizar y gestionar estaciones de carga para vehículos eléctricos en Colombia.</p></div>
-        <div className="footer-links"><p className="footer-title">Navegación</p><a href="#inicio">Inicio</a><a href="#categoria">Categoria</a><a href="#servicios">Servicios</a><Link to="/productos">Productos</Link><a href="#nosotros">Quiénes somos</a><a href="#contacto">Contacto</a></div>
+        <div className="footer-links"><p className="footer-title">Navegación</p><a href="#inicio">Inicio</a><a href="#categoria">Categoria</a><a href="#servicios">Servicios</a><Link to="/productos">Productos</Link><a href="#preguntas-frecuentes">Preguntas frecuentes</a><a href="#nosotros">Quiénes somos</a><a href="#contacto">Contacto</a></div>
         <div className="footer-links"><p className="footer-title">Contacto</p><div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}><span><i className="fa-solid fa-envelope"></i> eevcharge@gmail.com
 </span><span><i className="fa-solid fa-location-dot"></i> Bogotá D.C., Colombia</span><span><i className="fa-solid fa-phone"></i> +57 300 123 4567</span></div></div>
         <div className="footer-links"><p className="footer-title">Información</p><p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 4px' }}>Versión 2.0</p><p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 4px' }}>Proyecto académico SENA ADSO</p><p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Última actualización: <span className="footer-year" style={{ fontWeight: 600, color: '#fff' }}>{year}</span></p></div>

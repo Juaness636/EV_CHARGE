@@ -59,6 +59,9 @@ with engine.begin() as connection:
     connection.execute(text("UPDATE cargas SET estado = 'pendiente' WHERE estado IS NULL"))
     connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
     connection.execute(text("ALTER TABLE cargas ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado BOOLEAN NOT NULL DEFAULT TRUE"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacion_token VARCHAR(128)"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificacion_expira TIMESTAMP WITH TIME ZONE"))
 
 
 # ==========================================

@@ -20,6 +20,11 @@ class usuarios(Base):
     reset_pin = Column(String(6), nullable=True) 
     reset_pin_expires = Column(DateTime(timezone=True), nullable=True)
 
+    # Verificación del correo para cuentas nuevas
+    email_verificado = Column(Boolean, nullable=False, default=False)
+    email_verificacion_token = Column(String(128), nullable=True, unique=True)
+    email_verificacion_expira = Column(DateTime(timezone=True), nullable=True)
+
     # Relaciones existentes
     vehiculos_rel = relationship("vehiculos", back_populates="dueno", cascade="all, delete-orphan")
     reservas_rel = relationship("Reservas", back_populates="usuario", cascade="all, delete-orphan")

@@ -7,6 +7,7 @@ export interface NotificacionVisual {
   titulo: string;
   mensaje: string;
   tipo?: TipoNotificacion;
+  duracionMs?: number;
 }
 
 export function notificar(notificacion: NotificacionVisual) {
@@ -38,7 +39,13 @@ export function GlobalNotifications() {
     primeraConsulta.current = true;
     setNotificacion(null);
     setNotificacionVisual(null);
-    if (!usuario) return;
+    const recibirNotificacion = (evento: Event) => {
+      const detalle = (evento as CustomEvent<NotificacionVisual>).detail;
+      setNotificacion(null);
+      setNotificacionVisual(detalle);
+    };
+    window.addEventListener('ev-charge:notificacion', recibirNotificacion);
+    if (!usuario) return () => window.removeEventListener('ev-charge:notificacion', recibirNotificacion);
     let cancelado = false;
     const consultar = async () => {
       try {
@@ -58,18 +65,12 @@ export function GlobalNotifications() {
     };
     void consultar();
     const intervalo = window.setInterval(() => void consultar(), 8000);
-    const recibirNotificacion = (evento: Event) => {
-      const detalle = (evento as CustomEvent<NotificacionVisual>).detail;
-      setNotificacion(null);
-      setNotificacionVisual(detalle);
-    };
-    window.addEventListener('ev-charge:notificacion', recibirNotificacion);
     return () => { cancelado = true; window.clearInterval(intervalo); window.removeEventListener('ev-charge:notificacion', recibirNotificacion); };
   }, [usuario]);
 
   useEffect(() => {
     if (!notificacion && !notificacionVisual) return;
-    const temporizador = window.setTimeout(() => { setNotificacion(null); setNotificacionVisual(null); }, 4000);
+    const temporizador = window.setTimeout(() => { setNotificacion(null); setNotificacionVisual(null); }, notificacionVisual?.duracionMs || 4000);
     return () => window.clearTimeout(temporizador);
   }, [notificacion, notificacionVisual]);
 

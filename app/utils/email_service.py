@@ -14,18 +14,26 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 
-def enviar_correo_bienvenida_smtp(destinatario: str, nombre_usuario: str):
+def enviar_correo_bienvenida_smtp(destinatario: str, nombre_usuario: str, verification_token: str | None = None):
     """Envía el correo de confirmación de registro (estilo transaccional)."""
     try:
         msg = MIMEMultipart("related")
-        # ASUNTO SERIO Y SIN EMOJIS
-        msg["Subject"] = "Confirmación de Registro — E.V CHARGE"
+        msg["Subject"] = "Confirma tu correo — E.V CHARGE"
         msg["From"] = f"E.V CHARGE <{SENDER_EMAIL}>"
         msg["To"] = destinatario
         
         # Cabeceras anti-spam
         msg["Date"] = formatdate(localtime=True)
-        msg["Message-ID"] = make_msgid(domain="evcharge.local")
+        msg["Message-ID"] = make_msgid()
+
+        verification_url = None
+        if verification_token:
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+            verification_url = f"{frontend_url}/verificar-email?token={verification_token}"
+
+        verification_html = ""
+        if verification_url:
+            verification_html = f'''<p style="margin: 0 0 24px 0;"><a href="{verification_url}" style="display: inline-block; padding: 12px 20px; border-radius: 8px; background: #39a900; color: #ffffff; text-decoration: none; font-weight: 700;">Confirmar mi correo</a></p>'''
 
         msg_alternative = MIMEMultipart("alternative")
         msg.attach(msg_alternative)
@@ -34,9 +42,9 @@ def enviar_correo_bienvenida_smtp(destinatario: str, nombre_usuario: str):
         text_plain = f"""
 Hola {nombre_usuario},
 
-Te confirmamos que tu cuenta en la plataforma de E.V CHARGE ha sido creada correctamente.
+Tu cuenta en E.V CHARGE fue creada correctamente.
 
-Ya puedes iniciar sesión en el sistema para acceder a los servicios.
+Confirma tu correo desde el enlace que aparece en este mensaje. Después podrás iniciar sesión y usar la plataforma.
 
 Atentamente,
 El equipo de E.V CHARGE
@@ -68,14 +76,20 @@ El equipo de E.V CHARGE
                   <tr>
                     <td style="padding: 0 32px 32px 32px; text-align: center;">
                       <h1 style="color: #ffffff; font-size: 20px; font-weight: 700; margin: 0 0 12px 0; letter-spacing: -0.3px;">
-                        Registro Exitoso
+                        Confirma tu correo
                       </h1>
                       <p style="color: #8b949e; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
                         Hola, <strong>{nombre_usuario}</strong>.
                       </p>
                       
                       <p style="color: #8b949e; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
-                        Te confirmamos que tu cuenta en la plataforma de E.V CHARGE ha sido creada correctamente. Ya puedes iniciar sesión para acceder al mapa de estaciones y gestionar tus vehículos.
+                        Tu cuenta en E.V CHARGE fue creada correctamente. Para comprobar que este correo es tuyo, confirma tu dirección antes de iniciar sesión.
+                      </p>
+
+                      {verification_html}
+
+                      <p style="color: #8b949e; font-size: 12px; line-height: 1.4; margin: 0 0 20px 0;">
+                        El enlace estará disponible durante 24 horas.
                       </p>
 
                       <hr style="border: none; border-top: 1px solid #21262d; margin: 24px 0;">

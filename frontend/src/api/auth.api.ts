@@ -68,6 +68,11 @@ export async function cambiarPassword(oldPassword: string, newPassword: string):
   return data;
 }
 
+export async function verificarEmail(token: string): Promise<{ message: string }> {
+  const { data } = await api.get<{ message: string }>('/auth/verificar-email', { params: { token } });
+  return data;
+}
+
 export function logout() {
   localStorage.removeItem('ev_token');
 }

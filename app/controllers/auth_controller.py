@@ -24,6 +24,7 @@ def validar_password_fuerte(password: str):
 
 
 def register_user(db: Session, nombre: str, apellido: str, email: str, password: str):
+    email = email.strip().lower()
     existe = db.query(usuarios).filter(usuarios.email == email).first()
     if existe:
         raise HTTPException(status_code=400, detail="El correo ya está registrado.")
@@ -31,24 +32,37 @@ def register_user(db: Session, nombre: str, apellido: str, email: str, password:
     # Validar la contraseña en el backend al registrarse
     validar_password_fuerte(password)
 
+    import secrets
+    from datetime import datetime, timedelta, timezone
+
     nuevo_usuario = usuarios(
         nombre=nombre.strip(),
         apellido=(apellido or "").strip(),
-        email=email.strip(),
+        email=email,
         password_hash=hash_password(password),
+        email_verificado=False,
+        email_verificacion_token=secrets.token_urlsafe(48),
+        email_verificacion_expira=datetime.now(timezone.utc) + timedelta(hours=24),
     )
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
 
-    token = create_access_token({"sub": nuevo_usuario.id})
-    return {"access_token": token, "token_type": "bearer", "usuario": nuevo_usuario}
+    return {
+        "access_token": "",
+        "token_type": "bearer",
+        "usuario": nuevo_usuario,
+        "email_verificacion_token": nuevo_usuario.email_verificacion_token,
+    }
 
 
 def login_user(db: Session, email: str, password: str):
-    usuario = db.query(usuarios).filter(usuarios.email == email).first()
+    usuario = db.query(usuarios).filter(usuarios.email == email.strip().lower()).first()
     if not usuario or not verify_password(password, usuario.password_hash):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+    if not usuario.email_verificado:
+        raise HTTPException(status_code=403, detail="Debes confirmar tu correo antes de iniciar sesión.")
 
     token = create_access_token({"sub": usuario.id})
     return {"access_token": token, "token_type": "bearer", "usuario": usuario}

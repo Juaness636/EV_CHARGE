@@ -31,6 +31,29 @@ if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY es obligatoria y debe configurarse en el archivo .env")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", os.getenv("VITE_API_URL", "http://localhost:5173")).rstrip("/")
+
+
+@router.get("/verificar-email")
+def verificar_email(token: str, db: Session = Depends(get_db)):
+    user = db.query(usuarios).filter(usuarios.email_verificacion_token == token).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El enlace de verificación no es válido.")
+
+    if user.email_verificado:
+        return {"message": "El correo ya estaba verificado. Ya puedes iniciar sesión."}
+
+    if user.email_verificacion_expira:
+        expires = user.email_verificacion_expira.replace(tzinfo=None)
+        if datetime.now().replace(tzinfo=None) > expires:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El enlace de verificación expiró.")
+
+    user.email_verificado = True
+    user.email_verificacion_token = None
+    user.email_verificacion_expira = None
+    db.commit()
+    return {"message": "Correo verificado correctamente. Ya puedes iniciar sesión."}
+
 def enviar_correo_smtp(destinatario: str, pin: str):
     """Envía un correo profesional HTML con logo adjunto vía CID"""
     msg = MIMEMultipart("related")
@@ -147,7 +170,7 @@ def forgot_password(request: ForgotPasswordSchema, db: Session = Depends(get_db)
     user = db.query(usuarios).filter(usuarios.email == request.email).first()
     
     if not user:
-        return {"message": "Si el correo está registrado, recibirás un PIN."}
+        return {"message": "Si el correo está registrado, se generará un PIN."}
 
     pin = "".join([str(secrets.randbelow(10)) for _ in range(6)])
     
@@ -156,13 +179,12 @@ def forgot_password(request: ForgotPasswordSchema, db: Session = Depends(get_db)
     user.reset_pin_expires = datetime.now() + timedelta(minutes=15)
     db.commit()
 
-    try:
-        enviar_correo_smtp(user.email, pin)
-        print(f"\n[ÉXITO] Correo enviado a {user.email} con el PIN: {pin}\n")
-    except Exception as e:
-        print(f"\n[ERROR] Falló el envío del correo: {e}\n")
-
-    return {"message": "Si el correo está registrado, recibirás un PIN."}
+    # Modo temporal para la demostración: el PIN se muestra en la aplicación.
+    # Cuando se configure un proveedor de correo, esta respuesta podrá volver a ser genérica.
+    return {
+        "message": "PIN generado correctamente.",
+        "dev_pin": pin,
+    }
 
 
 # ==========================================

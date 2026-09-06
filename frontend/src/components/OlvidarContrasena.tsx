@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api/httpClient';
+import { notificar } from './GlobalNotifications';
 
 const API_AUTH_URL = `${API_BASE_URL}/api/auth`;
 
@@ -27,8 +28,12 @@ export const OlvidarContrasena: React.FC<OlvidarContrasenaProps> = ({ onVolverAl
     setCargando(true);
 
     try {
-      await axios.post(`${API_AUTH_URL}/forgot-password`, { email });
-      setMensajeExito('Si el correo está registrado, recibirás un PIN de 6 dígitos.');
+      const response = await axios.post<{ message: string; dev_pin?: string }>(`${API_AUTH_URL}/forgot-password`, { email });
+      const mensaje = response.data.dev_pin
+        ? `Tu código de recuperación es ${response.data.dev_pin}. Úsalo para continuar.`
+        : 'Se generó el código de recuperación.';
+      setMensajeExito('');
+      notificar({ titulo: 'Recuperación de contraseña', mensaje, tipo: 'success', duracionMs: 10000 });
       setTimeout(() => {
         setMensajeExito('');
         setPaso(2);

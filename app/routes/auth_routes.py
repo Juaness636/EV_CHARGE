@@ -33,7 +33,12 @@ def registro(
     resultado = register_user(db, data.nombre, data.apellido, data.email, data.password)
     
     # 2. Programamos el correo para que se envíe en segundo plano
-    background_tasks.add_task(enviar_correo_bienvenida_smtp, data.email, data.nombre)
+    background_tasks.add_task(
+        enviar_correo_bienvenida_smtp,
+        data.email,
+        data.nombre,
+        resultado.get("email_verificacion_token"),
+    )
     
     # 3. Retornamos la respuesta (el token) al frontend inmediatamente
     return resultado

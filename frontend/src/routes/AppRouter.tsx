@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import App from '../App';
 import { GlobalNotifications } from '../components/GlobalNotifications';
 import { AsistenteChat } from '../components/AsistenteChat';
+import { VerificarEmail } from '../components/VerificarEmail';
 
 const MapaPage = lazy(() => import('../features/mapa/MapaPage').then(({ MapaPage }) => ({ default: MapaPage })));
 const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage').then(({ DashboardPage }) => ({ default: DashboardPage })));
@@ -40,6 +41,7 @@ export function AppRouter() {
         <Route path="/" element={<App />} />
         <Route path="/mapa" element={<MapaPage />} />
         <Route path="/productos" element={<ProductosPage />} />
+        <Route path="/verificar-email" element={<VerificarEmail />} />
         <Route path="/mapa.html" element={<Navigate to="/mapa" replace />} />
         <Route
           path="/dashboard"
