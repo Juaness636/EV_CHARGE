@@ -1,0 +1,328 @@
+/* Ajustes transversales para que la aplicación web funcione en pantallas táctiles. */
+
+html,
+body,
+#root {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  min-height: 42px;
+}
+
+.nav-inner {
+  min-width: 0;
+}
+
+.nav-logo,
+.user-greeting,
+.auth-actions,
+.nav-links {
+  min-width: 0;
+}
+
+.nav-logo span,
+.username {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La campana necesita poder mostrar su panel fuera del ancho del saludo. */
+.user-greeting {
+  overflow: visible;
+}
+
+.section-inner,
+.hero-content,
+.contacto-inner,
+.footer-inner {
+  width: min(100% - 32px, 1200px);
+}
+
+.hero-title,
+.section-title,
+.nosotros-title,
+.producto-detail-title,
+.categoria-modal-title {
+  overflow-wrap: anywhere;
+}
+
+.contacto-form,
+.auth-card,
+.categoria-modal-card,
+.producto-detail-card,
+.error-sistema-card {
+  max-width: calc(100vw - 24px);
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrap table {
+  min-width: 620px;
+}
+
+@media (max-width: 768px) {
+  #navbar {
+    padding-inline: 14px;
+  }
+
+  .nav-inner {
+    gap: 8px;
+  }
+
+  .nav-logo img {
+    height: 30px;
+  }
+
+  .auth-actions {
+    gap: 6px;
+  }
+
+  .user-greeting {
+    max-width: 120px;
+  }
+
+  .nav-links.open {
+    max-height: calc(100vh - var(--nav-h));
+    overflow-y: auto;
+  }
+
+  .hero-section {
+    min-height: 680px;
+    padding-top: calc(var(--nav-h) + 36px);
+  }
+
+  .hero-content {
+    padding-inline: 0;
+  }
+
+  .hero-actions > * {
+    width: min(100%, 360px);
+    justify-content: center;
+  }
+
+  .section {
+    padding-block: 64px;
+  }
+
+  .categoria-grid,
+  .services-grid,
+  .productos-grid,
+  .productos-catalog-grid {
+    gap: 16px;
+  }
+
+  .categoria-card,
+  .service-card,
+  .producto-card,
+  .cat-prod-card {
+    min-width: 0;
+  }
+
+  .contacto-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .contacto-form input,
+  .contacto-form textarea,
+  .contacto-form button {
+    width: 100%;
+  }
+
+  .footer-inner {
+    padding-inline: 0;
+  }
+
+  .auth-backdrop,
+  #categoria-modal,
+  #error-sistema-modal {
+    align-items: flex-start;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .auth-card,
+  .categoria-modal-card,
+  .producto-detail-card,
+  .error-sistema-card {
+    width: 100%;
+    margin: auto 0;
+  }
+
+  .auth-card {
+    padding: 22px 16px;
+  }
+
+  .auth-tabs {
+    overflow-x: auto;
+  }
+
+  .auth-tab {
+    flex: 1 0 auto;
+    white-space: nowrap;
+  }
+
+  .categoria-modal-card {
+    padding: 20px 14px;
+  }
+
+  .categoria-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .producto-detail-card {
+    gap: 18px;
+    padding: 18px 14px;
+  }
+
+  .asistente-panel {
+    z-index: 10001;
+  }
+
+  .theme-floating-widget {
+    top: auto;
+    right: 12px;
+    bottom: 84px;
+    transform: none;
+  }
+
+  .map-topbar,
+  .topbar {
+    min-width: 0;
+  }
+
+  .topbar-center,
+  .topbar-project-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-layout,
+  .map-main,
+  .map-content {
+    min-width: 0;
+  }
+
+  .map-filters-panel {
+    max-width: calc(100vw - 24px);
+  }
+
+  .estacion-detalle,
+  .station-detail,
+  .panel-card {
+    max-width: 100%;
+  }
+
+  .dashboard-shell #admin-header,
+  .dashboard-shell .panel {
+    min-width: 0;
+  }
+
+  .dashboard-shell .panel-toolbar,
+  .dashboard-shell .dashboard-item-heading,
+  .dashboard-shell .res-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-shell .panel-toolbar > *,
+  .dashboard-shell .dashboard-item-heading > * {
+    max-width: 100%;
+  }
+
+  .dashboard-shell .admin-form-grid,
+  .dashboard-shell .form-grid,
+  .dashboard-shell .info-grid,
+  .dashboard-shell .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-shell .admin-form-grid .full-width,
+  .dashboard-shell .form-grid .full {
+    grid-column: auto;
+  }
+
+  .dashboard-shell .btn-form,
+  .dashboard-shell .btn-save-estacion,
+  .dashboard-shell .btn-primary,
+  .dashboard-shell .btn-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-inner,
+  .hero-content,
+  .contacto-inner,
+  .footer-inner {
+    width: min(100% - 24px, 1200px);
+  }
+
+  .nav-logo img {
+    height: 27px;
+  }
+
+  .auth-actions .btn-nav-outline-logout,
+  .auth-actions .btn-nav-outline {
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+
+  .hero-section {
+    min-height: 620px;
+  }
+
+  .hero-title {
+    font-size: clamp(36px, 13vw, 58px);
+  }
+
+  .section {
+    padding-block: 48px;
+  }
+
+  .cifras-grid,
+  .kpi-grid,
+  .admin-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .faq-question {
+    gap: 10px;
+  }
+
+  .asistente-panel {
+    right: 6px;
+    bottom: 6px;
+    width: calc(100vw - 12px);
+    height: calc(100dvh - 12px);
+    border-radius: 12px;
+  }
+
+  .asistente-flotante {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .table-wrap table {
+    min-width: 560px;
+  }
+}
