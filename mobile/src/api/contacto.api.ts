@@ -1,13 +1,19 @@
-// Servicio de Contacto para React Native
 import { api } from './httpClient';
-import type { Contacto } from '../types';
 
-export async function enviarContacto(payload: {
+export interface Contacto {
+  id: string;
+  usuario_id?: string;
   nombre: string;
-  apellido: string;
+  apellido?: string;
   correo: string;
   mensaje: string;
-}): Promise<Contacto> {
+  respuesta?: string;
+  estado: 'pendiente' | 'respondido';
+  fecha_envio: string;
+  fecha_respuesta?: string;
+}
+
+export async function enviarContacto(payload: { nombre: string; apellido: string; correo: string; mensaje: string }): Promise<Contacto> {
   const { data } = await api.post<Contacto>('/contacto', payload);
   return data;
 }

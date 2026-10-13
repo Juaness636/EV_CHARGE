@@ -1,25 +1,60 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
+    "name": "EV Charge",
+    "slug": "ev-charge",
+    "scheme": "evcharge",
+    "version": "2.0.0",
+    "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0d0d0d",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "co.sena.evcharge",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "EV Charge usa tu ubicación para mostrar estaciones cercanas y calcular rutas."
+      }
     },
     "android": {
+      "package": "co.sena.evcharge",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0d0d0d",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "EV Charge",
+      "themeColor": "#39a900"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-image",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "EV Charge usa tu ubicación para mostrar estaciones cercanas y calcular rutas."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0d0d0d"
+        }
+      ]
+    ]
   }
 }

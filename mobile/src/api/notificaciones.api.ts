@@ -1,6 +1,13 @@
-// Servicio de Notificaciones para React Native
 import { api } from './httpClient';
-import type { Notificacion } from '../types';
+
+export interface Notificacion {
+  id: string;
+  titulo: string;
+  mensaje: string;
+  tipo: 'compra' | 'pago' | 'reserva' | 'vehiculo' | 'reporte' | 'favorito' | 'calificacion' | 'sistema';
+  leida: boolean;
+  created_at: string;
+}
 
 export async function listarNotificaciones(): Promise<Notificacion[]> {
   const { data } = await api.get<Notificacion[]>('/notificaciones');

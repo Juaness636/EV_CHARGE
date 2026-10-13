@@ -1,540 +1,232 @@
-// Modal Nativo de Autenticación (Login / Registro) para EV Charge Móvil
-import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { FontAwesome6 } from '@expo/vector-icons';
-import { Colors } from '../theme/colors';
-import { Spacing, Radius } from '../theme/spacing';
+// Modal global de autenticación: iniciar sesión, registrarse y recuperar contraseña.
+// Incluye "Recuérdame", captcha simulado tras varios intentos y medidor de contraseña,
+// igual que el landing del frontend web.
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter, useSegments } from 'expo-router';
+import { registro, ApiError } from '../api/auth.api';
 import { useAuth } from '../context/AuthContext';
+import { useUI, type AuthTab } from '../context/UIContext';
+import { useTheme } from '../theme/ThemeContext';
+import { Radius } from '../theme/spacing';
+import { emailValido, listaRequisitosPassword, requisitosPassword } from '../utils/formato';
+import { OlvidarContrasena } from './OlvidarContrasena';
+import { Aparecer, Respirar } from './animacion';
+import { notificar } from './Notificaciones';
+import { Alerta, AppModal, Boton, CampoTexto, Casilla, Icono } from './ui';
 
-interface AuthModalProps {
-  visible: boolean;
-  initialTab?: 'login' | 'registro';
-  onClose: () => void;
-  onSuccess?: () => void;
+const CLAVE_RECORDAR = 'ev_remember';
+const CLAVE_RECORDAR_EMAIL = 'ev_remember_email';
+
+function CaptchaSimulado({ verificado, onVerificar }: { verificado: boolean; onVerificar: () => void }) {
+  const [cargando, setCargando] = useState(false);
+  const { colors } = useTheme();
+  const tocar = () => {
+    if (verificado || cargando) return;
+    setCargando(true);
+    setTimeout(() => {
+      setCargando(false);
+      onVerificar();
+    }, 1000);
+  };
+  return (
+    <Pressable onPress={tocar} style={[styles.captcha, { borderColor: colors.borderStrong, backgroundColor: colors.cardElevated }]} accessibilityRole="checkbox" accessibilityState={{ checked: verificado }}>
+      <View style={[styles.captchaCaja, { borderColor: verificado ? colors.primary : colors.borderStrong }]}>
+        {cargando ? <ActivityIndicator size="small" color={colors.textDim} /> : verificado ? <Icono name="check" size={16} color={colors.primary} /> : null}
+      </View>
+      <Text style={{ color: colors.text, flex: 1, fontWeight: '600' }}>No soy un robot</Text>
+      <Icono name="shield-halved" size={20} color={colors.textDim} />
+    </Pressable>
+  );
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({
-  visible,
-  initialTab = 'login',
-  onClose,
-  onSuccess,
-}) => {
-  const { login, registro } = useAuth();
-  const [tab, setTab] = useState<'login' | 'registro'>(initialTab);
+export function AuthModal() {
+  const { colors } = useTheme();
+  const { authVisible, authTab, authMensaje, cerrarAuth, setAuthTab } = useUI();
+  const { login } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
 
-  // Estados de Login
+  const [alerta, setAlerta] = useState<{ texto: string; tipo: 'error' | 'success' } | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [captchaRequerido, setCaptchaRequerido] = useState(false);
+  const [captchaResuelto, setCaptchaResuelto] = useState(false);
+  const [recordarme, setRecordarme] = useState(false);
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
-  const [showLoginPass, setShowLoginPass] = useState(false);
+  const [reg, setReg] = useState({ nombre: '', apellido: '', email: '', pass: '', confirmacion: '' });
 
-  // Estados de Registro
-  const [regNombre, setRegNombre] = useState('');
-  const [regApellido, setRegApellido] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPass, setRegPass] = useState('');
-  const [regPassConfirm, setRegPassConfirm] = useState('');
-  const [showRegPass, setShowRegPass] = useState(false);
+  useEffect(() => {
+    if (!authVisible) return;
+    setAlerta(authMensaje ? { texto: authMensaje, tipo: 'error' } : null);
+    Promise.all([AsyncStorage.getItem(CLAVE_RECORDAR), AsyncStorage.getItem(CLAVE_RECORDAR_EMAIL)])
+      .then(([recordar, email]) => {
+        if (recordar === 'true' && email) {
+          setRecordarme(true);
+          setLoginEmail((actual) => actual || email);
+        }
+      })
+      .catch(() => undefined);
+  }, [authVisible, authMensaje]);
 
-  // Control de carga y alertas
-  const [cargando, setCargando] = useState(false);
-  const [alerta, setAlerta] = useState<{ tipo: 'error' | 'success'; mensaje: string } | null>(null);
+  const requisitos = useMemo(() => ({ ...requisitosPassword(reg.pass), same: reg.pass !== '' && reg.pass === reg.confirmacion }), [reg.pass, reg.confirmacion]);
+  const puntaje = Object.values(requisitos).filter(Boolean).length;
+  const porcentaje = (puntaje / 6) * 100;
 
-  // Validación de requisitos de contraseña
-  const passwordReqs = useMemo(() => ({
-    min: regPass.length >= 8,
-    may: /[A-Z]/.test(regPass),
-    low: /[a-z]/.test(regPass),
-    num: /\d/.test(regPass),
-    sim: /[!@#$%^&*(),.?":{}|<>_\-+=]/.test(regPass),
-    same: regPass === regPassConfirm && regPass !== '',
-  }), [regPass, regPassConfirm]);
+  const cambiarTab = (tab: AuthTab) => {
+    setAuthTab(tab);
+    setAlerta(null);
+  };
 
-  const passwordComplete = Object.values(passwordReqs).every(Boolean);
-
-  const handleLogin = async () => {
+  const hacerLogin = async () => {
     const email = loginEmail.trim();
-    const pass = loginPass;
-
-    if (!email || !pass) {
-      setAlerta({ tipo: 'error', mensaje: 'Por favor, completa el correo y la contraseña.' });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setAlerta({ tipo: 'error', mensaje: 'Ingresa un correo electrónico válido.' });
-      return;
-    }
+    if (!email || !loginPass) return setAlerta({ texto: 'Por favor, completa el correo y la contraseña.', tipo: 'error' });
+    if (!emailValido(email)) return setAlerta({ texto: 'Ingresa un correo válido (ejemplo@correo.com).', tipo: 'error' });
+    if (captchaRequerido && !captchaResuelto) return setAlerta({ texto: 'Por favor, verifica que no eres un robot.', tipo: 'error' });
 
     setCargando(true);
     setAlerta(null);
-
     try {
-      await login(email, pass);
-      setAlerta({ tipo: 'success', mensaje: 'Sesión iniciada correctamente.' });
-      onSuccess?.();
-      onClose();
-    } catch (error: any) {
-      setAlerta({
-        tipo: 'error',
-        mensaje: error?.message || 'Credenciales incorrectas o backend no disponible.',
-      });
+      const usuario = await login(email, loginPass);
+      if (recordarme) await AsyncStorage.multiSet([[CLAVE_RECORDAR, 'true'], [CLAVE_RECORDAR_EMAIL, email]]);
+      else await AsyncStorage.multiRemove([CLAVE_RECORDAR, CLAVE_RECORDAR_EMAIL]);
+      setLoginPass('');
+      setCaptchaRequerido(false);
+      cerrarAuth();
+      notificar({ tipo: 'success', titulo: 'Bienvenido', mensaje: `Hola, ${usuario.nombre}. Sesión iniciada correctamente.` });
+      // Desde el inicio se va al panel; desde el mapa o productos se queda en la misma pantalla.
+      if ((segments as string[]).length === 0) router.push(usuario.is_admin ? '/admin' : '/dashboard');
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : '';
+      const status = error instanceof ApiError ? error.status : 0;
+      if (mensaje === 'captcha_required') {
+        setCaptchaRequerido(true);
+        setCaptchaResuelto(false);
+        setAlerta({ texto: 'Demasiados intentos. Verifica que no eres un robot.', tipo: 'error' });
+      } else if (mensaje.includes('minutos')) {
+        setCaptchaRequerido(false);
+        setAlerta({ texto: mensaje, tipo: 'error' });
+      } else if ([400, 401, 422].includes(status) || /credenciales|contraseña|incorrect/i.test(mensaje)) {
+        setAlerta({ texto: 'Correo o contraseña incorrectos.', tipo: 'error' });
+        if (captchaRequerido) setCaptchaResuelto(false);
+      } else {
+        setAlerta({ texto: status === 0 ? mensaje : 'No se pudo iniciar sesión. Verifica que el backend esté activo.', tipo: 'error' });
+      }
     } finally {
       setCargando(false);
     }
   };
 
-  const handleRegistro = async () => {
-    const nombre = regNombre.trim();
-    const apellido = regApellido.trim();
-    const email = regEmail.trim();
-    const pass = regPass;
-
-    if (!nombre || !apellido || !email || !pass || !regPassConfirm) {
-      setAlerta({ tipo: 'error', mensaje: 'Por favor, completa todos los campos.' });
-      return;
+  const hacerRegistro = async () => {
+    const { nombre, apellido, email, pass, confirmacion } = reg;
+    if (!nombre.trim() || !apellido.trim() || !email.trim() || !pass || !confirmacion) {
+      return setAlerta({ texto: 'Por favor, digita todos los datos solicitados.', tipo: 'error' });
     }
-
-    if (!passwordComplete) {
-      setAlerta({ tipo: 'error', mensaje: 'La contraseña no cumple todos los requisitos.' });
-      return;
-    }
+    if (!emailValido(email)) return setAlerta({ texto: 'Ingresa un correo válido (ejemplo@correo.com).', tipo: 'error' });
+    if (puntaje < 6) return setAlerta({ texto: 'Tu contraseña no cumple todos los requisitos.', tipo: 'error' });
 
     setCargando(true);
     setAlerta(null);
-
     try {
       await registro(nombre, apellido, email, pass);
-      setAlerta({ tipo: 'success', mensaje: 'Cuenta creada con éxito. Ya puedes iniciar sesión.' });
-      setTab('login');
-      setLoginEmail(email);
-    } catch (error: any) {
-      setAlerta({
-        tipo: 'error',
-        mensaje: error?.message || 'No se pudo crear la cuenta. Intente de nuevo.',
-      });
+      setReg({ nombre: '', apellido: '', email: '', pass: '', confirmacion: '' });
+      setLoginEmail(email.trim());
+      setAuthTab('login');
+      setAlerta({ texto: 'Cuenta creada correctamente. Ahora puedes iniciar sesión.', tipo: 'success' });
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : '';
+      const status = error instanceof ApiError ? error.status : 0;
+      if (status === 409 || /ya está registrado|ya existe/i.test(mensaje)) setAlerta({ texto: 'Este correo ya está registrado, intenta con otro.', tipo: 'error' });
+      else if (status === 400 || status === 422) setAlerta({ texto: mensaje || 'Los datos del registro no son válidos.', tipo: 'error' });
+      else setAlerta({ texto: status === 0 ? mensaje : 'No se pudo completar el registro.', tipo: 'error' });
     } finally {
       setCargando(false);
     }
   };
 
+  const colorBarra = porcentaje < 40 ? colors.error : porcentaje < 80 ? colors.warning : colors.primary;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.backdrop}>
-        <View style={styles.cardContainer}>
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            {/* Header del modal */}
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>
-                EV <Text style={styles.accentText}>CHARGE</Text>
-              </Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <FontAwesome6 name="xmark" size={18} color={Colors.textDim} />
-              </TouchableOpacity>
-            </View>
+    <AppModal visible={authVisible} onClose={cerrarAuth} titulo={authTab === 'recuperar' ? 'Recuperar contraseña' : 'Bienvenido a EV Charge'} anchoMaximo={440}>
+      <Aparecer desde="escala" duracion={500} style={{ alignSelf: 'center' }}>
+        <Respirar duracion={3500} escala={0.08}>
+          <Image source={require('../../assets/images/logo.png')} style={[styles.logo, colors.modo === 'light' && { tintColor: colors.text }]} resizeMode="contain" />
+        </Respirar>
+      </Aparecer>
 
-            {/* Selector de Pestañas */}
-            <View style={styles.tabsRow}>
-              <TouchableOpacity
-                style={[styles.tabBtn, tab === 'login' && styles.tabBtnActive]}
-                onPress={() => {
-                  setTab('login');
-                  setAlerta(null);
-                }}
-              >
-                <Text style={[styles.tabText, tab === 'login' && styles.tabTextActive]}>
-                  Iniciar sesión
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tabBtn, tab === 'registro' && styles.tabBtnActive]}
-                onPress={() => {
-                  setTab('registro');
-                  setAlerta(null);
-                }}
-              >
-                <Text style={[styles.tabText, tab === 'registro' && styles.tabTextActive]}>
-                  Registrarse
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Alerta */}
-            {alerta && (
-              <View
-                style={[
-                  styles.alertBox,
-                  alerta.tipo === 'error' ? styles.alertError : styles.alertSuccess,
-                ]}
-              >
-                <FontAwesome6
-                  name={alerta.tipo === 'error' ? 'circle-exclamation' : 'circle-check'}
-                  size={14}
-                  color={alerta.tipo === 'error' ? Colors.error : Colors.success}
-                />
-                <Text
-                  style={[
-                    styles.alertText,
-                    { color: alerta.tipo === 'error' ? Colors.error : Colors.success },
-                  ]}
-                >
-                  {alerta.mensaje}
-                </Text>
-              </View>
-            )}
-
-            {/* Formulario de Login */}
-            {tab === 'login' ? (
-              <View style={styles.form}>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Correo electrónico</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="usuario@ejemplo.com"
-                    placeholderTextColor={Colors.textDim}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    value={loginEmail}
-                    onChangeText={setLoginEmail}
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Contraseña</Text>
-                  <View style={styles.passWrapper}>
-                    <TextInput
-                      style={[styles.input, styles.passInput]}
-                      placeholder="Tu contraseña"
-                      placeholderTextColor={Colors.textDim}
-                      secureTextEntry={!showLoginPass}
-                      value={loginPass}
-                      onChangeText={setLoginPass}
-                    />
-                    <TouchableOpacity
-                      style={styles.eyeBtn}
-                      onPress={() => setShowLoginPass(!showLoginPass)}
-                    >
-                      <FontAwesome6
-                        name={showLoginPass ? 'eye-slash' : 'eye'}
-                        size={15}
-                        color={Colors.textDim}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.submitBtn, cargando && styles.btnDisabled]}
-                  onPress={handleLogin}
-                  disabled={cargando}
-                  activeOpacity={0.85}
-                >
-                  {cargando ? (
-                    <ActivityIndicator color={Colors.white} size="small" />
-                  ) : (
-                    <Text style={styles.submitBtnText}>Entrar a EV Charge</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              /* Formulario de Registro */
-              <View style={styles.form}>
-                <View style={styles.row}>
-                  <View style={styles.halfInput}>
-                    <Text style={styles.label}>Nombre</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Nombre"
-                      placeholderTextColor={Colors.textDim}
-                      value={regNombre}
-                      onChangeText={setRegNombre}
-                    />
-                  </View>
-                  <View style={styles.halfInput}>
-                    <Text style={styles.label}>Apellido</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Apellido"
-                      placeholderTextColor={Colors.textDim}
-                      value={regApellido}
-                      onChangeText={setRegApellido}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Correo electrónico</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="usuario@ejemplo.com"
-                    placeholderTextColor={Colors.textDim}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    value={regEmail}
-                    onChangeText={setRegEmail}
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Contraseña</Text>
-                  <View style={styles.passWrapper}>
-                    <TextInput
-                      style={[styles.input, styles.passInput]}
-                      placeholder="Mínimo 8 caracteres"
-                      placeholderTextColor={Colors.textDim}
-                      secureTextEntry={!showRegPass}
-                      value={regPass}
-                      onChangeText={setRegPass}
-                    />
-                    <TouchableOpacity
-                      style={styles.eyeBtn}
-                      onPress={() => setShowRegPass(!showRegPass)}
-                    >
-                      <FontAwesome6
-                        name={showRegPass ? 'eye-slash' : 'eye'}
-                        size={15}
-                        color={Colors.textDim}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Confirmar contraseña</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Repite tu contraseña"
-                    placeholderTextColor={Colors.textDim}
-                    secureTextEntry={!showRegPass}
-                    value={regPassConfirm}
-                    onChangeText={setRegPassConfirm}
-                  />
-                </View>
-
-                {/* Requisitos de seguridad */}
-                <View style={styles.reqList}>
-                  {[
-                    ['min', 'Mínimo 8 caracteres'],
-                    ['may', 'Una mayúscula'],
-                    ['low', 'Una minúscula'],
-                    ['num', 'Un número'],
-                    ['sim', 'Un símbolo especial'],
-                    ['same', 'Las contraseñas coinciden'],
-                  ].map(([key, desc]) => {
-                    const valid = passwordReqs[key as keyof typeof passwordReqs];
-                    return (
-                      <View key={key} style={styles.reqItem}>
-                        <FontAwesome6
-                          name={valid ? 'check' : 'xmark'}
-                          size={11}
-                          color={valid ? Colors.success : Colors.textDim}
-                        />
-                        <Text
-                          style={[
-                            styles.reqText,
-                            valid ? styles.reqValid : styles.reqInvalid,
-                          ]}
-                        >
-                          {desc}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.submitBtn, cargando && styles.btnDisabled]}
-                  onPress={handleRegistro}
-                  disabled={cargando}
-                  activeOpacity={0.85}
-                >
-                  {cargando ? (
-                    <ActivityIndicator color={Colors.white} size="small" />
-                  ) : (
-                    <Text style={styles.submitBtnText}>Crear cuenta</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-          </ScrollView>
+      {authTab !== 'recuperar' && (
+        <View style={[styles.tabs, { backgroundColor: colors.cardElevated, borderColor: colors.border }]}>
+          {(['login', 'registro'] as const).map((tab) => {
+            const activa = authTab === tab;
+            return (
+              <Pressable key={tab} onPress={() => !cargando && cambiarTab(tab)} style={[styles.tab, activa && { backgroundColor: colors.primary }]} accessibilityRole="tab" accessibilityState={{ selected: activa }}>
+                <Text style={[styles.tabTexto, { color: activa ? '#fff' : colors.textMuted }]}>{tab === 'login' ? 'Iniciar sesión' : 'Registrarse'}</Text>
+              </Pressable>
+            );
+          })}
         </View>
-      </View>
-    </Modal>
+      )}
+
+      {alerta && authTab !== 'recuperar' && <Alerta texto={alerta.texto} tipo={alerta.tipo} />}
+
+      {authTab === 'login' && (
+        <View>
+          <CampoTexto etiqueta="Correo" requerido value={loginEmail} onChangeText={setLoginEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" placeholder="correo@ejemplo.com" editable={!cargando} />
+          <CampoTexto etiqueta="Contraseña" requerido value={loginPass} onChangeText={setLoginPass} password autoCapitalize="none" placeholder="••••••••" editable={!cargando} onSubmitEditing={hacerLogin} returnKeyType="go" />
+          <View style={styles.filaEntre}>
+            <Casilla marcada={recordarme} onChange={setRecordarme}>Recuérdame</Casilla>
+            <Pressable onPress={() => cambiarTab('recuperar')} hitSlop={6}>
+              <Text style={[styles.enlace, { color: colors.primary }]}>¿Olvidaste tu contraseña?</Text>
+            </Pressable>
+          </View>
+          {captchaRequerido && <CaptchaSimulado verificado={captchaResuelto} onVerificar={() => setCaptchaResuelto(true)} />}
+          <Boton titulo={cargando ? 'Validando credenciales...' : 'Entrar'} cargando={cargando} onPress={hacerLogin} bloque style={{ marginTop: 12 }} />
+        </View>
+      )}
+
+      {authTab === 'registro' && (
+        <View>
+          <CampoTexto etiqueta="Nombre" requerido value={reg.nombre} onChangeText={(v) => setReg({ ...reg, nombre: v })} placeholder="Tu nombre" editable={!cargando} />
+          <CampoTexto etiqueta="Apellido" requerido value={reg.apellido} onChangeText={(v) => setReg({ ...reg, apellido: v })} placeholder="Tu apellido" editable={!cargando} />
+          <CampoTexto etiqueta="Correo" requerido value={reg.email} onChangeText={(v) => setReg({ ...reg, email: v })} keyboardType="email-address" autoCapitalize="none" placeholder="correo@ejemplo.com" editable={!cargando} />
+          <CampoTexto etiqueta="Contraseña" requerido value={reg.pass} onChangeText={(v) => setReg({ ...reg, pass: v })} password autoCapitalize="none" placeholder="Crea tu contraseña" editable={!cargando} />
+          {reg.pass.length > 0 && (
+            <View style={{ marginBottom: 10, gap: 6 }}>
+              <View style={[styles.barra, { backgroundColor: colors.border }]}>
+                <View style={{ width: `${porcentaje}%`, height: '100%', backgroundColor: colorBarra, borderRadius: 3 }} />
+              </View>
+              {[...listaRequisitosPassword, ['same', 'Las contraseñas coinciden'] as const].map(([clave, texto]) => {
+                const ok = requisitos[clave as keyof typeof requisitos];
+                return (
+                  <View key={clave} style={styles.requisito}>
+                    <Icono name={ok ? 'check' : 'xmark'} size={11} color={ok ? colors.primary : colors.error} />
+                    <Text style={{ color: ok ? colors.primary : colors.textDim, fontSize: 12 }}>{texto}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+          <CampoTexto etiqueta="Confirmar contraseña" requerido value={reg.confirmacion} onChangeText={(v) => setReg({ ...reg, confirmacion: v })} password autoCapitalize="none" placeholder="Repite tu contraseña" contextMenuHidden editable={!cargando} />
+          <Boton titulo={cargando ? 'Registrando cuenta...' : 'Crear cuenta'} cargando={cargando} onPress={hacerRegistro} bloque style={{ marginTop: 6 }} />
+        </View>
+      )}
+
+      {authTab === 'recuperar' && <OlvidarContrasena onVolverAlLogin={() => cambiarTab('login')} />}
+    </AppModal>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'flex-end',
-  },
-  cardContainer: {
-    backgroundColor: Colors.bgCard,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.borderGreen,
-    maxHeight: '90%',
-  },
-  scrollContent: {
-    padding: Spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  headerTitle: {
-    color: Colors.white,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  accentText: {
-    color: Colors.greenEv,
-  },
-  closeBtn: {
-    padding: Spacing.xs,
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bgInput,
-    borderRadius: Radius.md,
-    padding: 3,
-    marginBottom: Spacing.md,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: Radius.sm,
-  },
-  tabBtnActive: {
-    backgroundColor: Colors.greenEv,
-  },
-  tabText: {
-    color: Colors.textMuted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tabTextActive: {
-    color: Colors.white,
-  },
-  alertBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: Spacing.sm,
-    borderRadius: Radius.sm,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-  },
-  alertError: {
-    backgroundColor: Colors.errorBg,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-  },
-  alertSuccess: {
-    backgroundColor: Colors.successBg,
-    borderColor: 'rgba(57, 169, 0, 0.4)',
-  },
-  alertText: {
-    fontSize: 12,
-    fontWeight: '600',
-    flex: 1,
-  },
-  form: {
-    gap: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  field: {
-    marginBottom: 4,
-  },
-  label: {
-    color: Colors.text,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: Colors.bgInput,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 10,
-    color: Colors.white,
-    fontSize: 14,
-  },
-  passWrapper: {
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  passInput: {
-    paddingRight: 40,
-  },
-  eyeBtn: {
-    position: 'absolute',
-    right: 12,
-    padding: 4,
-  },
-  reqList: {
-    backgroundColor: Colors.bgInput,
-    borderRadius: Radius.sm,
-    padding: Spacing.sm,
-    gap: 4,
-    marginVertical: 4,
-  },
-  reqItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  reqText: {
-    fontSize: 11,
-  },
-  reqValid: {
-    color: Colors.success,
-  },
-  reqInvalid: {
-    color: Colors.textDim,
-  },
-  submitBtn: {
-    backgroundColor: Colors.greenEv,
-    borderRadius: Radius.md,
-    paddingVertical: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.xs,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  submitBtnText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '800',
-  },
+  logo: { width: 64, height: 64, alignSelf: 'center', marginBottom: 6 },
+  tabs: { flexDirection: 'row', borderRadius: Radius.md, borderWidth: 1, padding: 4, marginBottom: 14 },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: Radius.sm, alignItems: 'center' },
+  tabTexto: { fontWeight: '800', fontSize: 13.5 },
+  filaEntre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  enlace: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  captcha: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderRadius: Radius.sm, marginTop: 12 },
+  captchaCaja: { width: 26, height: 26, borderWidth: 2, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  barra: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  requisito: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

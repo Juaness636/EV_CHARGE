@@ -1,17 +1,15 @@
-// Contexto global de autenticación para React Native
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { obtenerPerfil, login as loginApi, registro as registroApi, logout as logoutApi } from '../api/auth.api';
-import type { Usuario } from '../types';
+// Estado global de sesión: usuario autenticado + token persistido en AsyncStorage.
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { obtenerPerfil, login as loginApi, logout as logoutApi, type Usuario } from '../api/auth.api';
+import { obtenerToken, onSesionExpirada } from '../api/httpClient';
 
 interface AuthContextValue {
   usuario: Usuario | null;
   cargando: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  registro: (nombre: string, apellido: string, email: string, pass: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<Usuario>;
   actualizarUsuario: (usuario: Usuario) => void;
-  logout: () => Promise<void>;
   recargarPerfil: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -20,69 +18,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  const cargarSesion = async () => {
+  const recargarPerfil = useCallback(async () => {
+    const token = await obtenerToken();
+    if (!token) {
+      setUsuario(null);
+      return;
+    }
     try {
-      const token = await AsyncStorage.getItem('ev_token');
-      if (!token) {
-        setUsuario(null);
-        setCargando(false);
-        return;
-      }
       const data = await obtenerPerfil();
       setUsuario(data.usuario);
     } catch {
       setUsuario(null);
-    } finally {
-      setCargando(false);
     }
-  };
-
-  useEffect(() => {
-    void cargarSesion();
   }, []);
 
-  const login = async (email: string, pass: string) => {
-    const data = await loginApi(email, pass);
+  useEffect(() => {
+    recargarPerfil().finally(() => setCargando(false));
+    return onSesionExpirada(() => setUsuario(null));
+  }, [recargarPerfil]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const data = await loginApi(email, password);
     setUsuario(data.usuario);
-  };
+    return data.usuario;
+  }, []);
 
-  const registro = async (nombre: string, apellido: string, email: string, pass: string) => {
-    const data = await registroApi(nombre, apellido, email, pass);
-    if (data.access_token) {
-      setUsuario(data.usuario);
-    }
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await logoutApi();
     setUsuario(null);
-  };
+  }, []);
 
-  const actualizarUsuario = (usuarioActualizado: Usuario) => {
-    setUsuario(usuarioActualizado);
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        usuario,
-        cargando,
-        login,
-        registro,
-        actualizarUsuario,
-        logout,
-        recargarPerfil: cargarSesion,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ usuario, cargando, login, actualizarUsuario: setUsuario, recargarPerfil, logout }),
+    [usuario, cargando, login, recargarPerfil, logout],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth debe utilizarse dentro de un <AuthProvider>');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>');
+  return ctx;
+}
+
+export function nombreCompleto(usuario?: Pick<Usuario, 'nombre' | 'apellido'> | null): string {
+  if (!usuario) return '';
+  return usuario.apellido ? `${usuario.nombre} ${usuario.apellido}` : usuario.nombre;
 }
