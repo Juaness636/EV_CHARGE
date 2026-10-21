@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
+from app.utils.constantes import ROL_ADMIN, ROL_EMPRESA
 
 load_dotenv()
 
@@ -55,6 +56,30 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 
 def require_admin(current_user=Depends(get_current_user)):
-    if not current_user.is_admin:
+    # is_admin sigue existiendo por compatibilidad con el frontend actual, pero la
+    # fuente de verdad del privilegio pasa a ser `rol`.
+    if current_user.rol != ROL_ADMIN and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Acceso solo para administradores")
     return current_user
+
+
+def require_role(*roles: str):
+    """Devuelve una dependencia que solo acepta usuarios con uno de `roles`.
+
+    Se escribe como factoría para no repetir el 403 en cada namespace
+    (admin, empresa) y para que el rol se lea siempre de la BD, nunca del token.
+    """
+
+    def dependencia(current_user=Depends(get_current_user)):
+        if current_user.rol not in roles:
+            allowed = " o ".join(roles)
+            raise HTTPException(
+                status_code=403,
+                detail=f"Acceso restringido: se requiere rol {allowed}.",
+            )
+        return current_user
+
+    return dependencia
+
+
+require_empresa = require_role(ROL_EMPRESA)

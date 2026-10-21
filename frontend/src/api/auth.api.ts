@@ -1,12 +1,17 @@
 // Corresponde a: app/controllers/auth_controller.py + app/routes/auth_routes.py
 import { api, ApiError } from './httpClient';
 
+// Es el mismo enum del backend (app/utils/constantes.py). `is_admin` se mantiene por
+// compatibilidad con las rutas que ya lo consultan.
+export type Rol = 'usuario' | 'admin' | 'empresa';
+
 export interface Usuario {
   id: string;
   nombre: string;
   apellido?: string;
   email: string;
   is_admin: boolean;
+  rol: Rol;
   created_at: string;
   vehiculos_rel?: Array<{ autonomia_km?: number }>;
 }

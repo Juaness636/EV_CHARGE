@@ -211,7 +211,15 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onCalcula
       )}
 
       <div style={{ margin: '8px 0', fontSize: 13, color: '#aaa' }}><i className="fa-solid fa-location-dot"></i> {direccion}</div>
-      <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Operador: {operador}</div>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+        Operador: {operador}
+        {estacion.Empresa && estacion.Empresa.nombre !== operador && (
+          <span style={{ marginLeft: 8 }}>
+            <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: estacion.Empresa.color_hex, marginRight: 5 }} />
+            {estacion.Empresa.nombre}
+          </span>
+        )}
+      </div>
 
       <div style={{ fontWeight: 600, fontSize: 12, color: '#999', margin: '8px 0 4px' }}>Conectores</div>
       {(estacion.Connections || []).map((c, i) => (

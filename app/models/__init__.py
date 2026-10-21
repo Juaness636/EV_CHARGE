@@ -5,7 +5,11 @@
 
 from app.models.usuario_model import usuarios
 from app.models.vehiculo_model import vehiculos
+from app.models.empresa_model import Empresa
 from app.models.estacion_propia_model import EstacionPropia
+from app.models.cargador_model import Cargador
+from app.models.incidente_model import Incidente
+from app.models.historial_estacion_model import HistorialEstacion
 from app.models.reserva_model import Reservas
 from app.models.metodo_pago_model import MetodosPago
 from app.models.carga_model import Cargas

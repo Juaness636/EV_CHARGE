@@ -12,6 +12,8 @@ class AdminEstadisticas(BaseModel):
     total_kwh_cargados: float
     total_reportes_abiertos: int
     total_estaciones_propias: int
+    total_empresas: int = 0
+    empresas_pendientes: int = 0
 
 
 class EstacionPropiaCreate(BaseModel):
@@ -38,10 +40,15 @@ class EstacionPropiaUpdate(BaseModel):
     descripcion: Optional[str] = None
     operador: Optional[str] = None
     estado: Optional[str] = None
+    # RN-E04: si el PUT cambia el estado, el motivo acompaña en el mismo request.
+    motivo: Optional[str] = None
 
 
 class EstadoUpdate(BaseModel):
     estado: str
+    # Cuando la trae el admin, la ruta aplica también a estaciones de empresa.
+    empresa_id: Optional[str] = None
+    motivo: Optional[str] = None
 
 
 class AdminEstacionOcmUpdate(BaseModel):

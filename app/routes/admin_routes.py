@@ -5,6 +5,12 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.utils.jwt import require_admin
 from app.controllers import admin_controller as ctrl
+from app.controllers.empresa_controller import (
+    cambiar_estado_empresa,
+    crear_empresa,
+    listar_empresas_admin,
+    obtener_empresa_admin,
+)
 from app.schemas.admin_schema import (
     AdminEstadisticas,
     EstacionPropiaCreate,
@@ -15,6 +21,7 @@ from app.schemas.admin_schema import (
     AdminReporteEstado,
     AdminEstacionOcmUpdate,
 )
+from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -70,12 +77,12 @@ def admin_crear_estacion(data: EstacionPropiaCreate, admin=Depends(require_admin
 
 @router.put("/estaciones/{eid}")
 def admin_actualizar_estacion(eid: str, data: EstacionPropiaUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return ctrl.actualizar_estacion(eid, data, db)
+    return ctrl.actualizar_estacion(eid, data, db, admin)
 
 
 @router.patch("/estaciones/{eid}/estado")
 def admin_estado_estacion(eid: str, data: EstadoUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return ctrl.cambiar_estado_estacion(eid, data, db)
+    return ctrl.cambiar_estado_estacion(eid, data, db, admin)
 
 
 @router.patch("/estaciones-ocm/{eid}/estado")
@@ -104,8 +111,13 @@ def admin_eliminar_estacion_ocm(eid: str, admin=Depends(require_admin), db: Sess
 
 
 @router.delete("/estaciones/{eid}")
-def admin_eliminar_estacion(eid: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return ctrl.eliminar_estacion(eid, db)
+def admin_eliminar_estacion(
+    eid: str,
+    motivo: str = Query(default="", description="Motivo obligatorio del borrado lógico (RN-E08)."),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return ctrl.eliminar_estacion(eid, db, motivo, admin)
 
 
 @router.get("/reservas", response_model=list[AdminReservaDetail])
@@ -126,3 +138,41 @@ def admin_eliminar_reserva(rid: str, admin=Depends(require_admin), db: Session =
 @router.get("/calificaciones")
 def admin_calificaciones(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.listar_calificaciones(db)
+
+
+# ---------------------------------------------------------------------------
+# Empresas (Fase 2): el admin crea la cuenta, aprueba o suspende
+# ---------------------------------------------------------------------------
+
+@router.get("/empresas")
+def admin_empresas(
+    busqueda: str | None = Query(default=None),
+    estado: str | None = Query(default=None),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return listar_empresas_admin(db, busqueda, estado)
+
+
+@router.post("/empresas")
+def admin_empresas_crear(
+    data: EmpresaCrear,
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return crear_empresa(data, db)
+
+
+@router.get("/empresas/{eid}")
+def admin_empresa_detalle(eid: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return obtener_empresa_admin(eid, db)
+
+
+@router.patch("/empresas/{eid}/estado")
+def admin_empresa_estado(
+    eid: str,
+    data: EmpresaEstadoUpdate,
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return cambiar_estado_empresa(eid, data, db)

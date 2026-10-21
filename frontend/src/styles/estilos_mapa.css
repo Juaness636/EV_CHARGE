@@ -486,12 +486,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ── Alert ────────────────────────────────────────────────── */
+/* Sin `display: none`: el SPA renderiza estos mensajes con condicionales de React,
+   así que ocultarlos por defecto dejaba invisibles los errores de admin y empresa. */
 .alert {
     padding: 12px 16px;
     border-radius: 8px;
     font-size: 13px;
     margin-bottom: 12px;
-    display: none;
     font-family: var(--font-body);
 }
 .alert-success {

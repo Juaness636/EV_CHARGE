@@ -15,7 +15,7 @@ def obtener_estaciones(lat: float, lon: float):
 
 # Configuración e intermedios con prefijo app.
 from app.config.database import Base, engine
-from sqlalchemy import text
+from app.config.migraciones import aplicar_migraciones_manuales
 from app.middleware.error_handler import ErrorHandler
 import app.models
 
@@ -32,6 +32,7 @@ from app.routes.reservas_routes import router as reservas_router
 from app.routes.reportes_routes import router as reportes_router
 from app.routes.favoritos_routes import router as favoritos_router
 from app.routes.cargas_routes import router as cargas_router
+from app.routes.empresa_routes import router as empresa_router
 from app.routes.calificaciones_routes import router as calificaciones_router
 from app.routes.notificaciones_routes import router as notificaciones_router
 from app.routes.contacto_routes import router as contacto_router
@@ -42,16 +43,7 @@ from app.routes import pagos
 # CREACIÓN AUTOMÁTICA DE TABLAS
 # ==========================================
 Base.metadata.create_all(bind=engine)
-with engine.begin() as connection:
-    connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS estado VARCHAR DEFAULT 'activa'"))
-    connection.execute(text("UPDATE estaciones_propias SET estado = CASE WHEN activa = TRUE THEN 'activa' ELSE 'inactiva' END WHERE estado IS NULL"))
-    connection.execute(text("ALTER TABLE estados_estaciones ADD COLUMN IF NOT EXISTS nombre VARCHAR"))
-    connection.execute(text("ALTER TABLE estados_estaciones ADD COLUMN IF NOT EXISTS direccion VARCHAR"))
-    connection.execute(text("ALTER TABLE estados_estaciones ADD COLUMN IF NOT EXISTS operador VARCHAR"))
-    connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS operador VARCHAR DEFAULT 'EV Charge'"))
-    connection.execute(text("ALTER TABLE estados_estaciones ADD COLUMN IF NOT EXISTS lat FLOAT"))
-    connection.execute(text("ALTER TABLE estados_estaciones ADD COLUMN IF NOT EXISTS lon FLOAT"))
-    connection.execute(text("ALTER TABLE estados_estaciones ADD COLUMN IF NOT EXISTS eliminada BOOLEAN NOT NULL DEFAULT FALSE"))
+aplicar_migraciones_manuales()
 
 
 # ==========================================
@@ -90,6 +82,7 @@ app.include_router(reservas_router)
 app.include_router(reportes_router)
 app.include_router(favoritos_router)
 app.include_router(cargas_router)
+app.include_router(empresa_router)
 app.include_router(calificaciones_router)
 app.include_router(notificaciones_router)
 app.include_router(contacto_router)

@@ -19,8 +19,8 @@ const OCM_KEY = '750370f3-3d40-4082-b93c-904118ab1dc8';
 const BOGOTA: [number, number] = [4.6651, -74.1204];
 
 const colorEstado = (estado: string) => estado === 'mantenimiento' ? '#f39c12' : estado === 'inactiva' ? '#e74c3c' : '#39a900';
-const crearIconoEstacion = (estado: string, seleccionado = false) => {
-  const color = colorEstado(estado);
+const crearIconoEstacion = (estado: string, seleccionado = false, colorMarca?: string) => {
+  const color = colorMarca || colorEstado(estado);
   const dimension = seleccionado ? 28 : 22;
   const sombra = seleccionado ? `0 0 0 3px ${color}, 0 4px 12px rgba(0,0,0,0.6)` : `0 0 0 2px ${color}, 0 3px 8px rgba(0,0,0,0.5)`;
   return L.divIcon({
@@ -30,6 +30,9 @@ const crearIconoEstacion = (estado: string, seleccionado = false) => {
     className: '',
   });
 };
+
+// RN-E10: el color de marca de la empresa manda sobre el color por estado.
+const colorDeMarca = (estacion: EstacionOCM) => (estacion.Empresa?.estado === 'aprobada' ? estacion.Empresa.color_hex : undefined);
 
 export function MapaPage() {
   const { usuario, logout } = useAuth();
@@ -136,17 +139,20 @@ export function MapaPage() {
       if (!st.AddressInfo) return;
       const id = String(st.ID);
       const estado = estadosEstaciones[id] || 'disponible';
-      const marker = L.marker([st.AddressInfo.Latitude, st.AddressInfo.Longitude], { icon: crearIconoEstacion(estado) }).addTo(map);
+      const color = colorDeMarca(st);
+      const marker = L.marker([st.AddressInfo.Latitude, st.AddressInfo.Longitude], { icon: crearIconoEstacion(estado, false, color) }).addTo(map);
       marker.on('click', () => {
         marcadoresRef.current.forEach((m) => {
-          const markerEstado = (m as L.Marker & { estadoEstacion?: string }).estadoEstacion || 'disponible';
-          m.setIcon(crearIconoEstacion(markerEstado));
+          const extendida = m as L.Marker & { estadoEstacion?: string; colorMarca?: string };
+          m.setIcon(crearIconoEstacion(extendida.estadoEstacion || 'disponible', false, extendida.colorMarca));
         });
-        marker.setIcon(crearIconoEstacion(estado, true));
+        marker.setIcon(crearIconoEstacion(estado, true, color));
         setEstacionSeleccionada(st);
         setInfoRuta(null);
       });
-      (marker as L.Marker & { estadoEstacion?: string }).estadoEstacion = estado;
+      const extendida = marker as L.Marker & { estadoEstacion?: string; colorMarca?: string };
+      extendida.estadoEstacion = estado;
+      extendida.colorMarca = color;
       marcadoresRef.current.push(marker);
     });
   }, [estaciones, estadosEstaciones, filtro]);

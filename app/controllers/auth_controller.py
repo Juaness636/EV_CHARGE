@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.models.usuario_model import usuarios
+from app.schemas.auth_schemas import UsuarioOut
 from app.utils.security import hash_password, verify_password
 from app.utils.jwt import create_access_token
 from app.controllers.notificaciones_controller import crear_notificacion
+from app.utils.constantes import ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
 
 
 def validar_password_fuerte(password: str):
@@ -24,6 +26,7 @@ def validar_password_fuerte(password: str):
 
 
 def register_user(db: Session, nombre: str, apellido: str, email: str, password: str):
+    """Registro público: siempre crea rol='usuario'. El rol nunca viene del body."""
     existe = db.query(usuarios).filter(usuarios.email == email).first()
     if existe:
         raise HTTPException(status_code=400, detail="El correo ya está registrado.")
@@ -36,6 +39,8 @@ def register_user(db: Session, nombre: str, apellido: str, email: str, password:
         apellido=(apellido or "").strip(),
         email=email.strip(),
         password_hash=hash_password(password),
+        rol=ROL_USUARIO,
+        is_admin=False,
     )
     db.add(nuevo_usuario)
     db.commit()
@@ -63,7 +68,10 @@ def obtener_perfil(current_user, db: Session):
         .filter(vehiculos.usuario_id == current_user.id, vehiculos.activo == True)
         .first()
     )
-    return {"usuario": current_user, "vehiculo_activo": vehiculo_activo}
+    # `usuario` pasa por UsuarioOut: la ruta no declara response_model, así que un ORM
+    # crudo se serializaría con TODAS sus columnas y expondría password_hash y el PIN
+    # de recuperación al propio usuario autenticado.
+    return {"usuario": UsuarioOut.model_validate(current_user), "vehiculo_activo": vehiculo_activo}
 
 
 def actualizar_perfil(current_user, data, db: Session):

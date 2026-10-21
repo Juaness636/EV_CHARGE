@@ -316,7 +316,7 @@ function App() {
       }
       
       closeAuthModal();
-      window.location.href = data.usuario.is_admin ? '/admin' : '/mapa';
+      window.location.href = data.usuario.rol === 'empresa' ? '/empresa' : data.usuario.is_admin ? '/admin' : '/mapa';
     } catch (error: any) {
       const errorMsg = error instanceof ApiError ? error.message : '';
 

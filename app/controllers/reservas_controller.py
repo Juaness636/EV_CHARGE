@@ -1,13 +1,13 @@
 # Backend/controllers/reservas_controller.py
-import random
 from datetime import timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.models.reserva_model import Reservas
-from app.models.carga_model import Cargas
 from app.models.utils import ahora_utc
 from app.schemas.reservas_schemas import ReservaCreate, ReservaUpdate
+from app.schemas.cargas_schema import CargaIniciar
+from app.controllers.cargas_controller import iniciar_carga
 from app.controllers.notificaciones_controller import crear_notificacion
 
 
@@ -79,18 +79,26 @@ def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate):
     db.commit()
     db.refresh(reserva)
 
-    kwh = round(random.uniform(10.0, 30.0), 1)
-    costo = round(kwh * 1200, 0)
-    carga_auto = Cargas(
-        usuario_id=usuario_id,
-        estacion_ocm_id=data.estacion_ocm_id,
-        estacion_nombre=data.estacion_nombre or "Estación desconocida",
-        kwh_cargados=kwh,
-        costo_estimado=costo,
-        notas=f"Carga automática por reserva del {ahora_utc().strftime('%d/%m/%Y %H:%M')}",
-    )
-    db.add(carga_auto)
-    db.commit()
+    # La reserva abre una sesión de carga en curso (sin kWh inventados); el usuario
+    # registra el consumo real al finalizarla. Ver app/controllers/cargas_controller.py.
+    try:
+        iniciar_carga(
+            db,
+            usuario_id,
+            CargaIniciar(
+                estacion_ocm_id=data.estacion_ocm_id,
+                estacion_nombre=data.estacion_nombre or "",
+                reserva_id=reserva.id,
+                notas=f"Carga asociada a la reserva del {reserva.fecha_hora_inicio.strftime('%d/%m/%Y %H:%M')}",
+            ),
+        )
+    except HTTPException:
+        # Estaciones OCM o ya-inactivas no abren sesión; la reserva es válida igual.
+        pass
+
+    # `iniciar_carga` commitea y eso expira la instancia; sin este refresh el endpoint
+    # respondería `{}`, porque un objeto expirado ya no tiene sus columnas en __dict__.
+    db.refresh(reserva)
     return reserva
 
 

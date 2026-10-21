@@ -1,6 +1,7 @@
 // Corresponde a: app/controllers/admin_controller.py + app/routes/admin_routes.py
 // Todas requieren usuario admin (require_admin en el backend).
 import { api } from './httpClient';
+import type { EmpresaPerfil, EstadoEmpresa } from './empresa.api';
 
 export interface AdminEstadisticas {
   total_usuarios: number;
@@ -10,6 +11,8 @@ export interface AdminEstadisticas {
   total_kwh_cargados: number;
   total_reportes_abiertos: number;
   total_estaciones_propias: number;
+  total_empresas: number;
+  empresas_pendientes: number;
 }
 
 export interface EstacionPropiaCreate {
@@ -24,6 +27,17 @@ export interface EstacionPropiaCreate {
   activa?: boolean;
   estado?: 'activa' | 'mantenimiento' | 'inactiva';
   operador?: string;
+  // RN-E04: solo se lee cuando el PUT cambia `estado` en el mismo request.
+  motivo?: string;
+}
+
+// Marca de la dueña de la estación (RN-E10); null en estaciones de EV Charge y de OCM.
+export interface MarcaEmpresa {
+  id: string;
+  nombre: string;
+  color_hex: string;
+  logo_url?: string | null;
+  estado: 'pendiente' | 'aprobada' | 'suspendida';
 }
 
 export interface AdminEstacionOcm {
@@ -33,13 +47,20 @@ export interface AdminEstacionOcm {
   lat: number;
   lon: number;
   estado: 'activa' | 'mantenimiento' | 'inactiva';
-  origen: string;
+  origen: 'Empresa' | 'EV Charge' | 'OpenChargeMap';
   operador: string;
+  empresa_id?: string | null;
+  empresa?: MarcaEmpresa | null;
+  total_cargadores?: number;
+  cargadores?: unknown[];
   conectores: Array<{
     tipo: string;
     potencia_kw?: number;
     corriente: string;
     bahias: number;
+    numero?: number;
+    estado?: 'disponible' | 'fuera_servicio';
+    cargador_id?: string;
   }>;
 }
 
@@ -157,8 +178,18 @@ export async function actualizarEstacion(id: string, payload: EstacionPropiaCrea
   return data;
 }
 
-export async function cambiarEstadoEstacion(id: string, estado: 'activa' | 'mantenimiento' | 'inactiva'): Promise<unknown> {
-  const { data } = await api.patch(`/admin/estaciones/${id}/estado`, { estado });
+// RN-E04: inhabilitar o borrar exige motivo (>=10 caracteres) incluso al admin.
+export async function cambiarEstadoEstacion(
+  id: string,
+  estado: 'activa' | 'mantenimiento' | 'inactiva',
+  motivo?: string,
+  empresaId?: string,
+): Promise<unknown> {
+  const { data } = await api.patch(`/admin/estaciones/${id}/estado`, {
+    estado,
+    motivo,
+    empresa_id: empresaId,
+  });
   return data;
 }
 
@@ -181,8 +212,12 @@ export async function eliminarEstacionOcmAdmin(id: string): Promise<void> {
   await api.delete(`/admin/estaciones-ocm/${id}`);
 }
 
-export async function eliminarEstacionAdmin(id: string): Promise<void> {
-  await api.delete(`/admin/estaciones/${id}`);
+export async function eliminarEstacionAdmin(id: string, motivo: string): Promise<{ ok: boolean; reservas_canceladas: number }> {
+  const { data } = await api.delete<{ ok: boolean; reservas_canceladas: number }>(
+    `/admin/estaciones/${id}`,
+    { params: { motivo } },
+  );
+  return data;
 }
 
 export async function listarReservasAdmin(): Promise<AdminReservaDetail[]> {
@@ -211,5 +246,51 @@ export async function listarContactosAdmin(): Promise<ContactoAdmin[]> {
 
 export async function responderContactoAdmin(id: string, respuesta: string): Promise<ContactoAdmin> {
   const { data } = await api.patch<ContactoAdmin>(`/admin/contactos/${id}/respuesta`, { respuesta });
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Empresas (Fase 2): el admin es el único que puede crearlas y aprobarlas.
+// ---------------------------------------------------------------------------
+
+export interface EmpresaCrear {
+  nombre_comercial: string;
+  razon_social?: string;
+  nit?: string;
+  telefono?: string;
+  email_contacto?: string;
+  direccion_sede?: string;
+  descripcion?: string;
+  color_hex: string;
+  logo_url?: string;
+  estado?: 'pendiente' | 'aprobada' | 'suspendida';
+  // La cuenta con la que la empresa entra al sistema: un solo request.
+  usuario_nombre: string;
+  usuario_apellido?: string;
+  usuario_email: string;
+  usuario_password: string;
+}
+
+export async function listarEmpresasAdmin(params: { busqueda?: string; estado?: string } = {}): Promise<EmpresaPerfil[]> {
+  const { data } = await api.get<EmpresaPerfil[]>('/admin/empresas', { params });
+  return data;
+}
+
+export async function obtenerEmpresaAdmin(id: string): Promise<EmpresaPerfil> {
+  const { data } = await api.get<EmpresaPerfil>(`/admin/empresas/${id}`);
+  return data;
+}
+
+export async function crearEmpresaAdmin(payload: EmpresaCrear): Promise<EmpresaPerfil> {
+  const { data } = await api.post<EmpresaPerfil>('/admin/empresas', payload);
+  return data;
+}
+
+export async function cambiarEstadoEmpresaAdmin(
+  id: string,
+  estado: EstadoEmpresa,
+  motivo?: string,
+): Promise<EmpresaPerfil> {
+  const { data } = await api.patch<EmpresaPerfil>(`/admin/empresas/${id}/estado`, { estado, motivo });
   return data;
 }
