@@ -17,3 +17,4 @@ from app.models.notificacion_model import Notificacion
 from app.models.estado_estacion_model import EstadoEstacion
 from app.models.contacto_model import Contacto
 from app.models.compra_model import Compras
+from app.models.pago_reserva_model import PagosReserva

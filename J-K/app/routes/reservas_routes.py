@@ -7,11 +7,12 @@ from app.utils.jwt import get_current_user
 from app.controllers.reservas_controller import (
     listar_mis_reservas,
     crear_reserva,
+    crear_reserva_confirmada,
     actualizar_reserva,
     cancelar_reserva,
     eliminar_reserva,
 )
-from app.schemas.reservas_schemas import ReservaCreate, ReservaUpdate, ReservaCotizacion
+from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate, ReservaUpdate, ReservaCotizacion
 from app.services.tarifas_service import calcular_precio_reserva
 
 # Sin prefix único: el contrato del frontend mezcla /mis-reservas, /reservar y /reservas/{rid}
@@ -40,9 +41,9 @@ def reservar(data: ReservaCreate, current_user=Depends(get_current_user), db: Se
 
 
 @router.post("/reservar-confirmada")
-def reservar_confirmada(data: ReservaCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def reservar_confirmada(data: ReservaConfirmadaCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     """Crea una reserva activa únicamente después de un pago aprobado."""
-    return crear_reserva(db, current_user.id, data, estado="activa")
+    return crear_reserva_confirmada(db, current_user.id, data)
 
 
 @router.put("/reservas/{rid}")
