@@ -11,6 +11,7 @@ from app.controllers.empresa_controller import (
     listar_empresas_admin,
     obtener_empresa_admin,
 )
+from app.schemas.auth_schemas import UsuarioOut
 from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaOut
 from app.schemas.admin_schema import (
     AdminEstadisticas,
@@ -27,7 +28,7 @@ from app.schemas.admin_schema import (
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
-@router.get("/usuarios")
+@router.get("/usuarios", response_model=list[UsuarioOut])
 def admin_usuarios(
     busqueda: str | None = Query(default=None),
     admin=Depends(require_admin),
@@ -36,7 +37,7 @@ def admin_usuarios(
     return ctrl.listar_usuarios(db, busqueda)
 
 
-@router.put("/usuarios/{uid}")
+@router.put("/usuarios/{uid}", response_model=UsuarioOut)
 def admin_actualizar_usuario(uid: str, data: dict, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.actualizar_usuario(uid, data, db)
 

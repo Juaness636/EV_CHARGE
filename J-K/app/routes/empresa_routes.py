@@ -10,13 +10,14 @@ Todas declaran `response_model`, así ninguna respuesta puede filtrar campos int
 import re
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.controllers import (
     empresa_estadisticas_controller as estadisticas,
     empresa_estaciones_controller as estaciones,
+    empresa_fotos_controller as fotos,
     empresa_incidentes_controller as incidentes,
     empresa_reporte_controller as reporte,
 )
@@ -166,6 +167,26 @@ def cargadores_actualizar(
     db: Session = Depends(get_db),
 ):
     return estaciones.actualizar_cargador(estacion_id, cargador_id, data, ctx, db)
+
+
+@router.post("/estaciones/{estacion_id}/fotos", response_model=EstacionEmpresaOut)
+async def fotos_subir(
+    estacion_id: str,
+    archivo: UploadFile = File(description="Foto JPG, PNG o WebP de máximo 5 MB."),
+    ctx: dict = Depends(operar),
+    db: Session = Depends(get_db),
+):
+    return await fotos.subir_foto(estacion_id, archivo, ctx, db)
+
+
+@router.delete("/estaciones/{estacion_id}/fotos/{foto_id}", response_model=EstacionEmpresaOut)
+def fotos_eliminar(
+    estacion_id: str,
+    foto_id: str,
+    ctx: dict = Depends(operar),
+    db: Session = Depends(get_db),
+):
+    return fotos.eliminar_foto(estacion_id, foto_id, ctx, db)
 
 
 @router.delete("/estaciones/{estacion_id}/cargadores/{cargador_id}", response_model=EstacionEmpresaOut)

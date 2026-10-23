@@ -2,7 +2,8 @@
 // Corresponde a: J-K/app/controllers/empresa_*.py + J-K/app/routes/empresa_routes.py
 // Todas las rutas cuelgan de /empresa y el backend deduce la empresa del token:
 // ningún método manda empresa_id, y un 404 aquí significa "eso no es tuyo".
-import { api } from './httpClient';
+import { Platform } from 'react-native';
+import { api, API_BASE_URL } from './httpClient';
 
 export type EstadoEmpresa = 'pendiente' | 'aprobada' | 'suspendida';
 export type EstadoEstacion = 'activa' | 'mantenimiento' | 'inactiva';
@@ -19,7 +20,9 @@ export type AccionHistorial =
   | 'cambiar_estado'
   | 'abrir_incidente'
   | 'cerrar_incidente'
-  | 'eliminar';
+  | 'eliminar'
+  | 'subir_foto'
+  | 'quitar_foto';
 
 // RN-E04: el backend exige 10 caracteres como mínimo al inhabilitar o borrar.
 export const LONGITUD_MINIMA_MOTIVO = 10;
@@ -67,6 +70,19 @@ export interface CargadorCreate {
 
 export type CargadorUpdate = Partial<CargadorCreate>;
 
+// Mismos límites del backend (app/utils/constantes.py).
+export const FOTOS_MAXIMAS_POR_ESTACION = 8;
+export const FOTO_TAMANO_MAXIMO_MB = 5;
+
+export interface FotoEstacion {
+  id: string;
+  // Ruta relativa al backend (/media/...); usar urlMedia() para mostrarla.
+  url: string;
+}
+
+// Convierte la ruta /media/... que guarda el backend en una URL completa para <Image>.
+export const urlMedia = (ruta: string) => (/^https?:\/\//.test(ruta) ? ruta : `${API_BASE_URL}${ruta}`);
+
 export interface EstacionEmpresa {
   id: string;
   nombre: string;
@@ -85,6 +101,7 @@ export interface EstacionEmpresa {
   cargadores_disponibles: number;
   incidentes_abiertos: number;
   reservas_canceladas?: number;
+  fotos: FotoEstacion[];
 }
 
 export interface EstacionEmpresaCreate {
@@ -355,6 +372,41 @@ export async function quitarCargador(estacionId: string, cargadorId: string): Pr
   const { data } = await api.delete<EstacionEmpresa>(
     `/empresa/estaciones/${estacionId}/cargadores/${cargadorId}`,
   );
+  return data;
+}
+
+// Foto elegida con expo-image-picker: en web trae `file`; en Android/iOS, solo la uri local.
+export interface FotoElegida {
+  uri: string;
+  mimeType?: string | null;
+  fileName?: string | null;
+  file?: File;
+}
+
+export async function subirFotoEstacion(estacionId: string, foto: FotoElegida): Promise<EstacionEmpresa> {
+  const form = new FormData();
+  if (Platform.OS === 'web') {
+    const archivo = foto.file ?? (await (await fetch(foto.uri)).blob());
+    form.append('archivo', archivo, foto.fileName || 'foto.jpg');
+  } else {
+    // React Native acepta {uri, name, type} como archivo de un FormData.
+    form.append('archivo', {
+      uri: foto.uri,
+      name: foto.fileName || 'foto.jpg',
+      type: foto.mimeType || 'image/jpeg',
+    } as unknown as Blob);
+  }
+  const { data } = await api.post<EstacionEmpresa>(`/empresa/estaciones/${estacionId}/fotos`, form, {
+    // Sin este encabezado axios convierte el FormData a JSON (la instancia usa JSON por defecto);
+    // en el navegador axios lo quita y deja que se ponga el boundary solo.
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  });
+  return data;
+}
+
+export async function eliminarFotoEstacion(estacionId: string, fotoId: string): Promise<EstacionEmpresa> {
+  const { data } = await api.delete<EstacionEmpresa>(`/empresa/estaciones/${estacionId}/fotos/${fotoId}`);
   return data;
 }
 

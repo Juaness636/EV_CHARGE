@@ -9,7 +9,7 @@ from app.models.empresa_model import Empresa
 from app.models.estacion_propia_model import EstacionPropia
 from app.models.usuario_model import usuarios
 from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaUpdate
-from app.utils.constantes import EMPRESA_APROBADA, ESTADOS_EMPRESA, ROL_EMPRESA
+from app.utils.constantes import EMPRESA_APROBADA, ESTADOS_EMPRESA, ROL_ADMIN, ROL_EMPRESA
 from app.utils.jwt import get_current_user, require_empresa
 from app.utils.security import hash_password, verify_password
 
@@ -173,27 +173,45 @@ def obtener_empresa_admin(eid: str, db: Session):
     return _con_totales(db, [empresa])[0]
 
 
+def _vincular_usuario_existente(db: Session, correo: str) -> usuarios:
+    """Convierte un usuario ya registrado en la cuenta de acceso de la empresa."""
+    usuario = db.query(usuarios).filter(usuarios.email == correo).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="No hay ningún usuario registrado con ese correo.")
+    if usuario.rol == ROL_ADMIN:
+        raise HTTPException(status_code=400, detail="Un administrador no puede ser la cuenta de una empresa.")
+    if usuario.rol == ROL_EMPRESA or obtener_empresa_por_usuario(db, usuario.id):
+        raise HTTPException(status_code=400, detail="Ese usuario ya es la cuenta de otra empresa.")
+    usuario.rol = ROL_EMPRESA
+    return usuario
+
+
 def crear_empresa(data: EmpresaCrear, db: Session):
-    """Crea en una sola transacción el usuario (rol=empresa) y su perfil de empresa."""
+    """Crea la empresa con una cuenta nueva (rol=empresa) o vinculando un usuario existente."""
     from app.controllers.auth_controller import validar_password_fuerte
 
-    # Mismo criterio que registro y login de Avanze: el correo se guarda en minúsculas.
-    email = str(data.usuario_email).strip().lower()
-    if db.query(usuarios).filter(usuarios.email == email).first():
-        raise HTTPException(status_code=400, detail="Ya existe un usuario con ese correo.")
     if data.nit and db.query(Empresa).filter(Empresa.nit == data.nit).first():
         raise HTTPException(status_code=400, detail="Ya existe una empresa registrada con ese NIT.")
-    validar_password_fuerte(data.usuario_password)
 
-    usuario = usuarios(
-        nombre=data.usuario_nombre.strip(),
-        apellido=(data.usuario_apellido or "").strip(),
-        email=email,
-        password_hash=hash_password(data.usuario_password),
-        rol=ROL_EMPRESA,
-        is_admin=False,
-    )
-    db.add(usuario)
+    # Mismo criterio que registro y login de Avanze: el correo se guarda en minúsculas.
+    if data.usuario_existente_email:
+        usuario = _vincular_usuario_existente(db, str(data.usuario_existente_email).strip().lower())
+    else:
+        email = str(data.usuario_email).strip().lower()
+        if db.query(usuarios).filter(usuarios.email == email).first():
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un usuario con ese correo. Usa la opción de vincular un usuario existente.",
+            )
+        validar_password_fuerte(data.usuario_password)
+        usuario = usuarios(
+            nombre=data.usuario_nombre.strip(),
+            apellido=(data.usuario_apellido or "").strip(),
+            email=email,
+            password_hash=hash_password(data.usuario_password),
+            rol=ROL_EMPRESA,
+        )
+        db.add(usuario)
     db.flush()  # se necesita usuario.id antes de crear la empresa
 
     empresa = Empresa(
@@ -215,7 +233,12 @@ def crear_empresa(data: EmpresaCrear, db: Session):
         db,
         usuario.id,
         "Cuenta de empresa creada",
-        f"El administrador registró la cuenta de {empresa.nombre_comercial} (estado: {empresa.estado}).",
+        (
+            f"El administrador vinculó tu cuenta a la empresa {empresa.nombre_comercial} (estado: {empresa.estado}). "
+            "Desde ahora entras al panel de empresa."
+            if data.usuario_existente_email
+            else f"El administrador registró la cuenta de {empresa.nombre_comercial} (estado: {empresa.estado})."
+        ),
         "empresa",
     )
     db.commit()

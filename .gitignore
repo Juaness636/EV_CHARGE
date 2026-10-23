@@ -18,3 +18,6 @@ mobile-respaldo-anterior/
 Thumbs.db
 .vscode/
 .idea/
+
+# Fotos que suben las empresas (se guardan en el servidor, no en git)
+J-K/uploads/

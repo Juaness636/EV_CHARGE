@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.utils.constantes import ESTADOS_CARGADOR, ESTADOS_EMPRESA, TIPOS_CONECTOR
 
@@ -47,11 +47,28 @@ class EmpresaCrear(BaseModel):
     logo_url: Optional[str] = None
     estado: str = "aprobada"
 
-    # Cuenta con la que la empresa entra al sistema.
-    usuario_nombre: str = Field(min_length=2, max_length=80)
+    # Cuenta con la que la empresa entra al sistema. Dos opciones excluyentes:
+    # 1) una cuenta nueva (usuario_nombre + usuario_email + usuario_password), o
+    # 2) vincular un usuario ya registrado por su correo (usuario_existente_email).
+    usuario_nombre: Optional[str] = Field(default=None, min_length=2, max_length=80)
     usuario_apellido: Optional[str] = ""
-    usuario_email: EmailStr
-    usuario_password: str = Field(min_length=8)
+    usuario_email: Optional[EmailStr] = None
+    usuario_password: Optional[str] = Field(default=None, min_length=8)
+    usuario_existente_email: Optional[EmailStr] = None
+
+    @field_validator("usuario_email", "usuario_existente_email", "usuario_nombre", "usuario_password", mode="before")
+    @classmethod
+    def _vacio_es_none(cls, v):
+        return None if isinstance(v, str) and v.strip() == "" else v
+
+    @model_validator(mode="after")
+    def _una_sola_cuenta(self):
+        nueva = any([self.usuario_nombre, self.usuario_email, self.usuario_password])
+        if self.usuario_existente_email and nueva:
+            raise ValueError("Elige una sola opción: crear una cuenta nueva o vincular un usuario existente.")
+        if not self.usuario_existente_email and not (self.usuario_nombre and self.usuario_email and self.usuario_password):
+            raise ValueError("Indica el correo de un usuario existente o el nombre, correo y contraseña de la cuenta nueva.")
+        return self
 
     @field_validator("email_contacto", mode="before")
     @classmethod

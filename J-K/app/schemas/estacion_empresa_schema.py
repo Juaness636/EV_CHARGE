@@ -65,6 +65,12 @@ class EstacionEstadoUpdate(BaseModel):
         return v.strip()
 
 
+class FotoEstacionOut(BaseModel):
+    id: str
+    # Ruta relativa al backend (p. ej. /media/estaciones/<id>/<archivo>.jpg).
+    url: str
+
+
 class EstacionEmpresaOut(BaseModel):
     id: str
     nombre: str
@@ -83,6 +89,7 @@ class EstacionEmpresaOut(BaseModel):
     cargadores_disponibles: int = 0
     incidentes_abiertos: int = 0
     reservas_canceladas: Optional[int] = None
+    fotos: List[FotoEstacionOut] = []
 
 
 class EliminacionOut(BaseModel):

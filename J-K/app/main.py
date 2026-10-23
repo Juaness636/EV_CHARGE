@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi import APIRouter
 from app.controllers.mapa_controller import MapaController
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 router = APIRouter()
 mapa_ctrl = MapaController()
@@ -41,6 +42,7 @@ from app.routes import pagos
 from app.routes.compras_routes import router as compras_router
 from app.routes import asistente_routes
 from app.routes.empresa_routes import router as empresa_router
+from app.controllers.empresa_fotos_controller import DIRECTORIO_MEDIA, PREFIJO_URL_MEDIA
 
 # ==========================================
 # CREACIÓN AUTOMÁTICA DE TABLAS
@@ -68,7 +70,15 @@ with engine.begin() as connection:
     connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS reservante_nombre VARCHAR"))
     # Módulo de empresas: roles, estaciones de empresa y cargadores con número y estado.
     connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR NOT NULL DEFAULT 'usuario'"))
-    connection.execute(text("UPDATE usuarios SET rol = 'admin' WHERE is_admin = TRUE AND rol = 'usuario'"))
+    # `rol` es la única fuente de verdad: quien tenía is_admin = TRUE pasa a rol 'admin'
+    # y luego se elimina la columna, así las dos ya no pueden contradecirse.
+    connection.execute(text(
+        "DO $$ BEGIN "
+        "IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name = 'is_admin') THEN "
+        "UPDATE usuarios SET rol = 'admin' WHERE is_admin = TRUE AND rol = 'usuario'; "
+        "ALTER TABLE usuarios DROP COLUMN is_admin; "
+        "END IF; END $$"
+    ))
     connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS empresa_id VARCHAR REFERENCES empresas(id) ON DELETE CASCADE"))
     connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS eliminada BOOLEAN NOT NULL DEFAULT FALSE"))
     connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN tipo_conector DROP NOT NULL"))
@@ -140,6 +150,10 @@ app.include_router(pagos.router)
 app.include_router(compras_router)
 app.include_router(asistente_routes.router)
 app.include_router(empresa_router)
+
+# Fotos de estaciones subidas por las empresas (ver empresa_fotos_controller).
+DIRECTORIO_MEDIA.mkdir(parents=True, exist_ok=True)
+app.mount(PREFIJO_URL_MEDIA, StaticFiles(directory=DIRECTORIO_MEDIA), name="media")
 
 # ==========================================
 # RUTA RAÍZ

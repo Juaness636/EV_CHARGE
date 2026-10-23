@@ -15,6 +15,7 @@ from app.controllers.auth_controller import (
 from app.schemas.auth_schemas import (
     UsuarioRegistro,
     TokenOut,
+    PerfilOut,
     PerfilUpdate,
     PasswordUpdate,
 )
@@ -35,12 +36,12 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     return login_user(db, form.username, form.password)
 
 
-@router.get("/perfil")
+@router.get("/perfil", response_model=PerfilOut)
 def perfil(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     return obtener_perfil(current_user, db)
 
 
-@router.put("/perfil")
+@router.put("/perfil", response_model=PerfilOut)
 def perfil_actualizar(
     data: PerfilUpdate,
     current_user=Depends(get_current_user),

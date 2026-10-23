@@ -96,9 +96,11 @@ Registra un usuario desde la aplicación y habilita el rol administrador desde P
 
 ```sql
 UPDATE usuarios
-SET is_admin = TRUE
+SET rol = 'admin'
 WHERE email = 'TU_CORREO';
 ```
+
+El tipo de cuenta vive solo en la columna `rol` (`usuario`, `admin` o `empresa`). Las cuentas de empresa las crea el administrador desde la sección **Empresas**, con una cuenta nueva o vinculando un usuario ya registrado.
 
 El proyecto no crea administradores automáticamente.
 
