@@ -302,3 +302,45 @@ export async function cambiarEstadoEmpresaAdmin(
   const { data } = await api.patch<EmpresaPerfil>(`/admin/empresas/${id}/estado`, { estado, motivo });
   return data;
 }
+
+// Reporte semanal (app/controllers/admin_reporte_semanal_controller.py)
+export type FormatoMetrica = 'numero' | 'dinero' | 'kwh' | 'estrellas';
+
+export interface MetricaSemanal {
+  clave: string;
+  etiqueta: string;
+  formato: FormatoMetrica;
+  // true si que suba es bueno (verde); false si subir es malo (rojo), p. ej. reportes o cancelaciones.
+  positivo: boolean;
+  actual: number;
+  anterior: number;
+  variacion_pct: number | null;
+}
+
+export interface DiaSemanal {
+  fecha: string;
+  dia: string;
+  cargas: number;
+  kwh: number;
+  reservas: number;
+  nuevos_usuarios: number;
+  ingresos: number;
+}
+
+export interface ReporteSemanal {
+  semanas_atras: number;
+  en_curso: boolean;
+  semana: { inicio: string; fin: string; etiqueta: string };
+  semana_anterior: { inicio: string; fin: string; etiqueta: string };
+  comparacion: 'mismo_tramo' | 'semana_completa';
+  metricas: MetricaSemanal[];
+  por_dia: DiaSemanal[];
+  top_estaciones: Array<{ estacion_id: string; estacion_nombre: string; cargas: number; kwh: number }>;
+  pendientes: { cargas_por_validar: number; reportes_abiertos: number; incidentes_abiertos: number; empresas_pendientes: number };
+  destacados: string[];
+}
+
+export async function obtenerReporteSemanal(semanasAtras = 0): Promise<ReporteSemanal> {
+  const { data } = await api.get<ReporteSemanal>('/admin/reporte-semanal', { params: { semanas_atras: semanasAtras } });
+  return data;
+}
