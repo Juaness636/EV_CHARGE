@@ -6,6 +6,8 @@ export interface Usuario {
   apellido?: string;
   email: string;
   is_admin: boolean;
+  // usuario | admin | empresa: las cuentas de empresa ven el panel de empresa.
+  rol?: 'usuario' | 'admin' | 'empresa';
   compartir_nombre_reserva?: boolean;
   created_at: string;
   vehiculos_rel?: Array<{ autonomia_km?: number }>;
