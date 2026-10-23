@@ -10,7 +10,7 @@ import { fechaHora } from '../../../utils/formato';
 import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, AppModal, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Insignia, ItemLista, Vacio } from '../../../components/ui';
 import { useTheme } from '../../../theme/ThemeContext';
-import { ejecutarAdmin, type PropsAdmin } from './AdminPaneles';
+import { ejecutarAdmin, type PropsAdmin } from './comun';
 
 const ETIQUETA_ESTADO: Record<EstadoEmpresa, string> = { pendiente: 'Pendiente', aprobada: 'Aprobada', suspendida: 'Suspendida' };
 const TONO_ESTADO = { pendiente: 'amarillo', aprobada: 'verde', suspendida: 'rojo' } as const;
