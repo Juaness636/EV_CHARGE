@@ -8,6 +8,7 @@ from app.config.database import get_db
 from app.controllers.notificaciones_controller import crear_notificacion
 from app.models.metodo_pago_model import MetodosPago
 from app.models.compra_model import Compras
+from app.models.pago_reserva_model import PagosReserva
 
 router = APIRouter(
     prefix="/api/pagos",
@@ -23,12 +24,16 @@ def procesar_pago(
     """
     Procesa un pago de producto (cargador/wallbox) o cobro anticipado de reserva.
     """
+    if pago_in.tipo_pago not in {"producto", "reserva"}:
+        raise HTTPException(status_code=400, detail="Tipo de pago no válido.")
+
     if pago_in.monto <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El monto a pagar debe ser mayor a 0."
         )
 
+    metodo_guardado = None
     if pago_in.metodo_id:
         metodo_guardado = db.query(MetodosPago).filter(
             MetodosPago.id == pago_in.metodo_id,
@@ -54,10 +59,21 @@ def procesar_pago(
             usuario_id=current_user.id,
             producto=pago_in.item,
             monto=pago_in.monto,
-            metodo=metodo_guardado.tipo if pago_in.metodo_id and metodo_guardado else pago_in.metodo,
+            metodo=metodo_guardado.tipo if metodo_guardado else pago_in.metodo,
             metodo_id=pago_in.metodo_id,
             transaccion_id=transaccion_id,
             estado="aprobada",
+        ))
+    else:
+        # Queda registrado para que /reservar-confirmada pueda verificarlo:
+        # sin un pago aprobado y sin usar no se activa ninguna reserva.
+        db.add(PagosReserva(
+            usuario_id=current_user.id,
+            transaccion_id=transaccion_id,
+            monto=pago_in.monto,
+            metodo=metodo_guardado.tipo if metodo_guardado else pago_in.metodo,
+            metodo_id=pago_in.metodo_id,
+            estado="aprobado",
         ))
     db.commit()
 

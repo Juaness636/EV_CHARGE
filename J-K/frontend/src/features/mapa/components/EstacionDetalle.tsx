@@ -311,7 +311,6 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onRegistr
         potencia_kw: cargador?.PowerKW,
         duracion_horas: duracion,
       });
-      datosReserva.costo_pagado = cotizacion.total;
       setReservaPendiente(datosReserva);
       setPagoReserva({ id: `RESERVA-${Date.now()}`, monto: cotizacion.total });
     } catch (e) {
@@ -515,7 +514,7 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onRegistr
         </div>
       )}
 
-      {pagoReserva && <ModalPago tipo="reserva" tituloItem={nombre} monto={pagoReserva.monto} idReferencia={pagoReserva.id} metodosGuardados={metodosPago} onCerrar={() => { setPagoReserva(null); setReservaPendiente(null); }} onExito={async () => { if (!reservaPendiente) return; try { const reservaConfirmada = await crearReservaConfirmada(reservaPendiente); const cargadoresActualizados = new Set(estado?.cargadores_reservados || []); if (reservaConfirmada.cargador_id) cargadoresActualizados.add(reservaConfirmada.cargador_id); setEstado((actual) => ({ ...(actual || {}), estacion_ocm_id: ocmId, estado: 'disponible', cargadores_reservados: [...cargadoresActualizados] })); setCargadorSeleccionado(null); window.localStorage.setItem('ev-charge:estaciones-actualizadas', String(Date.now())); window.dispatchEvent(new CustomEvent('ev-charge:estaciones-actualizadas', { detail: { estacionId: ocmId, cargadorId: reservaConfirmada.cargador_id || reservaPendiente.cargador_id } })); notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada correctamente.' }); } catch (e) { await refrescarEstadoEstacion(); notificar({ tipo: 'error', titulo: 'Reserva', mensaje: e instanceof Error ? e.message : 'El pago fue aprobado, pero no se pudo crear la reserva.' }); } finally { setReservaPendiente(null); } }} />}
+      {pagoReserva && <ModalPago tipo="reserva" tituloItem={nombre} monto={pagoReserva.monto} idReferencia={pagoReserva.id} metodosGuardados={metodosPago} onCerrar={() => { setPagoReserva(null); setReservaPendiente(null); }} onExito={async ({ transaccion_id }) => { if (!reservaPendiente) return; try { const reservaConfirmada = await crearReservaConfirmada({ ...reservaPendiente, transaccion_id }); const cargadoresActualizados = new Set(estado?.cargadores_reservados || []); if (reservaConfirmada.cargador_id) cargadoresActualizados.add(reservaConfirmada.cargador_id); setEstado((actual) => ({ ...(actual || {}), estacion_ocm_id: ocmId, estado: 'disponible', cargadores_reservados: [...cargadoresActualizados] })); setCargadorSeleccionado(null); window.localStorage.setItem('ev-charge:estaciones-actualizadas', String(Date.now())); window.dispatchEvent(new CustomEvent('ev-charge:estaciones-actualizadas', { detail: { estacionId: ocmId, cargadorId: reservaConfirmada.cargador_id || reservaPendiente.cargador_id } })); notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada correctamente.' }); } catch (e) { await refrescarEstadoEstacion(); notificar({ tipo: 'error', titulo: 'Reserva', mensaje: e instanceof Error ? e.message : 'El pago fue aprobado, pero no se pudo crear la reserva.' }); } finally { setReservaPendiente(null); } }} />}
 
       <p style={{ fontSize: 10, color: '#444', textAlign: 'center', marginTop: 12 }}>OCM ID: {ocmId}</p>
     </>

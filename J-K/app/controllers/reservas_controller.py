@@ -7,8 +7,9 @@ from app.models.reserva_model import Reservas
 from app.models.estacion_propia_model import EstacionPropia
 from app.models.estado_estacion_model import EstadoEstacion
 from app.models.usuario_model import usuarios
+from app.models.pago_reserva_model import PagosReserva
 from app.models.utils import ahora_utc
-from app.schemas.reservas_schemas import ReservaCreate, ReservaUpdate
+from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate, ReservaUpdate
 from app.controllers.notificaciones_controller import crear_notificacion
 
 
@@ -38,15 +39,16 @@ def listar_mis_reservas(db: Session, usuario_id: str):
     )
 
 
-def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str = "pendiente"):
+def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str = "pendiente", pago: PagosReserva | None = None):
     if estado not in {"pendiente", "activa"}:
         raise HTTPException(status_code=400, detail="Estado de reserva no válido")
+    # Una reserva solo queda activa si viene respaldada por un pago verificado.
+    if estado == "activa" and pago is None:
+        raise HTTPException(status_code=402, detail="La reserva requiere un pago aprobado")
     if _aware(data.fecha_hora_inicio) >= _aware(data.fecha_hora_fin):
         raise HTTPException(status_code=400, detail="Inicio debe ser anterior a Fin")
     if _aware(data.fecha_hora_inicio) < ahora_utc():
         raise HTTPException(status_code=400, detail="No se puede reservar en el pasado")
-    if data.costo_pagado < 0:
-        raise HTTPException(status_code=400, detail="El costo de la reserva no puede ser negativo")
 
     estado_externo = db.query(EstadoEstacion).filter(EstadoEstacion.estacion_ocm_id == data.estacion_ocm_id).first()
     estacion_propia = db.query(EstacionPropia).filter(EstacionPropia.id == data.estacion_ocm_id).first()
@@ -81,13 +83,19 @@ def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str
             detail=f"Cargador ya reservado por {nombre} de {solapada.fecha_hora_inicio.strftime('%H:%M')} a {solapada.fecha_hora_fin.strftime('%H:%M')}",
         )
 
-    datos = data.model_dump()
+    datos = data.model_dump(include=set(ReservaCreate.model_fields))
     datos["cargador_id"] = cargador_id
     datos["estado"] = estado
+    # El importe sale del pago registrado en el servidor, nunca del cliente.
+    datos["costo_pagado"] = float(pago.monto) if pago else 0
     usuario = db.query(usuarios).filter(usuarios.id == usuario_id).first()
     datos["reservante_nombre"] = _nombre_completo(usuario) if usuario and usuario.compartir_nombre_reserva else "Usuario EV Charge"
     reserva = Reservas(usuario_id=usuario_id, **datos)
     db.add(reserva)
+    if pago:
+        db.flush()
+        pago.estado = "usado"
+        pago.reserva_id = reserva.id
     crear_notificacion(
         db,
         usuario_id,
@@ -98,6 +106,23 @@ def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str
     db.commit()
     db.refresh(reserva)
     return reserva
+
+
+def crear_reserva_confirmada(db: Session, usuario_id: str, data: ReservaConfirmadaCreate):
+    pago = (
+        db.query(PagosReserva)
+        .filter(
+            PagosReserva.transaccion_id == data.transaccion_id,
+            PagosReserva.usuario_id == usuario_id,
+        )
+        .with_for_update()
+        .first()
+    )
+    if not pago:
+        raise HTTPException(status_code=402, detail="No encontramos un pago aprobado para esta reserva")
+    if pago.estado != "aprobado" or pago.reserva_id:
+        raise HTTPException(status_code=409, detail="Este pago ya se usó para otra reserva")
+    return crear_reserva(db, usuario_id, data, estado="activa", pago=pago)
 
 
 def actualizar_reserva(db: Session, usuario_id: str, rid: str, data: ReservaUpdate):
@@ -168,6 +193,9 @@ def cancelar_reserva(db: Session, usuario_id: str, rid: str):
     # El pago de la reserva es simulado dentro de EV Charge. Al cancelar,
     # se revierte el importe para que no siga apareciendo como gasto acumulado.
     reserva.costo_pagado = 0
+    pago = db.query(PagosReserva).filter(PagosReserva.reserva_id == reserva.id).first()
+    if pago:
+        pago.estado = "reembolsado"
     detalle_reembolso = f" Se devolvieron ${monto_reembolsado:,.0f} COP." if monto_reembolsado > 0 else " No había un pago asociado para devolver."
     crear_notificacion(db, usuario_id, "Reserva cancelada", f"Cancelaste tu reserva de {reserva.estacion_nombre or reserva.estacion_ocm_id}.", "reserva")
     db.commit()

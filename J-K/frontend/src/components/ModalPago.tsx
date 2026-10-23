@@ -9,7 +9,7 @@ interface ModalPagoProps {
   monto: number;
   idReferencia?: string; // ID de reserva o ID de producto
   onCerrar: () => void;
-  onExito: () => void | Promise<void>;
+  onExito: (pago: { transaccion_id: string }) => void | Promise<void>;
   metodosGuardados?: MetodoPago[];
 }
 
@@ -70,7 +70,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
         metodoNuevoId = nuevo.id;
       }
       // Simulación o petición a backend
-      await axios.post(
+      const { data: pago } = await axios.post<{ transaccion_id: string }>(
         `${API_BASE_URL}/api/pagos/procesar`,
         {
           tipo_pago: tipo,
@@ -87,7 +87,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
 
       setExito(true);
       setTimeout(async () => {
-        await onExito();
+        await onExito(pago);
         onCerrar();
       }, 2000);
     } catch (err: unknown) {

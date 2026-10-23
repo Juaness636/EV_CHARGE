@@ -10,9 +10,13 @@ class ReservaCreate(BaseModel):
     estacion_nombre: str = ""
     fecha_hora_inicio: datetime
     fecha_hora_fin: datetime
-    costo_pagado: float = 0
-    estado: str = "pendiente"
-    reservante_nombre: Optional[str] = None
+    # costo_pagado, estado y reservante_nombre los decide el servidor:
+    # si el cliente los envía, se ignoran.
+
+
+class ReservaConfirmadaCreate(ReservaCreate):
+    # Transacción devuelta por /api/pagos/procesar con tipo_pago="reserva".
+    transaccion_id: str
 
 
 class ReservaUpdate(BaseModel):
@@ -21,9 +25,6 @@ class ReservaUpdate(BaseModel):
     estacion_nombre: Optional[str] = None
     fecha_hora_inicio: Optional[datetime] = None
     fecha_hora_fin: Optional[datetime] = None
-    costo_pagado: Optional[float] = None
-    estado: Optional[str] = None
-    reservante_nombre: Optional[str] = None
 
 
 class ReservaCotizacion(BaseModel):

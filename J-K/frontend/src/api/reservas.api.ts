@@ -8,15 +8,20 @@ export interface ReservaCreate {
   estacion_nombre?: string;
   fecha_hora_inicio: string;
   fecha_hora_fin: string;
-  costo_pagado?: number;
-  estado?: string;
-  reservante_nombre?: string;
+}
+
+// El servidor fija costo_pagado y estado a partir del pago verificado.
+export interface ReservaConfirmadaCreate extends ReservaCreate {
+  transaccion_id: string;
 }
 
 export interface ReservaUpdate extends Partial<ReservaCreate> {}
 
 export interface Reserva extends ReservaCreate {
   id: string;
+  costo_pagado?: number;
+  estado?: string;
+  reservante_nombre?: string;
 }
 
 export async function misReservas(): Promise<Reserva[]> {
@@ -29,7 +34,7 @@ export async function crearReserva(payload: ReservaCreate): Promise<Reserva> {
   return data;
 }
 
-export async function crearReservaConfirmada(payload: ReservaCreate): Promise<Reserva> {
+export async function crearReservaConfirmada(payload: ReservaConfirmadaCreate): Promise<Reserva> {
   const { data } = await api.post<Reserva>('/reservar-confirmada', payload);
   return data;
 }
