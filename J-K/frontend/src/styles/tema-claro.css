@@ -1,0 +1,17 @@
+/* Ajustes de contraste del tema claro (WCAG AA). Se carga después del resto de hojas
+   y usa html:root[data-theme] para ganar a las variables que redefine cada página. */
+html:root[data-theme="light"] {
+  --green: #2a7300;
+  --green-ev: #2a7300;
+  --muted: #474747;
+  --dim: #595959;
+  --text-muted: #475569;
+  --text-dim: #475569;
+}
+
+/* El logo es blanco: en tema claro se oscurece para que se vea sobre fondos claros. */
+html[data-theme="light"] .auth-logo,
+html[data-theme="light"] .productos-brand img {
+  filter: brightness(0) saturate(100%);
+  animation: none;
+}
