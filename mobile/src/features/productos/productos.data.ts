@@ -26,20 +26,29 @@ const imagenes = {
   rapido: require('../../../assets/images/productos/cargador-rapido-150kw.jpg'),
   wallbox: require('../../../assets/images/productos/wallbox-22kw.jpg'),
   portatil: require('../../../assets/images/productos/cargador-portatil-74kw.jpg'),
-  llanta20: require('../../../assets/images/productos/llanta-20.jpg'),
-  llanta22: require('../../../assets/images/productos/llanta-22.jpg'),
-  bateria48: require('../../../assets/images/productos/bateria-48v.jpg'),
-  bateria12: require('../../../assets/images/productos/bateria-12v.jpg'),
-  cable: require('../../../assets/images/productos/cable-tipo2.jpg'),
-  adaptador: require('../../../assets/images/productos/adaptador-ccs2-gbt.jpg'),
+  llanta: require('../../../assets/images/productos/llanta.jpg'),
+  bateria: require('../../../assets/images/productos/bateria.jpg'),
+  cable: require('../../../assets/images/productos/cable.jpg'),
+  adaptador: require('../../../assets/images/productos/adaptador.jpg'),
+};
+
+// Identidad visual de cada categoría en la vitrina: color de acento, luz de estudio y fondo.
+// El escenario de producto siempre es oscuro (estudio fotográfico), también en modo claro.
+export type EstiloCategoria = { acento: string; acentoSuave: string; fondo: [string, string, string]; lema: string };
+
+export const estiloCategoria: Record<CategoriaKey, EstiloCategoria> = {
+  Cargadores: { acento: '#39ff14', acentoSuave: 'rgba(57, 255, 20, 0.16)', fondo: ['#0f2a12', '#070d08', '#020302'], lema: 'Energía' },
+  Llantas: { acento: '#cfd8e3', acentoSuave: 'rgba(207, 216, 227, 0.14)', fondo: ['#2a2f35', '#101215', '#040506'], lema: 'Agarre' },
+  'Baterías': { acento: '#ffb347', acentoSuave: 'rgba(255, 179, 71, 0.16)', fondo: ['#2e1d0c', '#100c08', '#040302'], lema: 'Autonomía' },
+  'Cables y conectores': { acento: '#22d3ee', acentoSuave: 'rgba(34, 211, 238, 0.16)', fondo: ['#08303a', '#061114', '#020405'], lema: 'Conexión' },
 };
 
 export const categoriasProducto: CategoriaKey[] = ['Cargadores', 'Llantas', 'Baterías', 'Cables y conectores'];
 
 export const infoCategorias: Array<{ key: CategoriaKey; descripcion: string; img: ImageSourcePropType; icono: string }> = [
   { key: 'Cargadores', descripcion: 'Cargadores para vehículos eléctricos de diferentes potencias y necesidades.', img: imagenes.rapido, icono: 'charging-station' },
-  { key: 'Llantas', descripcion: 'Llantas diseñadas para ofrecer seguridad y rendimiento en tu vehículo eléctrico.', img: imagenes.llanta20, icono: 'circle-notch' },
-  { key: 'Baterías', descripcion: 'Soluciones de energía y baterías para mejorar la autonomía de tu vehículo.', img: imagenes.bateria48, icono: 'car-battery' },
+  { key: 'Llantas', descripcion: 'Llantas diseñadas para ofrecer seguridad y rendimiento en tu vehículo eléctrico.', img: imagenes.llanta, icono: 'circle-notch' },
+  { key: 'Baterías', descripcion: 'Soluciones de energía y baterías para mejorar la autonomía de tu vehículo.', img: imagenes.bateria, icono: 'car-battery' },
   { key: 'Cables y conectores', descripcion: 'Cables, conectores y accesorios para realizar tus cargas de forma segura.', img: imagenes.cable, icono: 'plug' },
 ];
 
@@ -72,7 +81,7 @@ export const catalogoProductos: ProductoCatalogo[] = [
     garantia: '1 año',
   },
   {
-    nombre: 'Llanta Michelin Pilot Sport EV 20"', desc: 'Alto rendimiento, bajo ruido y diseñada para el torque eléctrico.', monto: 2650000, img: imagenes.llanta20,
+    nombre: 'Llanta Michelin Pilot Sport EV 20"', desc: 'Alto rendimiento, bajo ruido y diseñada para el torque eléctrico.', monto: 2650000, img: imagenes.llanta,
     categoria: 'Llantas', etiqueta: 'Rendimiento', tipo: 'LLANTAS EV', potencia: '20 pulgadas', conector: 'Vehículos eléctricos',
     detalle: 'Llanta deportiva pensada para el par instantáneo de los motores eléctricos. Su compuesto reduce el ruido dentro de la cabina y mantiene el agarre en mojado.',
     destacados: [{ icono: 'volume-low', texto: 'Hasta 20 % menos ruido en cabina' }, { icono: 'gauge-high', texto: 'Soporta el torque instantáneo' }, { icono: 'cloud-rain', texto: 'Agarre superior en mojado' }, { icono: 'road', texto: 'Mayor duración de la banda' }],
@@ -81,7 +90,7 @@ export const catalogoProductos: ProductoCatalogo[] = [
     garantia: '5 años contra defectos de fabricación',
   },
   {
-    nombre: 'Llanta Hankook iON evo 22"', desc: 'Optimiza la autonomía con menor resistencia a la rodadura.', monto: 3200000, img: imagenes.llanta22,
+    nombre: 'Llanta Hankook iON evo 22"', desc: 'Optimiza la autonomía con menor resistencia a la rodadura.', monto: 3200000, img: imagenes.llanta,
     categoria: 'Llantas', etiqueta: 'Eficiencia', tipo: 'LLANTAS EV', potencia: '22 pulgadas', conector: 'Vehículos eléctricos',
     detalle: 'Llanta de baja resistencia a la rodadura que ayuda a sumar kilómetros por carga. Ideal para SUV eléctricos con rines grandes y conducción en carretera.',
     destacados: [{ icono: 'leaf', texto: 'Hasta 7 % más autonomía' }, { icono: 'wind', texto: 'Perfil aerodinámico' }, { icono: 'weight-hanging', texto: 'Estructura reforzada para SUV' }, { icono: 'volume-low', texto: 'Espuma interna antirruido' }],
@@ -90,7 +99,7 @@ export const catalogoProductos: ProductoCatalogo[] = [
     garantia: '5 años contra defectos de fabricación',
   },
   {
-    nombre: 'Módulo de Batería 48V', desc: 'Repuesto de celdas de iones de litio de alta densidad.', monto: 6800000, img: imagenes.bateria48,
+    nombre: 'Módulo de Batería 48V', desc: 'Repuesto de celdas de iones de litio de alta densidad.', monto: 6800000, img: imagenes.bateria,
     categoria: 'Baterías', etiqueta: 'Alto rendimiento', tipo: 'BATERÍA EV', potencia: '48 V', conector: 'Iones de litio',
     detalle: 'Módulo LiFePO4 con sistema de gestión (BMS) integrado que equilibra las celdas y protege contra sobrecarga, descarga profunda y temperatura alta.',
     destacados: [{ icono: 'battery-full', texto: '4,8 kWh de energía útil' }, { icono: 'rotate', texto: 'Más de 6000 ciclos' }, { icono: 'microchip', texto: 'BMS con monitoreo por celda' }, { icono: 'fire-extinguisher', texto: 'Química LiFePO4 más segura' }],
@@ -99,7 +108,7 @@ export const catalogoProductos: ProductoCatalogo[] = [
     garantia: '3 años',
   },
   {
-    nombre: 'Batería Auxiliar 12V EV', desc: 'Soporte para los sistemas electrónicos del vehículo.', monto: 1150000, img: imagenes.bateria12,
+    nombre: 'Batería Auxiliar 12V EV', desc: 'Soporte para los sistemas electrónicos del vehículo.', monto: 1150000, img: imagenes.bateria,
     categoria: 'Baterías', etiqueta: 'Auxiliar', tipo: 'BATERÍA EV', potencia: '12 V', conector: 'Auxiliar',
     detalle: 'Batería AGM sellada que alimenta luces, pantallas y computadores del vehículo. Si falla, el auto no "despierta" aunque la batería principal esté llena.',
     destacados: [{ icono: 'lock', texto: 'Sellada, sin mantenimiento' }, { icono: 'eye', texto: 'Indicador visual de estado' }, { icono: 'snowflake', texto: 'Arranque confiable en frío' }, { icono: 'recycle', texto: 'Reciclamos tu batería usada' }],

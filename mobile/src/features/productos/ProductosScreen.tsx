@@ -20,7 +20,8 @@ import { AppModal, Boton, CampoSelect, CampoTexto, Chips, Icono, Vacio } from '.
 import { Presionable } from '../../components/ui/Presionable';
 import { Aparecer, Resplandor } from '../../components/animacion';
 import { Cuadricula, TextoDegradado, estiloVidrio } from '../../components/efectos';
-import { catalogoProductos, categoriasProducto, type CategoriaKey, type ProductoCatalogo } from './productos.data';
+import { catalogoProductos, categoriasProducto, estiloCategoria, type CategoriaKey, type ProductoCatalogo } from './productos.data';
+import { Escenario } from './Escenario';
 
 type Orden = 'relevancia' | 'precio-menor' | 'precio-mayor' | 'nombre';
 
@@ -153,39 +154,7 @@ export function ProductosScreen() {
         ListFooterComponent={<Text style={s.pie}>© {new Date().getFullYear()} EV Charge · Productos para movilidad eléctrica</Text>}
         renderItem={({ item, index }) => (
           <Aparecer key={`${categoria}-${busqueda}-${orden}-${item.nombre}`} retraso={Math.min(index, 8) * 70} style={{ flex: 1 / columnas }}>
-          <Presionable style={s.tarjeta} elevarAlPasar escalaPresion={0.98} onPress={() => setDetalle(item)} accessibilityLabel={`Ver ${item.nombre}`}>
-            <View style={s.imagenCaja}>
-              <Image source={item.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
-              <LinearGradient colors={['transparent', 'transparent', 'rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFill} />
-              <View style={[s.badge, { left: 12 }]}><Text style={s.badgeTexto}>{item.etiqueta}</Text></View>
-              <View style={[s.badge, s.badgeVidrio, { right: 12 }]}><Text style={[s.badgeTexto, { color: '#fff' }]}>{item.categoria}</Text></View>
-              <View style={s.potenciaFlotante}>
-                <Icono name="bolt" size={11} color={colors.neon} />
-                <Text style={s.potenciaTexto}>{item.potencia}</Text>
-              </View>
-            </View>
-            <View style={{ padding: Spacing.md, gap: 8, flex: 1 }}>
-              <Text style={s.tipo}>{item.tipo}</Text>
-              <Text style={s.nombre}>{item.nombre}</Text>
-              <Text style={s.desc} numberOfLines={2}>{item.desc}</Text>
-              <View style={s.destacadosFila}>
-                {item.destacados.slice(0, 2).map((d) => (
-                  <View key={d.texto} style={s.destacadoChip}>
-                    <Icono name={d.icono} size={10} color={colors.primary} />
-                    <Text style={s.destacadoChipTexto} numberOfLines={1}>{d.texto}</Text>
-                  </View>
-                ))}
-              </View>
-              <View style={s.precioFila}>
-                <Text style={s.precio}>{pesos(item.monto)}</Text>
-                <Text style={s.garantiaMini}><Icono name="shield-halved" size={10} color={colors.textDim} /> {item.garantia}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 'auto' }}>
-                <Boton titulo="Ver ficha" variante="outline" pequeno onPress={() => setDetalle(item)} style={{ flex: 1 }} />
-                <Boton titulo="Comprar" pequeno icono="cart-shopping" onPress={() => void iniciarCompra(item)} style={{ flex: 1 }} />
-              </View>
-            </View>
-          </Presionable>
+          <TarjetaProducto producto={item} indice={index} onVer={() => setDetalle(item)} onComprar={() => void iniciarCompra(item)} />
           </Aparecer>
         )}
       />
@@ -195,8 +164,8 @@ export function ProductosScreen() {
           <View style={[{ gap: Spacing.lg }, escritorio && { flexDirection: 'row', alignItems: 'flex-start' }]}>
             <View style={[{ gap: Spacing.md }, escritorio && { flex: 1.1 }]}>
               <Aparecer desde="escala" duracion={500}>
-                <View style={s.detalleImagen}>
-                  <Image source={detalle.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
+                <View style={[s.detalleImagen, { borderColor: estiloCategoria[detalle.categoria].acentoSuave }]}>
+                  <Escenario producto={detalle} activo grande />
                   <View style={[s.badge, { left: 12 }]}><Text style={s.badgeTexto}>{detalle.etiqueta}</Text></View>
                 </View>
               </Aparecer>
@@ -261,6 +230,60 @@ export function ProductosScreen() {
   );
 }
 
+// Tarjeta de la vitrina: cada categoría tiene su propio acento (borde superior, luz y detalles).
+function TarjetaProducto({ producto, indice, onVer, onComprar }: { producto: ProductoCatalogo; indice: number; onVer: () => void; onComprar: () => void }) {
+  const s = useThemedStyles(crearEstilos);
+  const { colors } = useTheme();
+  const [activo, setActivo] = useState(false);
+  const estilo = estiloCategoria[producto.categoria];
+  // En modo claro los acentos claros (plata, cian, ámbar) no se leen como texto: se usan solo en adornos.
+  const acentoTexto = colors.modo === 'dark' ? estilo.acento : colors.primary;
+  return (
+    <Presionable
+      style={[s.tarjeta, activo && { borderColor: estilo.acentoSuave }]}
+      elevarAlPasar
+      escalaPresion={0.98}
+      onPress={onVer}
+      onHoverIn={() => setActivo(true)}
+      onHoverOut={() => setActivo(false)}
+      onPressIn={() => setActivo(true)}
+      onPressOut={() => setActivo(false)}
+      accessibilityLabel={`Ver ${producto.nombre}`}
+    >
+      <LinearGradient colors={['transparent', estilo.acento, 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.bordeAcento} />
+      <View>
+        <Escenario producto={producto} activo={activo} indice={indice} />
+        <View style={[s.badge, { left: 12 }]}><Text style={s.badgeTexto}>{producto.etiqueta}</Text></View>
+        <View style={[s.potenciaFlotante, { borderColor: estilo.acentoSuave }]}>
+          <Icono name="bolt" size={11} color={estilo.acento} />
+          <Text style={s.potenciaTexto}>{producto.potencia}</Text>
+        </View>
+      </View>
+      <View style={{ padding: Spacing.md, gap: 8, flex: 1 }}>
+        <Text style={[s.tipo, { color: acentoTexto }]}>{producto.tipo}</Text>
+        <Text style={s.nombre}>{producto.nombre}</Text>
+        <Text style={s.desc} numberOfLines={2}>{producto.desc}</Text>
+        <View style={s.destacadosFila}>
+          {producto.destacados.slice(0, 2).map((d) => (
+            <View key={d.texto} style={[s.destacadoChip, colors.modo === 'dark' && { backgroundColor: estilo.acentoSuave }]}>
+              <Icono name={d.icono} size={10} color={acentoTexto} />
+              <Text style={s.destacadoChipTexto} numberOfLines={1}>{d.texto}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={s.precioFila}>
+          <Text style={s.precio}>{pesos(producto.monto)}</Text>
+          <Text style={s.garantiaMini}><Icono name="shield-halved" size={10} color={colors.textDim} /> {producto.garantia}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 'auto' }}>
+          <Boton titulo="Ver ficha" variante="outline" pequeno onPress={onVer} style={{ flex: 1 }} />
+          <Boton titulo="Comprar" pequeno icono="cart-shopping" onPress={onComprar} style={{ flex: 1 }} />
+        </View>
+      </View>
+    </Presionable>
+  );
+}
+
 const iconoCategoria: Record<CategoriaKey, string> = {
   Cargadores: 'charging-station',
   Llantas: 'circle-notch',
@@ -280,11 +303,10 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   ventajaTexto: { color: c.text, fontSize: 12, fontWeight: '700' },
   conteo: { color: c.textDim, fontSize: 12.5, fontWeight: '700' },
   tarjeta: { flex: 1, backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  imagenCaja: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#050806', overflow: 'hidden' },
-  badge: { position: 'absolute', top: 12, backgroundColor: c.primary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeVidrio: { backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  bordeAcento: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, zIndex: 2 },
+  badge: { position: 'absolute', top: 12, zIndex: 3, backgroundColor: c.primary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   badgeTexto: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  potenciaFlotante: { position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(57,255,20,0.35)' },
+  potenciaFlotante: { position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
   potenciaTexto: { color: '#fff', fontSize: 11.5, fontWeight: '800' },
   tipo: { color: c.primary, fontSize: 11.5, fontWeight: '800', letterSpacing: 1.2 },
   nombre: { color: c.text, fontSize: 17, fontWeight: '800', lineHeight: 22 },
@@ -295,7 +317,7 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   precioFila: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginVertical: 4 },
   precio: { color: c.text, fontSize: 20, fontWeight: '900' },
   garantiaMini: { color: c.textDim, fontSize: 11.5, fontWeight: '700' },
-  detalleImagen: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#050806', borderWidth: 1, borderColor: c.primaryBorder },
+  detalleImagen: { width: '100%', borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#050806', borderWidth: 1, borderColor: c.primaryBorder },
   destacadosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   destacadoCaja: { width: '48.5%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.cardElevated, borderRadius: Radius.md, borderWidth: 1, borderColor: c.border, padding: 10 },
   destacadoIcono: { width: 32, height: 32, borderRadius: 10, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center' },

@@ -18,7 +18,8 @@ import { CampanaNotificaciones, Logo, SelectorTema } from '../../components/Cabe
 import { notificar } from '../../components/Notificaciones';
 import { trasCerrarModal } from '../../components/capas';
 import { AppModal, Boton, CampoTexto, Icono } from '../../components/ui';
-import { catalogoProductos, infoCategorias } from '../productos/productos.data';
+import { catalogoProductos, estiloCategoria, infoCategorias } from '../productos/productos.data';
+import { Escenario } from '../productos/Escenario';
 import { pesos } from '../../utils/formato';
 import { Presionable } from '../../components/ui/Presionable';
 import { Aparecer, Flotar, ProveedorRevelar, Resplandor, Revelar, SeccionRevelar, useReducirMovimiento } from '../../components/animacion';
@@ -54,7 +55,7 @@ const cifras = [
 const conectores = ['CCS2', 'Tipo 2', 'CHAdeMO', 'GB/T', 'Tesla NACS', 'Carga rápida DC', 'Wallbox residencial', 'Reservas en línea', 'Rutas inteligentes'];
 
 // Productos que se muestran en el inicio (uno por categoría).
-const destacados = ['Cargador Rápido DC 150 kW', 'Llanta Michelin Pilot Sport EV 20"', 'Módulo de Batería 48V', 'Cable Tipo 2 a Tipo 2 (5 m)']
+const destacados = ['Cargador Portátil 7,4 kW', 'Llanta Michelin Pilot Sport EV 20"', 'Módulo de Batería 48V', 'Adaptador CCS2 a GB/T']
   .map((n) => catalogoProductos.find((p) => p.nombre === n))
   .filter((p): p is (typeof catalogoProductos)[number] => !!p);
 
@@ -240,7 +241,7 @@ export function LandingScreen() {
                 <View style={s.heroMarco}>
                   <LinearGradient colors={[colors.primaryLight, 'rgba(57,169,0,0.1)', colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 30 }]} />
                   <View style={s.heroFoto}>
-                    <Image source={catalogoProductos[0].img} style={StyleSheet.absoluteFill} contentFit="cover" transition={500} />
+                    <Image source={catalogoProductos[1].img} style={StyleSheet.absoluteFill} contentFit="cover" transition={500} />
                     <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
                   </View>
                 </View>
@@ -291,15 +292,17 @@ export function LandingScreen() {
                 elevarAlPasar
                 accessibilityRole="link"
               >
-                <Image source={c.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
-                <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.92)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
-                <View style={s.iconoCategoria}><Icono name={c.icono} size={14} color="#fff" /></View>
+                <Image source={c.img} style={[StyleSheet.absoluteFill, { bottom: 70 }]} contentFit="cover" transition={400} />
+                <LinearGradient colors={['transparent', estiloCategoria[c.key].fondo[1], estiloCategoria[c.key].fondo[2]]} locations={[0.35, 0.7, 1]} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['transparent', estiloCategoria[c.key].acento, 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.bordeAcento} />
+                <View style={[s.iconoCategoria, { backgroundColor: estiloCategoria[c.key].acento }]}><Icono name={c.icono} size={14} color="#04110a" /></View>
+                <Text style={[s.lemaCategoria, { color: estiloCategoria[c.key].acento }]}>{estiloCategoria[c.key].lema}</Text>
                 <View style={s.categoriaTexto}>
                   <Text style={s.categoriaTitulo}>{c.key}</Text>
                   <Text style={s.categoriaDesc} numberOfLines={2}>{c.descripcion}</Text>
                   <View style={s.filaAccion}>
-                    <Text style={[s.accionTexto, { color: colors.neon }]}>Explorar categoría</Text>
-                    <Icono name="arrow-right" size={12} color={colors.neon} />
+                    <Text style={[s.accionTexto, { color: estiloCategoria[c.key].acento }]}>Explorar categoría</Text>
+                    <Icono name="arrow-right" size={12} color={estiloCategoria[c.key].acento} />
                   </View>
                 </View>
               </Presionable>
@@ -318,8 +321,8 @@ export function LandingScreen() {
             {destacados.map((p, i) => (
               <Revelar key={p.nombre} orden={i} style={{ width: anchoTarjeta(colsDestacados) }}>
                 <Presionable style={s.tarjetaProducto} elevarAlPasar escalaPresion={0.98} onPress={() => router.push({ pathname: '/productos', params: { categoria: p.categoria } })} accessibilityRole="link">
-                  <View style={s.productoImgCaja}>
-                    <Image source={p.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
+                  <View>
+                    <Escenario producto={p} indice={i} />
                     <View style={s.productoEtiqueta}><Text style={s.productoEtiquetaTexto}>{p.etiqueta}</Text></View>
                   </View>
                   <View style={{ padding: Spacing.md, gap: 4 }}>
@@ -606,9 +609,9 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   heroDatoSeparado: { borderLeftWidth: 1, borderLeftColor: c.borderStrong },
   heroDatoValor: { color: c.text, fontSize: 22, fontWeight: '900' },
   heroDatoTexto: { color: c.textDim, fontSize: 12, fontWeight: '600' },
-  heroVisual: { width: '100%', maxWidth: 620, alignSelf: 'center' },
+  heroVisual: { width: '100%', maxWidth: 540, alignSelf: 'center' },
   heroMarco: { borderRadius: 30, padding: 2, shadowColor: c.primary, shadowOpacity: 0.45, shadowRadius: 40, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
-  heroFoto: { width: '100%', aspectRatio: 4 / 3, borderRadius: 28, overflow: 'hidden', backgroundColor: '#050806' },
+  heroFoto: { width: '100%', aspectRatio: 1, borderRadius: 28, overflow: 'hidden', backgroundColor: '#050806' },
   flotante: { position: 'absolute', zIndex: 2 },
   flotanteCaja: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 10, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
   flotanteIcono: { width: 30, height: 30, borderRadius: 9, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
@@ -630,17 +633,18 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   seccionTitulo: { color: c.text, fontSize: 28, fontWeight: '900', textAlign: 'center', lineHeight: 35, letterSpacing: -0.3 },
   seccionSub: { color: c.textMuted, fontSize: 14.5, textAlign: 'center', lineHeight: 21 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO },
-  tarjetaCategoria: { height: 300, borderRadius: Radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: '#050806', justifyContent: 'flex-end', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  tarjetaCategoria: { height: 360, borderRadius: Radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: '#050806', justifyContent: 'flex-end', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
   categoriaTexto: { padding: Spacing.md, gap: 6 },
   categoriaTitulo: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  categoriaDesc: { color: 'rgba(255,255,255,0.78)', fontSize: 13, lineHeight: 19 },
+  categoriaDesc: { color: 'rgba(255,255,255,0.8)', fontSize: 13, lineHeight: 19 },
   tarjetaTitulo: { color: c.text, fontSize: 16, fontWeight: '800' },
   tarjetaTexto: { color: c.textMuted, fontSize: 13.5, lineHeight: 20 },
   filaAccion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   accionTexto: { color: c.primary, fontWeight: '800', fontSize: 13 },
   tarjetaProducto: { backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
-  productoImgCaja: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#050806' },
-  productoEtiqueta: { position: 'absolute', top: 12, left: 12, backgroundColor: c.primary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
+  bordeAcento: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
+  lemaCategoria: { position: 'absolute', top: 20, right: 16, fontSize: 11, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase' },
+  productoEtiqueta: { position: 'absolute', zIndex: 3, top: 12, left: 12, backgroundColor: c.primary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   productoEtiquetaTexto: { color: '#fff', fontSize: 11, fontWeight: '800' },
   productoTipo: { color: c.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   productoPrecio: { color: c.text, fontSize: 18, fontWeight: '900' },
