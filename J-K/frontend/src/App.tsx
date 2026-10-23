@@ -80,21 +80,21 @@ const preguntasFrecuentes = [
 
 const productosPorCategoria: Record<CategoriaKey, ProductoCompra[]> = {
   'Cargadores': [
-    { nombre: 'Cargador Rápido DC 150 kW', desc: 'Ideal para estaciones comerciales de carga ultra rápida.', precio: '$165.000.000 COP', monto: 165000000, img: '/img/cargador-rapido-150kw.png' },
-    { nombre: 'Wallbox Inteligente 22 kW', desc: 'La solución compacta perfecta para tu casa o garaje.', precio: '$7.800.000 COP', monto: 7800000, img: '/img/wallbox-22kw.png' },
-    { nombre: 'Cargador Portátil 7.4 kW', desc: 'Llévalo contigo en el baúl a todas partes.', precio: '$2.400.000 COP', monto: 2400000, img: '/img/cargador-portatil-74kw.png' }
+    { nombre: 'Cargador Rápido DC 150 kW', desc: 'Ideal para estaciones comerciales de carga ultra rápida.', precio: '$165.000.000 COP', monto: 165000000, img: '/img/productos/cargador-rapido-150kw.jpg' },
+    { nombre: 'Wallbox Inteligente 22 kW', desc: 'La solución compacta perfecta para tu casa o garaje.', precio: '$7.800.000 COP', monto: 7800000, img: '/img/productos/wallbox-22kw.jpg' },
+    { nombre: 'Cargador Portátil 7.4 kW', desc: 'Llévalo contigo en el baúl a todas partes.', precio: '$2.400.000 COP', monto: 2400000, img: '/img/productos/cargador-portatil-74kw.jpg' }
   ],
   'Llantas': [
-    { nombre: 'Llanta Michelin Pilot Sport EV 20"', desc: 'Alto rendimiento, bajo ruido y diseñada para el torque eléctrico.', precio: '$2.650.000 COP', monto: 2650000, img: '/img/productos/llanta-20.jpg' },
-    { nombre: 'Llanta Hankook iON evo 22"', desc: 'Optimiza la autonomía de la batería con menor resistencia a la rodadura.', precio: '$3.200.000 COP', monto: 3200000, img: '/img/productos/llanta-22.jpg' }
+    { nombre: 'Llanta Michelin Pilot Sport EV 20"', desc: 'Alto rendimiento, bajo ruido y diseñada para el torque eléctrico.', precio: '$2.650.000 COP', monto: 2650000, img: '/img/productos/llanta.jpg' },
+    { nombre: 'Llanta Hankook iON evo 22"', desc: 'Optimiza la autonomía de la batería con menor resistencia a la rodadura.', precio: '$3.200.000 COP', monto: 3200000, img: '/img/productos/llanta.jpg' }
   ],
   'Baterías': [
-    { nombre: 'Módulo de Batería 48V', desc: 'Repuesto original de celdas de iones de litio de alta densidad.', precio: '$6.800.000 COP', monto: 6800000, img: '/img/productos/bateria-48v.jpg' },
-    { nombre: 'Batería Auxiliar 12V EV', desc: 'Soporte para los sistemas electrónicos y pantalla del vehículo.', precio: '$1.150.000 COP', monto: 1150000, img: '/img/productos/bateria-12v.jpg' }
+    { nombre: 'Módulo de Batería 48V', desc: 'Repuesto original de celdas de iones de litio de alta densidad.', precio: '$6.800.000 COP', monto: 6800000, img: '/img/productos/bateria.jpg' },
+    { nombre: 'Batería Auxiliar 12V EV', desc: 'Soporte para los sistemas electrónicos y pantalla del vehículo.', precio: '$1.150.000 COP', monto: 1150000, img: '/img/productos/bateria.jpg' }
   ],
   'Cables y conectores': [
-    { nombre: 'Cable Tipo 2 a Tipo 2 (5m)', desc: 'Soporta carga trifásica de hasta 22kW.', precio: '$1.350.000 COP', monto: 1350000, img: '/img/productos/cable-tipo2.jpg' },
-    { nombre: 'Adaptador CCS2 a GB/T', desc: 'Compatibilidad total con el estándar de carga chino.', precio: '$2.400.000 COP', monto: 2400000, img: '/img/productos/adaptador-ccs2-gbt.jpg' }
+    { nombre: 'Cable Tipo 2 a Tipo 2 (5m)', desc: 'Soporta carga trifásica de hasta 22kW.', precio: '$1.350.000 COP', monto: 1350000, img: '/img/productos/cable.jpg' },
+    { nombre: 'Adaptador CCS2 a GB/T', desc: 'Compatibilidad total con el estándar de carga chino.', precio: '$2.400.000 COP', monto: 2400000, img: '/img/productos/adaptador.jpg' }
   ]
 };
 
@@ -617,25 +617,25 @@ function App() {
 
           <div className="categoria-grid">
             <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Cargadores')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Cargadores'); }}>
-              <div className="categoria-img-box"><img src="/img/wallbox-22kw.png" alt="Cargadores" className="categoria-img" loading="lazy" decoding="async" /></div>
+              <div className="categoria-img-box"><img src="/img/productos/wallbox-22kw.jpg" alt="Cargadores" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Cargadores</h3>
               <p>Cargadores para vehículos eléctricos de diferentes potencias y necesidades.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
             </div>
             <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Llantas')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Llantas'); }}>
-              <div className="categoria-img-box"><img src="/img/productos/llanta-20.jpg" alt="Llantas" className="categoria-img" loading="lazy" decoding="async" /></div>
+              <div className="categoria-img-box"><img src="/img/productos/llanta.jpg" alt="Llantas" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Llantas</h3>
               <p>Llantas diseñadas para ofrecer seguridad y rendimiento en tu vehículo eléctrico.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
             </div>
             <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Baterías')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Baterías'); }}>
-              <div className="categoria-img-box"><img src="/img/productos/bateria-48v.jpg" alt="Baterias" className="categoria-img" loading="lazy" decoding="async" /></div>
+              <div className="categoria-img-box"><img src="/img/productos/bateria.jpg" alt="Baterias" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Baterías</h3>
               <p>Soluciones de energía y baterías para mejorar la autonomía de tu vehículo.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
             </div>
             <div className="categoria-card reveal" role="link" tabIndex={0} onClick={() => navigate('/productos?categoria=Cables%20y%20conectores')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate('/productos?categoria=Cables%20y%20conectores'); }}>
-              <div className="categoria-img-box"><img src="/img/productos/cable-tipo2.jpg" alt="Cables y Conectores" className="categoria-img" loading="lazy" decoding="async" /></div>
+              <div className="categoria-img-box"><img src="/img/productos/cable.jpg" alt="Cables y Conectores" className="categoria-img" loading="lazy" decoding="async" /></div>
               <h3>Cables y conectores</h3>
               <p>Cables, conectores y accesorios para realizar tus cargas de forma segura.</p>
               <span className="categoria-action">Explorar categoría <i className="fa-solid fa-arrow-right"></i></span>
