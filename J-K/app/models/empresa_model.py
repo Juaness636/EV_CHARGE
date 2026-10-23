@@ -23,6 +23,9 @@ class Empresa(Base):
     descripcion = Column(Text, nullable=True)
     color_hex = Column(String(7), nullable=False, default="#16a34a")
     logo_url = Column(String, nullable=True)
+    # Palabras separadas por coma ("enel x, enelx"): las estaciones de la API cuyo nombre u
+    # operador las contenga pasan a esta empresa (ver utils/estaciones_empresa.py).
+    palabras_clave = Column(String, nullable=True)
     estado = Column(String, nullable=False, default=EMPRESA_PENDIENTE)
     creada_por_admin = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=ahora_utc)

@@ -8,9 +8,10 @@ from app.controllers.notificaciones_controller import crear_notificacion
 from app.models.empresa_model import Empresa
 from app.models.estacion_propia_model import EstacionPropia
 from app.models.usuario_model import usuarios
-from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaUpdate
+from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaPalabrasUpdate, EmpresaUpdate
 from app.utils.constantes import EMPRESA_APROBADA, ESTADOS_EMPRESA, ROL_ADMIN, ROL_EMPRESA
 from app.utils.jwt import get_current_user, require_empresa
+from app.utils.estaciones_empresa import lista_palabras
 from app.utils.security import hash_password, verify_password
 
 
@@ -107,6 +108,7 @@ def _con_totales(db: Session, empresas: list[Empresa]) -> list[dict]:
             "color_hex": e.color_hex,
             "logo_url": e.logo_url,
             "estado": e.estado,
+            "palabras_clave": e.palabras_clave,
             "created_at": e.created_at,
             "total_estaciones": conteos.get(e.id, 0),
             "usuario_email": correos.get(e.usuario_id),
@@ -186,12 +188,41 @@ def _vincular_usuario_existente(db: Session, correo: str) -> usuarios:
     return usuario
 
 
+def _validar_palabras_libres(db: Session, palabras_clave: str | None, empresa_id: str | None = None):
+    """Una palabra clave no puede ser de dos empresas: cada estación tendría dos dueños."""
+    nuevas = lista_palabras(palabras_clave)
+    if not nuevas:
+        return
+    otras = db.query(Empresa).filter(Empresa.palabras_clave.isnot(None))
+    if empresa_id:
+        otras = otras.filter(Empresa.id != empresa_id)
+    for otra in otras.all():
+        repetidas = [p for p in nuevas if any(p in suya or suya in p for suya in lista_palabras(otra.palabras_clave))]
+        if repetidas:
+            raise HTTPException(
+                status_code=400,
+                detail=f"La palabra clave \"{repetidas[0]}\" choca con la empresa {otra.nombre_comercial}. Usa una más específica.",
+            )
+
+
+def actualizar_palabras_empresa(eid: str, data: EmpresaPalabrasUpdate, db: Session):
+    empresa = db.query(Empresa).filter(Empresa.id == eid).first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada.")
+    _validar_palabras_libres(db, data.palabras_clave, empresa.id)
+    empresa.palabras_clave = data.palabras_clave
+    db.commit()
+    db.refresh(empresa)
+    return _con_totales(db, [empresa])[0]
+
+
 def crear_empresa(data: EmpresaCrear, db: Session):
     """Crea la empresa con una cuenta nueva (rol=empresa) o vinculando un usuario existente."""
     from app.controllers.auth_controller import validar_password_fuerte
 
     if data.nit and db.query(Empresa).filter(Empresa.nit == data.nit).first():
         raise HTTPException(status_code=400, detail="Ya existe una empresa registrada con ese NIT.")
+    _validar_palabras_libres(db, data.palabras_clave)
 
     # Mismo criterio que registro y login de Avanze: el correo se guarda en minúsculas.
     if data.usuario_existente_email:
@@ -226,6 +257,7 @@ def crear_empresa(data: EmpresaCrear, db: Session):
         color_hex=data.color_hex,
         logo_url=data.logo_url,
         estado=data.estado,
+        palabras_clave=data.palabras_clave,
         creada_por_admin=True,
     )
     db.add(empresa)

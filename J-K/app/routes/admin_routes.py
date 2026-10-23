@@ -6,13 +6,14 @@ from app.config.database import get_db
 from app.utils.jwt import require_admin
 from app.controllers import admin_controller as ctrl
 from app.controllers.empresa_controller import (
+    actualizar_palabras_empresa,
     cambiar_estado_empresa,
     crear_empresa,
     listar_empresas_admin,
     obtener_empresa_admin,
 )
 from app.schemas.auth_schemas import UsuarioOut
-from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaOut
+from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaOut, EmpresaPalabrasUpdate
 from app.schemas.admin_schema import (
     AdminEstadisticas,
     EstacionPropiaCreate,
@@ -179,3 +180,8 @@ def admin_empresa_detalle(eid: str, admin=Depends(require_admin), db: Session = 
 @router.patch("/empresas/{eid}/estado", response_model=EmpresaOut)
 def admin_empresa_estado(eid: str, data: EmpresaEstadoUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return cambiar_estado_empresa(eid, data, db)
+
+
+@router.patch("/empresas/{eid}/palabras-clave", response_model=EmpresaOut)
+def admin_empresa_palabras(eid: str, data: EmpresaPalabrasUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return actualizar_palabras_empresa(eid, data, db)

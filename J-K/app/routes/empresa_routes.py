@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.controllers import (
     empresa_estadisticas_controller as estadisticas,
+    empresa_estaciones_api_controller as estaciones_api,
     empresa_estaciones_controller as estaciones,
     empresa_fotos_controller as fotos,
     empresa_incidentes_controller as incidentes,
@@ -29,6 +30,7 @@ from app.controllers.empresa_controller import (
     operar,
 )
 from app.controllers.historial_controller import listar_historial
+from app.schemas.admin_schema import EstadoUpdate as AdminEstadoUpdate
 from app.schemas.auth_schemas import PasswordUpdate
 from app.schemas.empresa_estadisticas_schema import (
     DashboardEmpresaOut,
@@ -106,6 +108,18 @@ def perfil_password(data: PasswordUpdate, ctx: dict = Depends(get_current_user_e
 @router.get("/estaciones", response_model=list[EstacionEmpresaOut])
 def estaciones_listar(ctx: dict = Depends(get_current_user_empresa), db: Session = Depends(get_db)):
     return estaciones.listar_estaciones_empresa(ctx, db)
+
+
+# Estaciones de la API (OpenChargeMap) asignadas por palabras clave. Van antes de
+# /estaciones/{estacion_id} para que "api" no se tome como un id.
+@router.get("/estaciones/api")
+def estaciones_api_listar(ctx: dict = Depends(get_current_user_empresa), db: Session = Depends(get_db)):
+    return estaciones_api.listar_estaciones_api_empresa(ctx, db)
+
+
+@router.patch("/estaciones/api/{estacion_id}/estado")
+def estaciones_api_estado(estacion_id: str, data: AdminEstadoUpdate, ctx: dict = Depends(operar), db: Session = Depends(get_db)):
+    return estaciones_api.cambiar_estado_estacion_api_empresa(estacion_id, data, ctx, db)
 
 
 @router.post("/estaciones", response_model=EstacionEmpresaOut)

@@ -271,6 +271,8 @@ export interface EmpresaCrear {
   color_hex: string;
   logo_url?: string;
   estado?: 'pendiente' | 'aprobada' | 'suspendida';
+  // Palabras para asignarle estaciones de la API, separadas por coma ("enel x, enelx").
+  palabras_clave?: string;
   // Cuenta de acceso: una nueva (nombre + correo + contraseña) o un usuario ya registrado.
   usuario_nombre?: string;
   usuario_apellido?: string;
@@ -291,6 +293,11 @@ export async function obtenerEmpresaAdmin(id: string): Promise<EmpresaPerfil> {
 
 export async function crearEmpresaAdmin(payload: EmpresaCrear): Promise<EmpresaPerfil> {
   const { data } = await api.post<EmpresaPerfil>('/admin/empresas', payload);
+  return data;
+}
+
+export async function cambiarPalabrasEmpresaAdmin(id: string, palabrasClave: string): Promise<EmpresaPerfil> {
+  const { data } = await api.patch<EmpresaPerfil>(`/admin/empresas/${id}/palabras-clave`, { palabras_clave: palabrasClave });
   return data;
 }
 

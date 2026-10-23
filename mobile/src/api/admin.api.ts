@@ -257,6 +257,7 @@ export interface EmpresaCrear {
   email_contacto?: string;
   color_hex: string;
   estado?: EstadoEmpresa;
+  palabras_clave?: string;
   // Cuenta de acceso: una nueva (nombre + correo + contraseña) o un usuario ya registrado.
   usuario_nombre?: string;
   usuario_apellido?: string;
@@ -272,6 +273,11 @@ export async function listarEmpresasAdmin(params: { busqueda?: string; estado?: 
 
 export async function crearEmpresaAdmin(payload: EmpresaCrear): Promise<EmpresaPerfil> {
   const { data } = await api.post<EmpresaPerfil>('/admin/empresas', payload);
+  return data;
+}
+
+export async function cambiarPalabrasEmpresaAdmin(id: string, palabrasClave: string): Promise<EmpresaPerfil> {
+  const { data } = await api.patch<EmpresaPerfil>(`/admin/empresas/${id}/palabras-clave`, { palabras_clave: palabrasClave });
   return data;
 }
 

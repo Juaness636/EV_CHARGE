@@ -23,6 +23,9 @@ import {
   type EstacionEmpresaCreate,
   type EstadoCargador,
   type EstadoEstacion,
+  listarEstacionesApiEmpresa,
+  cambiarEstadoEstacionApiEmpresa,
+  type EstacionApiEmpresa,
 } from '../../api/empresa.api';
 import { fecha, estadoClase } from './comunes';
 
@@ -268,5 +271,59 @@ function Contenido() {
         {' '}<button type="button" className="btn-tbl" onClick={() => setMotivoOp(null)}>Cancelar</button>
       </div>
     </form>}
+
+    <EstacionesApi />
   </>;
+}
+
+// Estaciones del mapa (OpenChargeMap) que el admin asignó a la empresa con palabras clave.
+// No se crean ni se borran aquí: la empresa solo ve cuáles son suyas y les cambia el estado.
+function EstacionesApi() {
+  const { perfil, puedeOperar } = useEmpresa();
+  const [lista, setLista] = useState<EstacionApiEmpresa[] | null>(null);
+  const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
+
+  useEffect(() => {
+    listarEstacionesApiEmpresa()
+      .then(setLista)
+      .catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar las estaciones del mapa.'));
+  }, []);
+
+  const cambiar = async (estacion: EstacionApiEmpresa, estado: EstacionApiEmpresa['estado']) => {
+    setError('');
+    setMensaje('');
+    try {
+      await cambiarEstadoEstacionApiEmpresa(estacion.id, estado);
+      setLista((actual) => (actual || []).map((e) => (e.id === estacion.id ? { ...e, estado } : e)));
+      setMensaje(`${estacion.nombre} quedó en estado ${estado}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cambiar el estado.');
+    }
+  };
+
+  return <section style={{ marginTop: 28 }}>
+    <h2>Estaciones del mapa asignadas</h2>
+    <p>{perfil?.palabras_clave
+      ? `Son las estaciones del mapa cuyo nombre u operador contiene: ${perfil.palabras_clave}.`
+      : 'El administrador aun no te asigno palabras clave, asi que no tienes estaciones del mapa.'}</p>
+    {error && <div className="alert alert-error">{error}</div>}
+    {mensaje && <div className="alert alert-success">{mensaje}</div>}
+    {lista === null && !error ? <p className="empty">Cargando...</p> : lista && lista.length > 0 ? (
+      <Table headers={['Estacion', 'Ciudad', 'Operador', 'Estado']}>
+        {lista.map((e) => <tr key={e.id}>
+          <td><strong>{e.nombre}</strong><br /><small>{e.direccion}</small></td>
+          <td>{e.ciudad || '-'}</td>
+          <td>{e.operador}</td>
+          <td>
+            <select value={e.estado} disabled={!puedeOperar} onChange={(ev) => void cambiar(e, ev.target.value as EstacionApiEmpresa['estado'])}>
+              <option value="activa">Activa</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="inactiva">Inactiva</option>
+            </select>
+          </td>
+        </tr>)}
+      </Table>
+    ) : perfil?.palabras_clave ? <p className="empty">Ninguna estacion del mapa coincide con tus palabras clave.</p> : null}
+  </section>;
 }

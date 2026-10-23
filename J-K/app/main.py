@@ -80,6 +80,7 @@ with engine.begin() as connection:
         "END IF; END $$"
     ))
     connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS empresa_id VARCHAR REFERENCES empresas(id) ON DELETE CASCADE"))
+    connection.execute(text("ALTER TABLE empresas ADD COLUMN IF NOT EXISTS palabras_clave VARCHAR"))
     connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS eliminada BOOLEAN NOT NULL DEFAULT FALSE"))
     connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN tipo_conector DROP NOT NULL"))
     connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN potencia_kw DROP NOT NULL"))

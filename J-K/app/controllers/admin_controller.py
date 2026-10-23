@@ -21,6 +21,7 @@ from app.controllers.notificaciones_controller import crear_notificacion
 from app.controllers.empresa_controller import marca_empresa
 from app.controllers.empresa_fotos_controller import urls_fotos_por_estacion
 from app.utils.constantes import EMPRESA_APROBADA, EMPRESA_PENDIENTE, ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
+from app.utils.estaciones_empresa import empresa_por_texto, lista_palabras
 import os
 import requests
 import time
@@ -347,6 +348,11 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
                 externas.extend(tarea.result())
         _ESTACIONES_OCM_CACHE = (ahora, externas)
     overrides = {item.estacion_ocm_id: item for item in db.query(EstadoEstacion).all()}
+    # Estaciones de la API que pasan a una empresa por sus palabras clave ("enel x", "terpel").
+    empresas_con_palabras = [
+        (empresa, lista_palabras(empresa.palabras_clave))
+        for empresa in db.query(Empresa).filter(Empresa.palabras_clave.isnot(None)).all()
+    ]
     resultado = []
     ids_procesados = set()
     for estacion, ciudad in externas:
@@ -359,6 +365,15 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
         if override and override.eliminada:
             continue
         ciudad_real = info.get("Town") or info.get("City") or ciudad
+        duena = empresa_por_texto(
+            " ".join(filter(None, [
+                info.get("Title"),
+                override.nombre if override else None,
+                (estacion.get("OperatorInfo") or {}).get("Title"),
+                override.operador if override else None,
+            ])),
+            empresas_con_palabras,
+        )
         resultado.append({
             "id": eid,
             "nombre": (override.nombre if override and override.nombre else info.get("Title", "Estación")),
@@ -373,6 +388,7 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             "ciudad": ciudad_real,
             "departamento": info.get("StateOrProvince", ""),
             "origen": "OpenChargeMap",
+            "empresa": marca_empresa(duena),
             "conectores": [
                 {
                     "tipo": (conector.get("ConnectionType") or {}).get("Title", "No especificado"),
@@ -449,12 +465,16 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
 
 
 def listar_estaciones_mapa(db: Session):
-    estaciones = [
-        estacion
-        for estacion in listar_estaciones_ocm_admin(db)
-        # RN-E11: una empresa pendiente o suspendida no publica sus estaciones en el mapa.
-        if not estacion.get("empresa") or estacion["empresa"]["estado"] == EMPRESA_APROBADA
-    ]
+    estaciones = []
+    for estacion in listar_estaciones_ocm_admin(db):
+        empresa = estacion.get("empresa")
+        if empresa and empresa["estado"] != EMPRESA_APROBADA:
+            # RN-E11: una empresa pendiente o suspendida no publica sus estaciones en el mapa.
+            # Las de la API sí siguen visibles (existen de verdad), solo sin la marca de la empresa.
+            if estacion.get("origen") != "OpenChargeMap":
+                continue
+            estacion = {**estacion, "empresa": None}
+        estaciones.append(estacion)
     return [{
         "ID": estacion["id"],
         "AddressInfo": {

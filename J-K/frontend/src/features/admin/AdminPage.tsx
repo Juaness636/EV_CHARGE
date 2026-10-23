@@ -14,7 +14,7 @@ import {
   type EstacionCargadorData,
   type AdminEstadisticas, type AdminReservaDetail, type ReporteAdmin, type CalificacionAdmin, type ContactoAdmin,
   type UserAdmin, type AdminNotificacion,
-  listarEmpresasAdmin, crearEmpresaAdmin, cambiarEstadoEmpresaAdmin, type EmpresaCrear, type MarcaEmpresa,
+  listarEmpresasAdmin, crearEmpresaAdmin, cambiarEstadoEmpresaAdmin, cambiarPalabrasEmpresaAdmin, type EmpresaCrear, type MarcaEmpresa,
 } from '../../api/admin.api';
 import { LONGITUD_MINIMA_MOTIVO, type EmpresaPerfil, type EstadoEmpresa } from '../../api/empresa.api';
 
@@ -391,7 +391,7 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
 function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Promise<unknown>) => Promise<void> }) {
   const vacio: EmpresaCrear = {
     nombre_comercial: '', razon_social: '', nit: '', telefono: '', email_contacto: '', direccion_sede: '',
-    descripcion: '', color_hex: '#16a34a', usuario_nombre: '', usuario_apellido: '', usuario_email: '', usuario_password: '',
+    descripcion: '', color_hex: '#16a34a', palabras_clave: '', usuario_nombre: '', usuario_apellido: '', usuario_email: '', usuario_password: '',
   };
   const [form, setForm] = useState<EmpresaCrear>(vacio);
   const [modoCuenta, setModoCuenta] = useState<'nueva' | 'existente'>('nueva');
@@ -399,6 +399,7 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | EstadoEmpresa>('todos');
   const [motivoOp, setMotivoOp] = useState<{ id: string; nombre: string; estado: EstadoEmpresa } | null>(null);
   const [motivo, setMotivo] = useState('');
+  const [palabrasOp, setPalabrasOp] = useState<{ id: string; nombre: string; valor: string } | null>(null);
 
   const filtradas = rows.filter((e) => {
     const texto = `${e.nombre_comercial} ${e.razon_social || ''} ${e.nit || ''} ${e.email_contacto || ''}`.toLowerCase();
@@ -420,6 +421,7 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
       nombre_comercial: form.nombre_comercial.trim(),
       // Campos opcionales vacíos se omiten: el backend valida NIT y correo solo si vienen.
       nit: form.nit?.trim() || undefined,
+      palabras_clave: form.palabras_clave?.trim() || undefined,
       email_contacto: form.email_contacto?.trim() || undefined,
       estado: form.estado ?? 'aprobada',
     }));
@@ -441,7 +443,7 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
     <form className="admin-form-grid station-form" onSubmit={handleSubmit}>
       {campo('nombre_comercial', 'Nombre comercial')}
       {campo('razon_social', 'Razon social')}
-      {campo('nit', 'NIT')}
+      {campo('nit', 'NIT (opcional, solo referencia)')}
       {campo('telefono', 'Telefono')}
       {campo('email_contacto', 'Correo de contacto', 'email')}
       {campo('direccion_sede', 'Direccion de la sede')}
@@ -452,6 +454,10 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
         <option value="pendiente">Pendiente</option>
       </select></div>
       <div className="full-width"><label>Descripcion</label><textarea rows={3} value={form.descripcion ?? ''} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} /></div>
+      <div className="full-width"><label>Palabras clave de sus estaciones (separadas por coma)</label>
+        <input value={form.palabras_clave ?? ''} onChange={(e) => setForm({ ...form, palabras_clave: e.target.value })} placeholder="enel x, enelx" />
+        <small>Toda estacion del mapa cuyo nombre u operador contenga una de estas palabras pasa a esta empresa.</small>
+      </div>
       <div className="full-width"><label>Cuenta de acceso</label><select value={modoCuenta} onChange={(e) => setModoCuenta(e.target.value as 'nueva' | 'existente')}>
         <option value="nueva">Crear una cuenta nueva</option>
         <option value="existente">Vincular un usuario ya registrado</option>
@@ -474,18 +480,35 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
       </div>
     </div>
 
-    <Table headers={['Empresa', 'Contacto', 'Estaciones', 'Estado', 'Acciones']}>
+    <Table headers={['Empresa', 'Contacto', 'Estaciones', 'Palabras clave', 'Estado', 'Acciones']}>
       {filtradas.map((e) => <tr key={e.id}>
         <td><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: e.color_hex, marginRight: 6 }} /><strong>{e.nombre_comercial}</strong><br /><small>{e.razon_social || 'Sin razon social'}{e.nit ? ` - NIT ${e.nit}` : ''}</small></td>
         <td>{e.email_contacto || e.telefono || 'Sin contacto'}<br /><small>Acceso: {e.usuario_email || 'Sin correo'}</small><br /><small>{e.direccion_sede || 'Sin direccion'}</small></td>
         <td>{e.total_estaciones}</td>
+        <td>{e.palabras_clave || <small>Sin palabras</small>}</td>
         <td><span className={`status-badge ${getStatusClass(e.estado)}`}>{e.estado}</span></td>
         <td>
           {e.estado !== 'aprobada' && <button className="btn-tbl" onClick={() => void run(() => cambiarEstadoEmpresaAdmin(e.id, 'aprobada'))}>Aprobar</button>}
           {e.estado !== 'suspendida' && <button className="btn-tbl danger" onClick={() => { setMotivoOp({ id: e.id, nombre: e.nombre_comercial, estado: 'suspendida' }); setMotivo(''); }}>Suspender</button>}
+          <button className="btn-tbl" onClick={() => setPalabrasOp({ id: e.id, nombre: e.nombre_comercial, valor: e.palabras_clave || '' })}>Palabras clave</button>
         </td>
       </tr>)}
     </Table>
+
+    {palabrasOp && <form className="admin-form-grid" onSubmit={(event) => {
+      event.preventDefault();
+      void run(() => cambiarPalabrasEmpresaAdmin(palabrasOp.id, palabrasOp.valor)).then(() => setPalabrasOp(null));
+    }} style={{ marginTop: 20 }}>
+      <div className="full-width">
+        <label>{`Palabras clave de ${palabrasOp.nombre} (separadas por coma)`}</label>
+        <input value={palabrasOp.valor} onChange={(e) => setPalabrasOp({ ...palabrasOp, valor: e.target.value })} placeholder="enel x, enelx" />
+        <small>Las estaciones del mapa cuyo nombre u operador contenga una de estas palabras pasan a esta empresa.</small>
+      </div>
+      <div className="full-width station-form-actions">
+        <button type="submit" className="btn-save-estacion">Guardar</button>
+        {' '}<button type="button" className="btn-tbl" onClick={() => setPalabrasOp(null)}>Cancelar</button>
+      </div>
+    </form>}
 
     {motivoOp && <form className="admin-form-grid" onSubmit={(event) => { event.preventDefault(); void confirmarMotivo(); }} style={{ marginTop: 20 }}>
       <div className="full-width">

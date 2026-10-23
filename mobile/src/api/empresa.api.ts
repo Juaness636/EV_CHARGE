@@ -43,6 +43,8 @@ export interface EmpresaPerfil {
   color_hex: string;
   logo_url?: string | null;
   estado: EstadoEmpresa;
+  // Palabras con las que se le asignan estaciones de la API ("enel x, enelx").
+  palabras_clave?: string | null;
   created_at: string;
   total_estaciones: number;
   usuario_email?: string | null;
@@ -521,5 +523,30 @@ export async function listarResenas(
   params: { estacion_id?: string; puntaje?: number; desde?: string; hasta?: string; page?: number; limit?: number } = {},
 ): Promise<ResenasEmpresa> {
   const { data } = await api.get<ResenasEmpresa>('/empresa/resenas', { params });
+  return data;
+}
+
+// Estaciones de OpenChargeMap asignadas a la empresa por sus palabras clave.
+// No se crean ni se borran desde aquí: solo se consulta y se cambia su estado.
+export interface EstacionApiEmpresa {
+  id: string;
+  nombre: string;
+  direccion: string;
+  operador: string;
+  ciudad: string;
+  departamento: string;
+  lat: number;
+  lon: number;
+  estado: 'activa' | 'mantenimiento' | 'inactiva';
+  conectores: number;
+}
+
+export async function listarEstacionesApiEmpresa(): Promise<EstacionApiEmpresa[]> {
+  const { data } = await api.get<EstacionApiEmpresa[]>('/empresa/estaciones/api', { timeout: 45000 });
+  return data;
+}
+
+export async function cambiarEstadoEstacionApiEmpresa(id: string, estado: EstacionApiEmpresa['estado']): Promise<{ estado: string }> {
+  const { data } = await api.patch<{ estado: string }>(`/empresa/estaciones/api/${id}/estado`, { estado });
   return data;
 }
