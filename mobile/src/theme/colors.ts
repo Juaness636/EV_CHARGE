@@ -14,6 +14,7 @@ export interface Palette {
   textDim: string;
   primary: string;
   primaryDim: string;
+  primaryLight: string;
   primarySoft: string;
   primaryBorder: string;
   neon: string;
@@ -25,11 +26,14 @@ export interface Palette {
   info: string;
   infoSoft: string;
   overlay: string;
+  glass: string;
+  glassBorder: string;
 }
 
 const base = {
   primary: '#39a900',
   primaryDim: '#2c8200',
+  primaryLight: '#6ee03a',
   primarySoft: 'rgba(57, 169, 0, 0.14)',
   primaryBorder: 'rgba(57, 169, 0, 0.4)',
   neon: '#39FF14',
@@ -45,17 +49,19 @@ const base = {
 export const darkPalette: Palette = {
   ...base,
   modo: 'dark',
-  bg: '#0d0d0d',
-  bg2: '#111111',
-  card: '#161616',
-  cardElevated: '#1f1f1f',
-  input: '#101010',
+  bg: '#070a08',
+  bg2: '#0b100c',
+  card: '#111712',
+  cardElevated: '#182019',
+  input: '#0b0f0c',
   border: 'rgba(255, 255, 255, 0.08)',
   borderStrong: 'rgba(255, 255, 255, 0.16)',
   text: '#f2f2f2',
   textMuted: 'rgba(240, 237, 230, 0.68)',
   textDim: '#8b949e',
   overlay: 'rgba(0, 0, 0, 0.7)',
+  glass: 'rgba(13, 19, 14, 0.72)',
+  glassBorder: 'rgba(110, 224, 58, 0.18)',
 };
 
 // En modo claro los colores de la marca se oscurecen para cumplir WCAG AA (4.5:1)
@@ -65,6 +71,7 @@ export const lightPalette: Palette = {
   modo: 'light',
   primary: '#2a7300',
   primaryDim: '#215c00',
+  primaryLight: '#3d9a0a',
   primarySoft: 'rgba(42, 115, 0, 0.12)',
   primaryBorder: 'rgba(42, 115, 0, 0.45)',
   error: '#c0392b',
@@ -84,6 +91,8 @@ export const lightPalette: Palette = {
   textMuted: '#434b40',
   textDim: '#5a6357',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  glass: 'rgba(255, 255, 255, 0.78)',
+  glassBorder: 'rgba(42, 115, 0, 0.2)',
 };
 
 // Colores de estado de estaciones (iguales al mapa web).

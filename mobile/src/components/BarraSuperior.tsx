@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Logo } from './Cabecera';
 import { Icono } from './ui';
+import { estiloVidrio } from './efectos';
 
 export function BarraSuperior({ derecha, izquierda }: { derecha?: ReactNode; izquierda?: ReactNode }) {
   const { colors } = useTheme();
@@ -16,7 +17,7 @@ export function BarraSuperior({ derecha, izquierda }: { derecha?: ReactNode; izq
   const volver = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
-    <View style={[styles.barra, { paddingTop: insets.top + 8, backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
+    <View style={[styles.barra, estiloVidrio(colors), { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
       <View style={styles.lado}>
         {izquierda ?? (
           <Pressable onPress={volver} style={[styles.volver, { borderColor: colors.border, backgroundColor: colors.cardElevated }]} accessibilityRole="button" accessibilityLabel="Volver">
