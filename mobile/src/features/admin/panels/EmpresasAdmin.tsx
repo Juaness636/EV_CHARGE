@@ -2,7 +2,7 @@
 // registrado), aprobar y suspender. Cada empresa solo gestiona sus propias estaciones.
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { cambiarEstadoEmpresaAdmin, crearEmpresaAdmin, listarEmpresasAdmin, type EmpresaCrear } from '../../../api/admin.api';
+import { cambiarEstadoEmpresaAdmin, cambiarPalabrasEmpresaAdmin, crearEmpresaAdmin, listarEmpresasAdmin, type EmpresaCrear } from '../../../api/admin.api';
 import type { EmpresaPerfil, EstadoEmpresa } from '../../../api/empresa.api';
 import { mensajeError } from '../../../api/httpClient';
 import { useCarga } from '../../../utils/useCarga';
@@ -15,6 +15,7 @@ import { ejecutarAdmin, type PropsAdmin } from './AdminPaneles';
 const ETIQUETA_ESTADO: Record<EstadoEmpresa, string> = { pendiente: 'Pendiente', aprobada: 'Aprobada', suspendida: 'Suspendida' };
 const TONO_ESTADO = { pendiente: 'amarillo', aprobada: 'verde', suspendida: 'rojo' } as const;
 const COLOR_VALIDO = /^#[0-9a-fA-F]{6}$/;
+const AYUDA_PALABRAS = 'Separadas por coma. Toda estación del mapa cuyo nombre u operador contenga una de estas palabras pasa a esta empresa. Ej: enel x, terpel, celsia.';
 
 type Filtro = 'todas' | EstadoEmpresa;
 
@@ -23,6 +24,7 @@ export function EmpresasAdmin({ version }: PropsAdmin) {
   const { datos: empresas, cargando, error, recargar } = useCarga(() => listarEmpresasAdmin(), [] as EmpresaPerfil[], [version]);
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [creando, setCreando] = useState(false);
+  const [editandoPalabras, setEditandoPalabras] = useState<EmpresaPerfil | null>(null);
   const filas = filtro === 'todas' ? empresas : empresas.filter((e) => e.estado === filtro);
 
   const cambiar = async (empresa: EmpresaPerfil, estado: EstadoEmpresa) => {
@@ -49,6 +51,7 @@ export function EmpresasAdmin({ version }: PropsAdmin) {
           acciones={<>
             {e.estado !== 'aprobada' && <Boton titulo="Aprobar" pequeno variante="soft" onPress={() => void cambiar(e, 'aprobada')} />}
             {e.estado !== 'suspendida' && <Boton titulo="Suspender" pequeno variante="danger" onPress={() => void cambiar(e, 'suspendida')} />}
+            <Boton titulo="Palabras clave" icono="tags" pequeno variante="outline" onPress={() => setEditandoPalabras(e)} />
           </>}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -57,12 +60,54 @@ export function EmpresasAdmin({ version }: PropsAdmin) {
           </View>
           <Dato etiqueta="Cuenta de acceso" valor={e.usuario_email || '—'} />
           <Dato etiqueta="NIT" valor={e.nit || '—'} />
+          <Dato etiqueta="Palabras clave" valor={e.palabras_clave || 'Sin palabras: no recibe estaciones del mapa'} />
           <Dato etiqueta="Estaciones" valor={String(e.total_estaciones)} />
           <Dato etiqueta="Creada" valor={fechaHora(e.created_at)} />
         </ItemLista>
       ))}
       <FormEmpresa visible={creando} onCerrar={() => setCreando(false)} onCreada={recargar} />
+      <FormPalabras empresa={editandoPalabras} onCerrar={() => setEditandoPalabras(null)} onGuardada={recargar} />
     </>
+  );
+}
+
+function FormPalabras({ empresa, onCerrar, onGuardada }: {
+  empresa: EmpresaPerfil | null;
+  onCerrar: () => void;
+  onGuardada: () => void | Promise<void>;
+}) {
+  const [palabras, setPalabras] = useState('');
+  const [error, setError] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  React.useEffect(() => {
+    setPalabras(empresa?.palabras_clave ?? '');
+    setError('');
+  }, [empresa]);
+
+  const guardar = async () => {
+    if (!empresa) return;
+    setGuardando(true);
+    setError('');
+    try {
+      await cambiarPalabrasEmpresaAdmin(empresa.id, palabras);
+      notificar({ tipo: 'success', titulo: 'Palabras clave', mensaje: `Listo. Las estaciones del mapa que coincidan ahora son de ${empresa.nombre_comercial}.` });
+      await onGuardada();
+      onCerrar();
+    } catch (e) {
+      setError(mensajeError(e, 'No se pudieron guardar las palabras clave.'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <AppModal visible={!!empresa} onClose={onCerrar} titulo={`Palabras clave · ${empresa?.nombre_comercial ?? ''}`} anchoMaximo={520}
+      pie={<Boton titulo="Guardar" icono="check" cargando={guardando} onPress={() => void guardar()} bloque />}
+    >
+      {error ? <Alerta texto={error} /> : null}
+      <CampoTexto etiqueta="Palabras clave" value={palabras} onChangeText={setPalabras} autoCapitalize="none" placeholder="enel x, enelx" ayuda={AYUDA_PALABRAS} />
+    </AppModal>
   );
 }
 
@@ -75,7 +120,7 @@ export function FormEmpresa({ visible, correoExistente, onCerrar, onCreada }: {
 }) {
   const [modo, setModo] = useState<'existente' | 'nueva'>(correoExistente ? 'existente' : 'nueva');
   const [form, setForm] = useState({
-    nombre_comercial: '', nit: '', telefono: '', email_contacto: '', color_hex: '#16a34a', estado: 'aprobada' as EstadoEmpresa,
+    nombre_comercial: '', nit: '', palabras_clave: '', telefono: '', email_contacto: '', color_hex: '#16a34a', estado: 'aprobada' as EstadoEmpresa,
     usuario_nombre: '', usuario_email: '', usuario_password: '', usuario_existente_email: correoExistente ?? '',
   });
   const [error, setError] = useState('');
@@ -103,6 +148,7 @@ export function FormEmpresa({ visible, correoExistente, onCerrar, onCreada }: {
     const base: EmpresaCrear = {
       nombre_comercial: form.nombre_comercial.trim(),
       nit: form.nit.trim() || undefined,
+      palabras_clave: form.palabras_clave.trim() || undefined,
       telefono: form.telefono.trim() || undefined,
       email_contacto: form.email_contacto.trim() || undefined,
       color_hex: form.color_hex,
@@ -129,7 +175,8 @@ export function FormEmpresa({ visible, correoExistente, onCerrar, onCreada }: {
     >
       {error ? <Alerta texto={error} /> : null}
       <CampoTexto etiqueta="Nombre comercial" requerido value={form.nombre_comercial} onChangeText={campo('nombre_comercial')} placeholder="Ej. Enel X" />
-      <CampoTexto etiqueta="NIT" value={form.nit} onChangeText={campo('nit')} placeholder="900123456-7" />
+      <CampoTexto etiqueta="NIT" value={form.nit} onChangeText={campo('nit')} placeholder="900123456-7" ayuda="Opcional. Es solo un dato de referencia, no se valida el formato." />
+      <CampoTexto etiqueta="Palabras clave de sus estaciones" value={form.palabras_clave} onChangeText={campo('palabras_clave')} autoCapitalize="none" placeholder="enel x, enelx" ayuda={AYUDA_PALABRAS} />
       <CampoTexto etiqueta="Teléfono" value={form.telefono} onChangeText={campo('telefono')} keyboardType="phone-pad" />
       <CampoTexto etiqueta="Correo de contacto" value={form.email_contacto} onChangeText={campo('email_contacto')} keyboardType="email-address" autoCapitalize="none" />
       <CampoTexto etiqueta="Color de marca (#RRGGBB)" value={form.color_hex} onChangeText={(v) => campo('color_hex')(v.trim())} autoCapitalize="none"

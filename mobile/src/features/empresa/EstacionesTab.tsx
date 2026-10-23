@@ -30,6 +30,7 @@ import {
   useEstilos,
   useColores,
 } from './componentes';
+import { EstacionesApi } from './EstacionesApi';
 import { FotosEstacion } from './FotosEstacion';
 
 type Conector = (typeof TIPOS_CONECTOR)[number];
@@ -242,6 +243,8 @@ export const EstacionesTab: React.FC = () => {
           </Tarjeta>
         );
       })}
+
+      <EstacionesApi />
 
       <MotivoModal
         visible={pendiente !== null}

@@ -7,13 +7,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 
 from app.utils.constantes import ESTADOS_CARGADOR, ESTADOS_EMPRESA, TIPOS_CONECTOR
 
-# NIT colombiano: 7-14 dígitos con o sin puntos/guion, seguido del dígito de verificación.
-NIT_PATTERN = re.compile(r"^\d{1,2}\.?\d{3}\.?\d{3,5}\-?\d{1,2}$")
 COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
-
-
-def normalizar_nit(valor: str) -> str:
-    return re.sub(r"\D", "", valor)
 
 
 def _validar_color(v: Optional[str]) -> Optional[str]:
@@ -46,6 +40,8 @@ class EmpresaCrear(BaseModel):
     color_hex: str = "#16a34a"
     logo_url: Optional[str] = None
     estado: str = "aprobada"
+    # Palabras para reconocer sus estaciones de la API, separadas por coma ("enel x, enelx").
+    palabras_clave: Optional[str] = Field(default=None, max_length=300)
 
     # Cuenta con la que la empresa entra al sistema. Dos opciones excluyentes:
     # 1) una cuenta nueva (usuario_nombre + usuario_email + usuario_password), o
@@ -88,11 +84,14 @@ class EmpresaCrear(BaseModel):
     @field_validator("nit")
     @classmethod
     def _nit_valido(cls, v: Optional[str]) -> Optional[str]:
+        # Proyecto académico: el NIT es un dato de referencia y no se valida contra la DIAN.
+        # Solo se limpian espacios y se limita el largo; puede llevar puntos, guion o letras.
         if v is None or v.strip() == "":
             return None
-        if not NIT_PATTERN.match(v.strip()):
-            raise ValueError("El NIT no tiene un formato válido (ej: 900123456-7)")
-        return normalizar_nit(v)
+        limpio = re.sub(r"\s+", "", v)
+        if len(limpio) > 20:
+            raise ValueError("El NIT no puede tener más de 20 caracteres.")
+        return limpio
 
     @field_validator("estado")
     @classmethod
@@ -100,6 +99,11 @@ class EmpresaCrear(BaseModel):
         if v not in ESTADOS_EMPRESA:
             raise ValueError(f"Estado de empresa no válido. Use uno de: {', '.join(ESTADOS_EMPRESA)}")
         return v
+
+    @field_validator("palabras_clave")
+    @classmethod
+    def _palabras_validas(cls, v: Optional[str]) -> Optional[str]:
+        return _validar_palabras(v)
 
 
 class EmpresaUpdate(BaseModel):
@@ -130,6 +134,27 @@ class EmpresaUpdate(BaseModel):
         return _validar_logo(v)
 
 
+def _validar_palabras(v: Optional[str]) -> Optional[str]:
+    from app.utils.estaciones_empresa import LONGITUD_MINIMA_PALABRA, lista_palabras
+
+    palabras = lista_palabras(v)
+    cortas = [p for p in palabras if len(p) < LONGITUD_MINIMA_PALABRA]
+    if cortas:
+        raise ValueError(f"Cada palabra clave debe tener al menos {LONGITUD_MINIMA_PALABRA} letras (revisa: {', '.join(cortas)}).")
+    return ", ".join(palabras) or None
+
+
+class EmpresaPalabrasUpdate(BaseModel):
+    """Solo el admin: así una empresa no puede adueñarse de estaciones de otra."""
+
+    palabras_clave: Optional[str] = Field(default=None, max_length=300)
+
+    @field_validator("palabras_clave")
+    @classmethod
+    def _palabras_validas(cls, v: Optional[str]) -> Optional[str]:
+        return _validar_palabras(v)
+
+
 class EmpresaEstadoUpdate(BaseModel):
     """Cambio de estado, solo del admin (RN-E11)."""
 
@@ -157,6 +182,7 @@ class EmpresaOut(BaseModel):
     color_hex: str
     logo_url: Optional[str] = None
     estado: str
+    palabras_clave: Optional[str] = None
     created_at: Optional[datetime] = None
     total_estaciones: int = 0
     # Correo de acceso de la cuenta: solo lo ve el admin y la propia empresa.
