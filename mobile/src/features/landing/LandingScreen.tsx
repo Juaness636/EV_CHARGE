@@ -18,9 +18,11 @@ import { CampanaNotificaciones, Logo, SelectorTema } from '../../components/Cabe
 import { notificar } from '../../components/Notificaciones';
 import { trasCerrarModal } from '../../components/capas';
 import { AppModal, Boton, CampoTexto, Icono } from '../../components/ui';
-import { infoCategorias } from '../productos/productos.data';
+import { catalogoProductos, infoCategorias } from '../productos/productos.data';
+import { pesos } from '../../utils/formato';
 import { Presionable } from '../../components/ui/Presionable';
-import { Aparecer, Flotar, ProveedorRevelar, Resplandor, Respirar, Revelar, SeccionRevelar, useReducirMovimiento } from '../../components/animacion';
+import { Aparecer, Flotar, ProveedorRevelar, Resplandor, Revelar, SeccionRevelar, useReducirMovimiento } from '../../components/animacion';
+import { BordeDegradado, Cuadricula, Marquesina, PuntoVivo, TextoDegradado, estiloVidrio } from '../../components/efectos';
 
 type Seccion = 'inicio' | 'categoria' | 'servicios' | 'nosotros' | 'cifras' | 'contacto' | 'faq';
 
@@ -34,15 +36,27 @@ const enlaces: Array<{ id: Seccion; texto: string }> = [
 ];
 
 const servicios = [
-  { img: require('../../../assets/images/seccion1.png'), titulo: 'Mapa en tiempo real', desc: 'Visualiza todas las estaciones de carga cerca de ti en Bogotá, con información actualizada.', icono: 'map-location-dot' },
-  { img: require('../../../assets/images/seccion2.png'), titulo: 'Filtro por tu vehículo', desc: 'Registra tu auto y el sistema filtra automáticamente las estaciones compatibles.', icono: 'car-side' },
-  { img: require('../../../assets/images/seccion3.png'), titulo: 'Planificador de viaje', desc: 'Calcula las paradas de recarga óptimas según tu autonomía usando rutas viales reales.', icono: 'compass' },
-  { img: require('../../../assets/images/seccion4.png'), titulo: 'Comunidad activa', desc: 'Califica estaciones, reporta cargadores dañados y consulta la experiencia de otros conductores.', icono: 'star' },
-  { img: require('../../../assets/images/seccion5.png'), titulo: 'Historial de cargas', desc: 'Lleva el registro de cada sesión: kWh cargados, costo estimado y estación utilizada.', icono: 'clipboard-list' },
-  { img: require('../../../assets/images/seccion6.png'), titulo: 'Reservas inteligentes', desc: 'Programa tus recargas con anticipación, reserva estaciones disponibles y organiza tus viajes de forma eficiente.', icono: 'calendar-check' },
+  { img: require('../../../assets/images/seccion1.jpg'), titulo: 'Mapa en tiempo real', desc: 'Visualiza todas las estaciones de carga cerca de ti en Bogotá, con información actualizada.', icono: 'map-location-dot' },
+  { img: require('../../../assets/images/seccion2.jpg'), titulo: 'Filtro por tu vehículo', desc: 'Registra tu auto y el sistema filtra automáticamente las estaciones compatibles.', icono: 'car-side' },
+  { img: require('../../../assets/images/seccion3.jpg'), titulo: 'Planificador de viaje', desc: 'Calcula las paradas de recarga óptimas según tu autonomía usando rutas viales reales.', icono: 'compass' },
+  { img: require('../../../assets/images/seccion4.jpg'), titulo: 'Comunidad activa', desc: 'Califica estaciones, reporta cargadores dañados y consulta la experiencia de otros conductores.', icono: 'star' },
+  { img: require('../../../assets/images/seccion5.jpg'), titulo: 'Historial de cargas', desc: 'Lleva el registro de cada sesión: kWh cargados, costo estimado y estación utilizada.', icono: 'clipboard-list' },
+  { img: require('../../../assets/images/seccion6.jpg'), titulo: 'Reservas inteligentes', desc: 'Programa tus recargas con anticipación, reserva estaciones disponibles y organiza tus viajes de forma eficiente.', icono: 'calendar-check' },
 ];
 
-const cifras = [['47', 'Estaciones en Bogotá'], ['20', 'km de radio cubierto'], ['5', 'Tipos de conector'], ['100%', 'Open source']];
+const cifras = [
+  { valor: '47', etiqueta: 'Estaciones en Bogotá', icono: 'charging-station' },
+  { valor: '20', etiqueta: 'km de radio cubierto', icono: 'route' },
+  { valor: '5', etiqueta: 'Tipos de conector', icono: 'plug' },
+  { valor: '100%', etiqueta: 'Open source', icono: 'code' },
+];
+
+const conectores = ['CCS2', 'Tipo 2', 'CHAdeMO', 'GB/T', 'Tesla NACS', 'Carga rápida DC', 'Wallbox residencial', 'Reservas en línea', 'Rutas inteligentes'];
+
+// Productos que se muestran en el inicio (uno por categoría).
+const destacados = ['Cargador Rápido DC 150 kW', 'Llanta Michelin Pilot Sport EV 20"', 'Módulo de Batería 48V', 'Cable Tipo 2 a Tipo 2 (5 m)']
+  .map((n) => catalogoProductos.find((p) => p.nombre === n))
+  .filter((p): p is (typeof catalogoProductos)[number] => !!p);
 
 const preguntasFrecuentes = [
   { pregunta: '¿Qué es EV Charge?', respuesta: 'Es una plataforma para encontrar estaciones de carga, revisar sus cargadores y organizar la recarga de tu vehículo eléctrico.' },
@@ -78,9 +92,12 @@ export function LandingScreen() {
   // Borde inferior visible del scroll: activa el revelado de cada sección.
   const [limiteVisible, setLimiteVisible] = useState(0);
   const altoVista = useRef(0);
+  // La barra superior flota sobre el contenido (vidrio esmerilado); su alto desplaza el hero.
+  const [altoNav, setAltoNav] = useState(64);
   const irA = (id: Seccion) => {
     setMenuAbierto(false);
-    scrollRef.current?.scrollTo({ y: Math.max(0, (posiciones.current[id] ?? 0) - 8), animated: true });
+    const y = posiciones.current[id] ?? 0;
+    scrollRef.current?.scrollTo({ y: id === 'inicio' ? 0 : Math.max(0, y - altoNav - 8), animated: true });
   };
 
   const columnas = (min: number) => Math.max(1, Math.min(4, Math.floor(Math.min(width, ANCHO_MAXIMO_CONTENIDO) / min)));
@@ -120,11 +137,12 @@ export function LandingScreen() {
   const colsCategorias = columnas(260);
   const colsServicios = columnas(330);
   const colsCifras = width < 520 ? 2 : 4;
+  const colsDestacados = columnas(250);
 
   return (
     <View style={s.pantalla}>
       {/* CABECERA */}
-      <View style={[s.nav, { paddingTop: insets.top + 8 }]}>
+      <View style={[s.nav, estiloVidrio(colors), { paddingTop: insets.top + 8 }]} onLayout={(e) => setAltoNav(e.nativeEvent.layout.height)}>
         <View style={s.navInterior}>
           <Logo onPress={() => irA('inicio')} mostrarNombre={width >= 380} />
           {navCompleta && (
@@ -173,31 +191,90 @@ export function LandingScreen() {
       >
         <ProveedorRevelar limiteVisible={limiteVisible}>
         {/* HERO */}
-        <View onLayout={(e) => registrar('inicio')(e.nativeEvent.layout.y)} style={s.hero}>
-          <Resplandor diametro={520} intensidad={1.5} style={{ top: -200, right: -160 }} />
-          <Resplandor diametro={440} intensidad={1} style={{ bottom: -160, left: -180 }} />
-          <View style={s.heroContenido}>
-            <Aparecer desde="escala" duracion={600}>
-              <Respirar duracion={4000} escala={0.06}>
-                <RNImage source={require('../../../assets/images/logo.png')} style={[s.heroLogo, colors.modo === 'light' && { tintColor: colors.text }]} resizeMode="contain" />
-              </Respirar>
+        <View onLayout={(e) => registrar('inicio')(e.nativeEvent.layout.y)} style={[s.hero, { paddingTop: altoNav + (escritorio ? Spacing.xxl : Spacing.lg) }]}>
+          <LinearGradient
+            colors={colors.modo === 'dark' ? ['#0c1f0a', colors.bg, colors.bg] : ['#d8efcb', colors.bg, colors.bg]}
+            locations={[0, 0.55, 1]}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Cuadricula />
+          <Resplandor diametro={escritorio ? 720 : 460} intensidad={1.6} style={{ top: -220, right: escritorio ? -120 : -200 }} />
+          <Resplandor diametro={420} intensidad={0.9} style={{ bottom: -140, left: -200 }} />
+          <View style={[s.heroInterior, escritorio && { flexDirection: 'row', alignItems: 'center', gap: Spacing.xxl }]}>
+            <View style={[s.heroTexto, escritorio && { flex: 1, alignItems: 'flex-start' }]}>
+              <Aparecer retraso={80}>
+                <View style={[s.eyebrow, estiloVidrio(colors, 10)]}>
+                  <PuntoVivo color={colors.primary} tamano={7} />
+                  <Text style={s.eyebrowTexto}>47 estaciones activas · Bogotá</Text>
+                </View>
+              </Aparecer>
+              <Aparecer retraso={200} duracion={700}>
+                <Text style={[s.heroTitulo, escritorio ? s.heroTituloPc : null]}>
+                  Carga donde{'\n'}<TextoDegradado style={[s.heroTitulo, escritorio ? s.heroTituloPc : null]}>necesitas,</TextoDegradado>{'\n'}cuando necesitas.
+                </Text>
+              </Aparecer>
+              <Aparecer retraso={340}>
+                <Text style={[s.heroSub, escritorio && { textAlign: 'left' }]}>Encuentra estaciones compatibles con tu vehículo, reserva tu turno y traza rutas con paradas de carga. Todo en un solo lugar.</Text>
+              </Aparecer>
+              <Aparecer retraso={460} style={{ width: '100%', alignItems: escritorio ? 'flex-start' : 'center' }}>
+                <View style={[s.heroAcciones, (escritorio || width >= 480) && { flexDirection: 'row', width: 'auto' }]}>
+                  <Boton titulo="Iniciar navegación" icono="bolt" onPress={() => router.push('/mapa')} />
+                  <Boton titulo="Ver tienda" icono="bag-shopping" variante="outline" onPress={() => router.push('/productos')} />
+                </View>
+              </Aparecer>
+              <Aparecer retraso={580}>
+                <View style={[s.heroDatos, escritorio && { justifyContent: 'flex-start' }]}>
+                  {[['150 kW', 'potencia máxima'], ['5', 'conectores'], ['24/7', 'disponibilidad']].map(([v, t], i) => (
+                    <View key={t} style={[s.heroDato, i > 0 && s.heroDatoSeparado]}>
+                      <Text style={s.heroDatoValor}>{v}</Text>
+                      <Text style={s.heroDatoTexto}>{t}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Aparecer>
+            </View>
+            <Aparecer desde="escala" retraso={300} duracion={800} style={[s.heroVisual, escritorio && { flex: 1 }]}>
+              <Flotar distancia={10} duracion={5200}>
+                <View style={s.heroMarco}>
+                  <LinearGradient colors={[colors.primaryLight, 'rgba(57,169,0,0.1)', colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 30 }]} />
+                  <View style={s.heroFoto}>
+                    <Image source={catalogoProductos[0].img} style={StyleSheet.absoluteFill} contentFit="cover" transition={500} />
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
+                  </View>
+                </View>
+              </Flotar>
+              <Flotar distancia={7} duracion={4200} style={[s.flotante, { top: escritorio ? 26 : 12, left: escritorio ? -34 : 8 }]}>
+                <View style={[s.flotanteCaja, estiloVidrio(colors)]}>
+                  <View style={s.flotanteIcono}><Icono name="battery-three-quarters" size={14} color="#fff" /></View>
+                  <View>
+                    <Text style={s.flotanteTitulo}>80 % en 18 min</Text>
+                    <View style={s.flotanteBarra}><LinearGradient colors={[colors.primary, colors.neon]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: '80%', height: '100%', borderRadius: 3 }} /></View>
+                  </View>
+                </View>
+              </Flotar>
+              <Flotar distancia={9} duracion={4800} style={[s.flotante, { bottom: escritorio ? 30 : 14, right: escritorio ? -26 : 8 }]}>
+                <View style={[s.flotanteCaja, estiloVidrio(colors)]}>
+                  <PuntoVivo color={colors.primary} />
+                  <View>
+                    <Text style={s.flotanteTitulo}>Estación libre</Text>
+                    <Text style={s.flotanteSub}>CCS2 · a 1,2 km</Text>
+                  </View>
+                </View>
+              </Flotar>
             </Aparecer>
-            <Aparecer retraso={120}><Text style={s.heroNombre}>EVCHARGE</Text></Aparecer>
-            <Aparecer retraso={220}><View style={s.eyebrow}><Text style={s.eyebrowTexto}>Movilidad eléctrica · Colombia</Text></View></Aparecer>
-            <Aparecer retraso={340} duracion={650}>
-              <Text style={[s.heroTitulo, escritorio && { fontSize: 56, lineHeight: 64 }]}>
-                Carga donde{'\n'}<Text style={{ color: colors.primary }}>necesitas,</Text>{'\n'}cuando necesitas.
-              </Text>
-            </Aparecer>
-            <Aparecer retraso={480}>
-              <Text style={s.heroSub}>Encuentra estaciones de carga compatibles con tu vehículo, traza rutas inteligentes y conecta con la comunidad EV de Bogotá.</Text>
-            </Aparecer>
-            <Aparecer retraso={600} style={{ width: '100%', alignItems: 'center' }}>
-              <View style={[s.heroAcciones, escritorio && { flexDirection: 'row', width: 'auto' }]}>
-                <Boton titulo="Iniciar navegación" icono="bolt" onPress={() => router.push('/mapa')} />
-                <Boton titulo="Conoce más" variante="outline" onPress={() => irA('nosotros')} />
-              </View>
-            </Aparecer>
+          </View>
+          <View style={s.cinta}>
+            <Marquesina
+              elementos={conectores}
+              renderItem={(t) => (
+                <View style={s.cintaItem}>
+                  <Icono name="bolt" size={11} color={colors.primary} />
+                  <Text style={s.cintaTexto}>{t}</Text>
+                </View>
+              )}
+            />
           </View>
           <IndicadorScroll onPress={() => irA('categoria')} />
         </View>
@@ -214,16 +291,16 @@ export function LandingScreen() {
                 elevarAlPasar
                 accessibilityRole="link"
               >
-                <View style={s.categoriaImgCaja}>
-                  <View style={s.brilloProducto} />
-                  <Image source={c.img} style={s.categoriaImg} contentFit="contain" transition={400} />
-                  <View style={s.iconoCategoria}><Icono name={c.icono} size={13} color="#fff" /></View>
-                </View>
-                <Text style={s.tarjetaTitulo}>{c.key}</Text>
-                <Text style={s.tarjetaTexto}>{c.descripcion}</Text>
-                <View style={s.filaAccion}>
-                  <Text style={s.accionTexto}>Explorar categoría</Text>
-                  <Icono name="arrow-right" size={12} color={colors.primary} />
+                <Image source={c.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
+                <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.92)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+                <View style={s.iconoCategoria}><Icono name={c.icono} size={14} color="#fff" /></View>
+                <View style={s.categoriaTexto}>
+                  <Text style={s.categoriaTitulo}>{c.key}</Text>
+                  <Text style={s.categoriaDesc} numberOfLines={2}>{c.descripcion}</Text>
+                  <View style={s.filaAccion}>
+                    <Text style={[s.accionTexto, { color: colors.neon }]}>Explorar categoría</Text>
+                    <Icono name="arrow-right" size={12} color={colors.neon} />
+                  </View>
                 </View>
               </Presionable>
               </Revelar>
@@ -234,8 +311,36 @@ export function LandingScreen() {
           </Revelar>
         </SeccionRevelar>
 
+        {/* PRODUCTOS DESTACADOS */}
+        <SeccionRevelar style={[s.seccion, s.seccionAlterna]}>
+          <Encabezado eyebrow="Tienda" titulo="Lo más pedido por conductores EV" sub="Equipos con instalación certificada y garantía oficial en Colombia." />
+          <View style={s.grid}>
+            {destacados.map((p, i) => (
+              <Revelar key={p.nombre} orden={i} style={{ width: anchoTarjeta(colsDestacados) }}>
+                <Presionable style={s.tarjetaProducto} elevarAlPasar escalaPresion={0.98} onPress={() => router.push({ pathname: '/productos', params: { categoria: p.categoria } })} accessibilityRole="link">
+                  <View style={s.productoImgCaja}>
+                    <Image source={p.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
+                    <View style={s.productoEtiqueta}><Text style={s.productoEtiquetaTexto}>{p.etiqueta}</Text></View>
+                  </View>
+                  <View style={{ padding: Spacing.md, gap: 4 }}>
+                    <Text style={s.productoTipo}>{p.tipo}</Text>
+                    <Text style={s.tarjetaTitulo} numberOfLines={1}>{p.nombre}</Text>
+                    <View style={[s.filaAccion, { justifyContent: 'space-between', marginTop: 4 }]}>
+                      <Text style={s.productoPrecio}>{pesos(p.monto)}</Text>
+                      <View style={s.productoFlecha}><Icono name="arrow-right" size={12} color="#fff" /></View>
+                    </View>
+                  </View>
+                </Presionable>
+              </Revelar>
+            ))}
+          </View>
+          <Revelar orden={4}>
+            <Boton titulo="Ir a la tienda" icono="bag-shopping" iconoDerecha onPress={() => router.push('/productos')} style={{ alignSelf: 'center', marginTop: Spacing.lg }} />
+          </Revelar>
+        </SeccionRevelar>
+
         {/* SERVICIOS */}
-        <SeccionRevelar onLayout={registrar('servicios')} style={[s.seccion, s.seccionAlterna]}>
+        <SeccionRevelar onLayout={registrar('servicios')} style={s.seccion}>
           <Encabezado eyebrow="Lo que hacemos" titulo="Todo lo que necesita tu vehículo eléctrico" />
           <View style={s.grid}>
             {servicios.map((sv, i) => (
@@ -264,7 +369,7 @@ export function LandingScreen() {
               <Text style={s.bannerTitulo}>EV CHARGE</Text>
               <Resplandor diametro={340} intensidad={1.4} />
               <Flotar distancia={10} style={{ width: '100%' }}>
-                <Image source={require('../../../assets/images/ChatGPT Image 26 jun 2026, 08_44_00 a.m..png')} style={s.nosotrosImg} contentFit="contain" transition={600} />
+                <Image source={require('../../../assets/images/nosotros-auto.png')} style={s.nosotrosImg} contentFit="contain" transition={600} />
               </Flotar>
             </View>
           </Revelar>
@@ -281,15 +386,36 @@ export function LandingScreen() {
         <SeccionRevelar onLayout={registrar('cifras')} style={[s.seccion, s.seccionAlterna]}>
           <Encabezado eyebrow="En números" titulo="La red eléctrica que ya existe" />
           <View style={s.grid}>
-            {cifras.map(([num, etiqueta], i) => (
-              <Revelar key={etiqueta} orden={i} desde="escala" style={{ width: anchoTarjeta(colsCifras) }}>
-                <View style={s.cifra}>
-                  <ContadorAnimado valor={num} activo={limiteVisible > (posiciones.current.cifras ?? Number.POSITIVE_INFINITY) + 120} estilo={s.cifraNum} />
-                  <Text style={s.tarjetaTexto}>{etiqueta}</Text>
-                </View>
+            {cifras.map((cf, i) => (
+              <Revelar key={cf.etiqueta} orden={i} desde="escala" style={{ width: anchoTarjeta(colsCifras) }}>
+                <BordeDegradado radio={Radius.lg} interior={s.cifra}>
+                  <View style={s.cifraIcono}><Icono name={cf.icono} size={16} color={colors.primary} /></View>
+                  <ContadorAnimado valor={cf.valor} activo={limiteVisible > (posiciones.current.cifras ?? Number.POSITIVE_INFINITY) + 120} estilo={s.cifraNum} />
+                  <Text style={[s.tarjetaTexto, { textAlign: 'center' }]}>{cf.etiqueta}</Text>
+                </BordeDegradado>
               </Revelar>
             ))}
           </View>
+        </SeccionRevelar>
+
+        {/* LLAMADO A LA ACCIÓN */}
+        <SeccionRevelar style={s.seccion}>
+          <Revelar desde="escala">
+            <View style={[s.cta, escritorio && { flexDirection: 'row', alignItems: 'center', padding: Spacing.xxl }]}>
+              <LinearGradient colors={colors.modo === 'dark' ? ['#123d06', '#0a1a07', '#050a05'] : ['#cdebbd', '#e4f3dc', '#f7fbf4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <Cuadricula paso={32} style={{ opacity: 0.8 }} />
+              <Resplandor diametro={480} intensidad={1.6} style={{ right: -120, top: -180 }} />
+              <View style={[{ gap: 10 }, escritorio && { flex: 1 }]}>
+                <Text style={s.ctaEyebrow}>Empieza hoy</Text>
+                <Text style={[s.ctaTitulo, escritorio && { fontSize: 36, lineHeight: 42 }]}>Tu próxima carga está{'\n'}a un toque.</Text>
+                <Text style={s.ctaSub}>Crea tu cuenta gratis, registra tu vehículo y reserva en la estación compatible más cercana.</Text>
+              </View>
+              <View style={[{ gap: 10, marginTop: Spacing.md }, escritorio && { marginTop: 0, minWidth: 240 }]}>
+                <Boton titulo="Abrir el mapa" icono="location-dot" onPress={() => router.push('/mapa')} bloque />
+                {!usuario && <Boton titulo="Crear cuenta gratis" variante="outline" onPress={() => abrirAuth('registro')} bloque />}
+              </View>
+            </View>
+          </Revelar>
         </SeccionRevelar>
 
         {/* CONTACTO */}
@@ -459,47 +585,67 @@ function IndicadorScroll({ onPress }: { onPress: () => void }) {
 
 const crearEstilos = (c: Palette) => StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: c.bg },
-  nav: { backgroundColor: c.bg, borderBottomWidth: 1, borderBottomColor: c.border, paddingBottom: 8, paddingHorizontal: Spacing.md, zIndex: 10 },
+  nav: { position: 'absolute', top: 0, left: 0, right: 0, borderBottomWidth: 1, paddingBottom: 8, paddingHorizontal: Spacing.md, zIndex: 20, elevation: 8 },
   navInterior: { width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   navEnlaces: { flexDirection: 'row', gap: 18, flexShrink: 1, flexWrap: 'wrap' },
   navEnlace: { color: c.textMuted, fontWeight: '700', fontSize: 13.5 },
   navAcciones: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   saludo: { color: c.textMuted, fontSize: 13, maxWidth: 200 },
   hamburguesa: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', backgroundColor: c.cardElevated },
-  hero: { paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.lg, overflow: 'hidden', minHeight: 520, justifyContent: 'center' },
-  orbeCaja: { position: 'absolute', width: 380, height: 380 },
-  orbe: { width: '100%', height: '100%', borderRadius: 190 },
+  hero: { paddingBottom: Spacing.xl, paddingHorizontal: Spacing.md, overflow: 'hidden', justifyContent: 'center' },
+  heroInterior: { width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center', gap: Spacing.xl },
+  heroTexto: { alignItems: 'center' },
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: Radius.full, paddingLeft: 8, paddingRight: 14, paddingVertical: 4, marginBottom: Spacing.md },
+  eyebrowTexto: { color: c.primary, fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.2 },
+  heroTitulo: { color: c.text, fontSize: 40, lineHeight: 46, fontWeight: '900', textAlign: 'center', marginBottom: Spacing.md, letterSpacing: -0.5 },
+  heroTituloPc: { fontSize: 58, lineHeight: 64, textAlign: 'left', letterSpacing: -1.5 },
+  heroSub: { color: c.textMuted, fontSize: 16, lineHeight: 25, textAlign: 'center', maxWidth: 560, marginBottom: Spacing.lg },
+  heroAcciones: { gap: 12, width: '100%', maxWidth: 420 },
+  heroDatos: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.lg },
+  heroDato: { paddingHorizontal: Spacing.md, alignItems: 'flex-start' },
+  heroDatoSeparado: { borderLeftWidth: 1, borderLeftColor: c.borderStrong },
+  heroDatoValor: { color: c.text, fontSize: 22, fontWeight: '900' },
+  heroDatoTexto: { color: c.textDim, fontSize: 12, fontWeight: '600' },
+  heroVisual: { width: '100%', maxWidth: 620, alignSelf: 'center' },
+  heroMarco: { borderRadius: 30, padding: 2, shadowColor: c.primary, shadowOpacity: 0.45, shadowRadius: 40, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
+  heroFoto: { width: '100%', aspectRatio: 4 / 3, borderRadius: 28, overflow: 'hidden', backgroundColor: '#050806' },
+  flotante: { position: 'absolute', zIndex: 2 },
+  flotanteCaja: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 10, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  flotanteIcono: { width: 30, height: 30, borderRadius: 9, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
+  flotanteTitulo: { color: c.text, fontSize: 13, fontWeight: '800' },
+  flotanteSub: { color: c.textDim, fontSize: 11.5, fontWeight: '600' },
+  flotanteBarra: { width: 110, height: 6, borderRadius: 3, backgroundColor: c.border, marginTop: 6, overflow: 'hidden' },
+  cinta: { marginTop: Spacing.xxl, marginHorizontal: -Spacing.md, borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.border, paddingVertical: 12, backgroundColor: c.modo === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' },
+  cintaItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22 },
+  cintaTexto: { color: c.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
   lineaTitulo: { width: 48, height: 3, borderRadius: 2, backgroundColor: c.primary, marginVertical: 2 },
-  brilloProducto: { position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: c.primary, opacity: c.modo === 'dark' ? 0.16 : 0.12 },
-  iconoCategoria: { position: 'absolute', top: 10, left: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
+  iconoCategoria: { position: 'absolute', top: 14, left: 14, width: 36, height: 36, borderRadius: 12, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
   servicioImgCaja: { height: 190, overflow: 'hidden' },
   servicioTituloCaja: { position: 'absolute', left: 14, right: 14, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   servicioIcono: { width: 34, height: 34, borderRadius: 10, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
   servicioTitulo: { color: '#fff', fontSize: 17, fontWeight: '900', flex: 1, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
-  halo: { position: 'absolute', width: 230, height: 230, borderRadius: 115, backgroundColor: c.primary, opacity: 0.22 },
-  sombraAuto: { width: '55%', height: 14, borderRadius: 50, backgroundColor: 'rgba(0,0,0,0.35)', marginTop: -10 },
-  heroContenido: { alignItems: 'center', maxWidth: 760, alignSelf: 'center', width: '100%' },
-  heroLogo: { width: 76, height: 76 },
-  heroNombre: { color: c.text, fontSize: 20, fontWeight: '900', letterSpacing: 4, marginVertical: 6 },
-  eyebrow: { backgroundColor: c.primarySoft, borderWidth: 1, borderColor: c.primaryBorder, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 5, marginBottom: Spacing.md },
-  eyebrowTexto: { color: c.primary, fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.2 },
-  heroTitulo: { color: c.text, fontSize: 36, lineHeight: 44, fontWeight: '900', textAlign: 'center', marginBottom: Spacing.md },
-  heroSub: { color: c.textMuted, fontSize: 15, lineHeight: 23, textAlign: 'center', maxWidth: 560, marginBottom: Spacing.lg },
-  heroAcciones: { gap: 12, width: '100%', maxWidth: 420 },
   seccion: { paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.md, width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO + Spacing.md * 2, alignSelf: 'center' },
   seccionAlterna: { maxWidth: undefined, backgroundColor: c.bg2, alignItems: 'center' },
   encabezado: { alignItems: 'center', gap: 8, marginBottom: Spacing.lg, maxWidth: 720, alignSelf: 'center' },
-  seccionTitulo: { color: c.text, fontSize: 26, fontWeight: '900', textAlign: 'center', lineHeight: 33 },
+  seccionTitulo: { color: c.text, fontSize: 28, fontWeight: '900', textAlign: 'center', lineHeight: 35, letterSpacing: -0.3 },
   seccionSub: { color: c.textMuted, fontSize: 14.5, textAlign: 'center', lineHeight: 21 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO },
-  tarjetaCategoria: { backgroundColor: c.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, padding: Spacing.md, gap: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
-  categoriaImgCaja: { height: 150, borderRadius: Radius.md, backgroundColor: c.cardElevated, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  categoriaImg: { width: '80%', height: '85%' },
+  tarjetaCategoria: { height: 300, borderRadius: Radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: '#050806', justifyContent: 'flex-end', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  categoriaTexto: { padding: Spacing.md, gap: 6 },
+  categoriaTitulo: { color: '#fff', fontSize: 20, fontWeight: '900' },
+  categoriaDesc: { color: 'rgba(255,255,255,0.78)', fontSize: 13, lineHeight: 19 },
   tarjetaTitulo: { color: c.text, fontSize: 16, fontWeight: '800' },
   tarjetaTexto: { color: c.textMuted, fontSize: 13.5, lineHeight: 20 },
   filaAccion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   accionTexto: { color: c.primary, fontWeight: '800', fontSize: 13 },
-  tarjetaServicio: { backgroundColor: c.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
+  tarjetaProducto: { backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  productoImgCaja: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#050806' },
+  productoEtiqueta: { position: 'absolute', top: 12, left: 12, backgroundColor: c.primary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
+  productoEtiquetaTexto: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  productoTipo: { color: c.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  productoPrecio: { color: c.text, fontSize: 18, fontWeight: '900' },
+  productoFlecha: { width: 32, height: 32, borderRadius: 16, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
+  tarjetaServicio: { backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
   servicioImg: { width: '100%', height: '100%' },
   nosotros: { padding: Spacing.lg, gap: Spacing.lg, width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center', paddingVertical: Spacing.xxl },
   nosotrosImgCaja: { minHeight: 280, borderRadius: Radius.xl, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: Spacing.md, borderWidth: 1, borderColor: c.primaryBorder },
@@ -508,15 +654,20 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   nosotrosTexto: { gap: 10 },
   nosotrosTitulo: { color: c.text, fontSize: 32, fontWeight: '900' },
   parrafo: { color: c.textMuted, fontSize: 15, lineHeight: 23 },
-  cifra: { backgroundColor: c.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, padding: Spacing.lg, alignItems: 'center', gap: 4 },
-  cifraNum: { color: c.primary, fontSize: 38, fontWeight: '900' },
-  formContacto: { width: '100%', maxWidth: 640, alignSelf: 'center', backgroundColor: c.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, padding: Spacing.lg },
+  cifra: { padding: Spacing.lg, alignItems: 'center', gap: 6 },
+  cifraIcono: { width: 40, height: 40, borderRadius: 12, backgroundColor: c.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  cifraNum: { color: c.primary, fontSize: 40, fontWeight: '900', letterSpacing: -1 },
+  cta: { borderRadius: Radius.xl, overflow: 'hidden', padding: Spacing.lg, borderWidth: 1, borderColor: c.primaryBorder, gap: Spacing.lg },
+  ctaEyebrow: { color: c.modo === 'dark' ? c.neon : c.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase' },
+  ctaTitulo: { color: c.text, fontSize: 28, lineHeight: 34, fontWeight: '900', letterSpacing: -0.5 },
+  ctaSub: { color: c.textMuted, fontSize: 15, lineHeight: 22, maxWidth: 520 },
+  formContacto: { width: '100%', maxWidth: 640, alignSelf: 'center', backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, padding: Spacing.lg },
   faqLista: { width: '100%', maxWidth: 760, gap: 10 },
-  faqItem: { backgroundColor: c.card, borderRadius: Radius.md, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
+  faqItem: { backgroundColor: c.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
   faqPregunta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: Spacing.md },
   faqPreguntaTexto: { color: c.text, fontSize: 15, fontWeight: '700', flex: 1 },
   faqRespuesta: { color: c.textMuted, fontSize: 14, lineHeight: 21, paddingHorizontal: Spacing.md, paddingBottom: Spacing.md },
-  pie: { borderTopWidth: 1, borderTopColor: c.border, paddingVertical: Spacing.xl, paddingHorizontal: Spacing.md, backgroundColor: c.bg },
+  pie: { borderTopWidth: 1, borderTopColor: c.border, paddingVertical: Spacing.xl, paddingHorizontal: Spacing.md, backgroundColor: c.bg2 },
   pieInterior: { width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center', gap: Spacing.lg },
   pieColumna: { flex: 1, gap: 8 },
   pieTitulo: { color: c.text, fontWeight: '800', fontSize: 14, marginBottom: 2 },
