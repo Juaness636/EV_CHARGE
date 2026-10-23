@@ -52,6 +52,16 @@ const cifras = [
   { valor: '100%', etiqueta: 'Open source', icono: 'code' },
 ];
 
+// Diapositivas del hero: cambian cada pocos segundos con un fundido y sus propios datos flotantes.
+const diapositivasHero = [
+  { producto: 'Wallbox Inteligente 22 kW', icono: 'house', dato: 'Carga en casa', barra: 0.8, estado: 'Programada', sub: 'Horas valle · 22 kW' },
+  { producto: 'Cargador Rápido DC 150 kW', icono: 'bolt', dato: '80 % en 18 min', barra: 0.8, estado: 'Estación libre', sub: 'CCS2 · a 1,2 km' },
+  { producto: 'Cargador Portátil 7,4 kW', icono: 'suitcase', dato: 'Carga donde estés', barra: 0.55, estado: 'Listo para viajar', sub: 'Toma doméstica · 7,4 kW' },
+  { producto: 'Cable Tipo 2 a Tipo 2 (5 m)', icono: 'plug', dato: 'Hasta 22 kW', barra: 0.65, estado: 'Compatible', sub: 'Tipo 2 · 5 m' },
+  { producto: 'Llanta Michelin Pilot Sport EV 20"', icono: 'gauge-high', dato: '−20 % de ruido', barra: 0.7, estado: 'Hecha para EV', sub: 'Torque instantáneo' },
+].map((d) => ({ ...d, img: catalogoProductos.find((p) => p.nombre === d.producto)?.img ?? catalogoProductos[0].img }));
+const INTERVALO_HERO = 5000;
+
 const conectores = ['CCS2', 'Tipo 2', 'CHAdeMO', 'GB/T', 'Tesla NACS', 'Carga rápida DC', 'Wallbox residencial', 'Reservas en línea', 'Rutas inteligentes'];
 
 // Productos que se muestran en el inicio (uno por categoría).
@@ -241,33 +251,7 @@ export function LandingScreen() {
               </Aparecer>
             </View>
             <Aparecer desde="escala" retraso={300} duracion={800} style={[s.heroVisual, escritorio && { flex: 1 }]}>
-              <Flotar distancia={10} duracion={5200}>
-                <View style={s.heroMarco}>
-                  <LinearGradient colors={[colors.primaryLight, 'rgba(57,169,0,0.1)', colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 30 }]} />
-                  <View style={s.heroFoto}>
-                    <Image source={catalogoProductos[1].img} style={StyleSheet.absoluteFill} contentFit="cover" transition={500} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
-                  </View>
-                </View>
-              </Flotar>
-              <Flotar distancia={7} duracion={4200} style={[s.flotante, { top: escritorio ? 26 : 12, left: escritorio ? -34 : 8 }]}>
-                <View style={[s.flotanteCaja, estiloVidrio(colors)]}>
-                  <View style={s.flotanteIcono}><Icono name="battery-three-quarters" size={14} color="#fff" /></View>
-                  <View>
-                    <Text style={s.flotanteTitulo}>80 % en 18 min</Text>
-                    <View style={s.flotanteBarra}><LinearGradient colors={[colors.primary, colors.neon]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: '80%', height: '100%', borderRadius: 3 }} /></View>
-                  </View>
-                </View>
-              </Flotar>
-              <Flotar distancia={9} duracion={4800} style={[s.flotante, { bottom: escritorio ? 30 : 14, right: escritorio ? -26 : 8 }]}>
-                <View style={[s.flotanteCaja, estiloVidrio(colors)]}>
-                  <PuntoVivo color={colors.primary} />
-                  <View>
-                    <Text style={s.flotanteTitulo}>Estación libre</Text>
-                    <Text style={s.flotanteSub}>CCS2 · a 1,2 km</Text>
-                  </View>
-                </View>
-              </Flotar>
+              <HeroCarrusel escritorio={escritorio} />
             </Aparecer>
           </View>
           <View style={s.cinta}>
@@ -511,6 +495,85 @@ export function LandingScreen() {
   );
 }
 
+// Carrusel del hero: fundido entre fotos con un zoom lento (efecto Ken Burns) y chips que cambian.
+// Con "reducir movimiento" no avanza solo; los puntos permiten cambiar a mano.
+function HeroCarrusel({ escritorio }: { escritorio: boolean }) {
+  const s = useThemedStyles(crearEstilos);
+  const { colors } = useTheme();
+  const reducir = useReducirMovimiento();
+  const [actual, setActual] = useState(0);
+  const [pausa, setPausa] = useState(false);
+  const opacidades = useRef(diapositivasHero.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current;
+  const zoom = useRef(new Animated.Value(0)).current;
+  const chips = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (reducir || pausa) return;
+    const id = setInterval(() => setActual((a) => (a + 1) % diapositivasHero.length), INTERVALO_HERO);
+    return () => clearInterval(id);
+  }, [reducir, pausa]);
+
+  useEffect(() => {
+    const nativo = Platform.OS !== 'web';
+    Animated.parallel(opacidades.map((v, i) => Animated.timing(v, { toValue: i === actual ? 1 : 0, duration: reducir ? 0 : 900, easing: Easing.inOut(Easing.quad), useNativeDriver: nativo }))).start();
+    chips.setValue(0);
+    Animated.timing(chips, { toValue: 1, duration: reducir ? 0 : 600, delay: reducir ? 0 : 250, easing: Easing.out(Easing.cubic), useNativeDriver: nativo }).start();
+    if (!reducir) {
+      zoom.setValue(0);
+      Animated.timing(zoom, { toValue: 1, duration: INTERVALO_HERO + 900, easing: Easing.linear, useNativeDriver: nativo }).start();
+    }
+  }, [actual, reducir, opacidades, chips, zoom]);
+
+  const d = diapositivasHero[actual];
+  const entradaChip = { opacity: chips, transform: [{ translateY: chips.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] };
+  return (
+    <Pressable onHoverIn={() => setPausa(true)} onHoverOut={() => setPausa(false)} accessibilityLabel={`Imagen ${actual + 1} de ${diapositivasHero.length}: ${d.producto}`}>
+      <Flotar distancia={10} duracion={5200}>
+        <View style={s.heroMarco}>
+          <LinearGradient colors={[colors.primaryLight, 'rgba(57,169,0,0.1)', colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 30 }]} />
+          <View style={s.heroFoto}>
+            {diapositivasHero.map((dia, i) => (
+              <Animated.View
+                key={dia.producto}
+                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, { opacity: opacidades[i], transform: [{ scale: i === actual ? zoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) : 1.08 }] }]}
+              >
+                <Image source={dia.img} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
+              </Animated.View>
+            ))}
+            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <View style={s.heroPuntos}>
+              {diapositivasHero.map((dia, i) => (
+                <Pressable key={dia.producto} onPress={() => setActual(i)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Ver ${dia.producto}`}>
+                  <View style={[s.heroPunto, i === actual && s.heroPuntoActivo]} />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Flotar>
+      <Flotar distancia={7} duracion={4200} style={[s.flotante, { top: escritorio ? 26 : 12, left: escritorio ? -34 : 8 }]}>
+        <Animated.View style={[s.flotanteCaja, estiloVidrio(colors), entradaChip]}>
+          <View style={s.flotanteIcono}><Icono name={d.icono} size={14} color="#fff" /></View>
+          <View>
+            <Text style={s.flotanteTitulo}>{d.dato}</Text>
+            <View style={s.flotanteBarra}><LinearGradient colors={[colors.primary, colors.neon]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: `${d.barra * 100}%`, height: '100%', borderRadius: 3 }} /></View>
+          </View>
+        </Animated.View>
+      </Flotar>
+      <Flotar distancia={9} duracion={4800} style={[s.flotante, { bottom: escritorio ? 30 : 34, right: escritorio ? -26 : 8 }]}>
+        <Animated.View style={[s.flotanteCaja, estiloVidrio(colors), entradaChip]}>
+          <PuntoVivo color={colors.primary} />
+          <View>
+            <Text style={s.flotanteTitulo}>{d.estado}</Text>
+            <Text style={s.flotanteSub}>{d.sub}</Text>
+          </View>
+        </Animated.View>
+      </Flotar>
+    </Pressable>
+  );
+}
+
 // Tarjeta de servicio con foto a sangre, zoom al pasar el mouse y borde verde que se enciende.
 function TarjetaServicio({ servicio, indice, alto, destacada, banda, onPress }: {
   servicio: (typeof servicios)[number]; indice: number; alto: number; destacada: boolean; banda: boolean; onPress: () => void;
@@ -645,6 +708,9 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   heroMarco: { borderRadius: 30, padding: 2, shadowColor: c.primary, shadowOpacity: 0.45, shadowRadius: 40, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
   heroFoto: { width: '100%', aspectRatio: 1, borderRadius: 28, overflow: 'hidden', backgroundColor: '#050806' },
   flotante: { position: 'absolute', zIndex: 2 },
+  heroPuntos: { position: 'absolute', bottom: 14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  heroPunto: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
+  heroPuntoActivo: { width: 24, backgroundColor: '#39ff14' },
   flotanteCaja: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 10, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
   flotanteIcono: { width: 30, height: 30, borderRadius: 9, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
   flotanteTitulo: { color: c.text, fontSize: 13, fontWeight: '800' },
