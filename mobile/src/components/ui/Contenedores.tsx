@@ -93,7 +93,7 @@ export function Estrellas({ valor, tamano = 14, onChange }: { valor: number; tam
   return (
     <View style={estilosFijos.estrellas} accessibilityLabel={`${valor} de 5 estrellas`}>
       {[1, 2, 3, 4, 5].map((i) => {
-        const estrella = <Icono name="star" size={tamano} color={i <= valor ? '#f5b301' : colors.borderStrong} />;
+        const estrella = <Icono name="star" size={tamano} color={i <= valor ? (colors.modo === 'light' ? '#b07d00' : '#f5b301') : colors.borderStrong} />;
         return onChange ? (
           <Pressable key={i} onPress={() => onChange(i)} hitSlop={6} accessibilityRole="button" accessibilityLabel={`${i} estrellas`}>
             {estrella}
