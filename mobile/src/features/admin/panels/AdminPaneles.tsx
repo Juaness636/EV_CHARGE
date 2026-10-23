@@ -8,30 +8,16 @@ import {
   responderContactoAdmin, type AdminNotificacion, type AdminReservaDetail, type CalificacionAdmin, type ContactoAdmin,
   type ReporteAdmin, type UserAdmin,
 } from '../../../api/admin.api';
-import { mensajeError } from '../../../api/httpClient';
-import { emitir } from '../../../utils/eventos';
 import { etiquetaEstado } from '../../../utils/estaciones';
 import { fechaHora } from '../../../utils/formato';
 import { useCarga } from '../../../utils/useCarga';
+import { ejecutarAdmin, type PropsAdmin } from './comun';
 import { FormEmpresa } from './EmpresasAdmin';
-import { confirmar, notificar } from '../../../components/Notificaciones';
+import { confirmar } from '../../../components/Notificaciones';
 import { Alerta, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Estrellas, Insignia, ItemLista, KPI, tonoEstado, Vacio } from '../../../components/ui';
 
-export interface PropsAdmin {
-  version: number;
-}
-
-// Ejecuta una operación del administrador, notifica y recarga.
-export async function ejecutarAdmin(operacion: () => Promise<unknown>, recargar: () => Promise<void>, exito = 'Los cambios se guardaron correctamente.') {
-  try {
-    await operacion();
-    notificar({ tipo: 'success', titulo: 'Operación completada', mensaje: exito });
-    emitir('estaciones-actualizadas');
-    await recargar();
-  } catch (e) {
-    notificar({ tipo: 'error', titulo: 'Operación no completada', mensaje: mensajeError(e) });
-  }
-}
+// Se reexportan para no cambiar los imports de los demás paneles.
+export { ejecutarAdmin, type PropsAdmin } from './comun';
 
 const nombreDe = (u?: { nombre?: string; apellido?: string } | null) => (u ? `${u.nombre ?? ''} ${u.apellido ?? ''}`.trim() : '');
 
