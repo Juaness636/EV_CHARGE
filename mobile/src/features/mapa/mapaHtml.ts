@@ -35,7 +35,6 @@ export function crearHtmlMapa(oscuro: boolean): string {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 <style>
   html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: ${oscuro ? '#0d0d0d' : '#f2f2f2'}; }
@@ -64,7 +63,6 @@ export function crearHtmlMapa(oscuro: boolean): string {
 <body class="${oscuro ? 'oscuro' : ''}">
 <div id="map"></div>
 <div class="ev-cargando" id="cargando">Cargando mapa…</div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
   function enviar(msg) {
@@ -72,22 +70,73 @@ export function crearHtmlMapa(oscuro: boolean): string {
     if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(texto);
     else if (window.parent && window.parent !== window) window.parent.postMessage({ __evmapa: true, datos: texto }, '*');
   }
-  if (typeof L === 'undefined') {
-    document.getElementById('cargando').textContent = 'No se pudo cargar el mapa. Revisa tu conexión a internet.';
-    enviar({ tipo: 'error', mensaje: 'leaflet' });
-    return;
+
+  // Leaflet se pide a varios CDN en orden: en algunas redes móviles unpkg no responde
+  // o tarda demasiado, y el mapa del celular se quedaba en blanco.
+  var CDN_LEAFLET = [
+    'https://unpkg.com/leaflet@1.9.4/dist/',
+    'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/'
+  ];
+  function cargarLeaflet(i) {
+    if (i >= CDN_LEAFLET.length) {
+      document.getElementById('cargando').textContent = 'No se pudo cargar el mapa. Revisa tu conexión a internet.';
+      enviar({ tipo: 'error', mensaje: 'leaflet' });
+      return;
+    }
+    var resuelto = false;
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = CDN_LEAFLET[i] + 'leaflet.css';
+    document.head.appendChild(css);
+    var script = document.createElement('script');
+    script.src = CDN_LEAFLET[i] + 'leaflet.js';
+    function siguiente() {
+      if (resuelto) return;
+      resuelto = true;
+      css.remove(); script.remove();
+      cargarLeaflet(i + 1);
+    }
+    var espera = setTimeout(siguiente, 8000);
+    script.onload = function () {
+      if (resuelto) return;
+      clearTimeout(espera);
+      if (typeof L === 'undefined') return siguiente();
+      resuelto = true;
+      iniciar();
+    };
+    script.onerror = function () { clearTimeout(espera); siguiente(); };
+    document.head.appendChild(script);
   }
+  cargarLeaflet(0);
+
+  function iniciar() {
   var COLORES = { disponible: '#39a900', activa: '#39a900', reservada: '#3498db', mantenimiento: '#f39c12', inactiva: '#e74c3c' };
   var ICONOS = { mantenimiento: 'fa-screwdriver-wrench', inactiva: 'fa-ban', reservada: 'fa-clock' };
   var map = L.map('map', { zoomControl: false, minZoom: 5, maxBounds: [[-4.5, -81.5], [13.8, -66.5]], maxBoundsViscosity: 1 })
     .setView([4.6651, -74.1204], 12);
   // Mismas teselas de OpenStreetMap que el frontend web; el modo oscuro se logra con un filtro CSS.
-  var capaBase = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, noWrap: true,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
-  capaBase.on('load', function () { var c = document.getElementById('cargando'); if (c) c.remove(); });
-  setTimeout(function () { var c = document.getElementById('cargando'); if (c) c.remove(); }, 6000);
+  // Si OpenStreetMap rechaza las teselas desde el celular, se pasa a los espejos de OSM Francia y Alemania.
+  function quitarCargando() { var c = document.getElementById('cargando'); if (c) c.remove(); }
+  var CAPAS = [
+    { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap' },
+    { url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap France' },
+    { url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap' }
+  ];
+  var capaBase = null, indiceCapa = 0, teselasOk = 0, teselasFallidas = 0;
+  function ponerCapa(i) {
+    if (capaBase) map.removeLayer(capaBase);
+    indiceCapa = i; teselasOk = 0; teselasFallidas = 0;
+    capaBase = L.tileLayer(CAPAS[i].url, { maxZoom: 19, noWrap: true, subdomains: 'abc', attribution: CAPAS[i].attribution }).addTo(map);
+    capaBase.on('load', quitarCargando);
+    capaBase.on('tileload', function () { teselasOk++; quitarCargando(); });
+    capaBase.on('tileerror', function () {
+      teselasFallidas++;
+      if (teselasOk === 0 && teselasFallidas >= 4 && indiceCapa + 1 < CAPAS.length) ponerCapa(indiceCapa + 1);
+    });
+  }
+  ponerCapa(0);
+  setTimeout(quitarCargando, 6000);
 
   // Si el contenedor todavía no tiene tamaño (el WebView/iframe se está montando),
   // el encuadre se aplica cuando el mapa obtenga sus dimensiones reales.
@@ -198,6 +247,7 @@ export function crearHtmlMapa(oscuro: boolean): string {
     }, 400);
   });
   enviar({ tipo: 'listo' });
+  }
 })();
 </script>
 </body>

@@ -9,6 +9,16 @@ import { notificar } from './Notificaciones';
 import { CheckAnimado } from './animacion';
 import { Alerta, Boton, CampoTexto, Icono } from './ui';
 
+// Traduce las respuestas del backend de recuperación a frases para el usuario.
+function mensajeRecuperacion(error: unknown, porDefecto: string): string {
+  const texto = mensajeError(error, porDefecto);
+  if (/PIN es incorrecto/i.test(texto)) return 'El código no es correcto. Revísalo en tu correo e inténtalo de nuevo.';
+  if (/PIN ha expirado/i.test(texto)) return 'El código ya venció. Vuelve al paso anterior y pide uno nuevo.';
+  if (/Datos inválidos/i.test(texto)) return 'No encontramos un código activo para ese correo. Pide uno nuevo.';
+  if (/Token inválido|Usuario no encontrado/i.test(texto)) return 'Pasó demasiado tiempo desde que verificaste el código. Empieza de nuevo para pedir otro.';
+  return texto;
+}
+
 export function OlvidarContrasena({ onVolverAlLogin }: { onVolverAlLogin: () => void }) {
   const { colors } = useTheme();
   const [paso, setPaso] = useState(1);
@@ -29,7 +39,7 @@ export function OlvidarContrasena({ onVolverAlLogin }: { onVolverAlLogin: () => 
       notificar({ titulo: 'Recuperación de contraseña', mensaje: 'Si el correo está registrado, recibirás un código de 6 dígitos.', tipo: 'success', duracionMs: 8000 });
       setPaso(2);
     } catch (e) {
-      setError(mensajeError(e, 'No se pudo generar el código.'));
+      setError(mensajeRecuperacion(e, 'No pudimos enviarte el código. Inténtalo de nuevo.'));
     } finally {
       setCargando(false);
     }
@@ -44,7 +54,7 @@ export function OlvidarContrasena({ onVolverAlLogin }: { onVolverAlLogin: () => 
       setToken(data.reset_token);
       setPaso(3);
     } catch (e) {
-      setError(mensajeError(e, 'El código no es válido o ya venció.'));
+      setError(mensajeRecuperacion(e, 'El código no es válido o ya venció.'));
     } finally {
       setCargando(false);
     }
@@ -61,7 +71,7 @@ export function OlvidarContrasena({ onVolverAlLogin }: { onVolverAlLogin: () => 
       await restablecerPassword(token, nueva);
       setPaso(4);
     } catch (e) {
-      setError(mensajeError(e, 'No se pudo cambiar la contraseña.'));
+      setError(mensajeRecuperacion(e, 'No pudimos cambiar tu contraseña. Inténtalo de nuevo.'));
     } finally {
       setCargando(false);
     }

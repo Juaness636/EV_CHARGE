@@ -88,12 +88,21 @@ export class ApiError extends Error {
   }
 }
 
+// Mensajes pensados para el usuario final: sin URLs, códigos ni nombres técnicos.
+export const MENSAJE_SIN_CONEXION = 'No pudimos conectarnos con EV Charge. Revisa tu conexión a internet e inténtalo de nuevo.';
+const MENSAJE_TARDANZA = 'El servidor está tardando en responder. Inténtalo de nuevo en un momento.';
+const MENSAJE_SERVIDOR = 'Tuvimos un problema de nuestro lado. Inténtalo de nuevo en unos minutos.';
+const MENSAJE_DATOS = 'Revisa los datos que escribiste e inténtalo de nuevo.';
+
 // FastAPI devuelve `detail` como texto o como lista de errores de validación.
+// De la lista solo se muestran los mensajes propios del backend ("Value error, ..."),
+// los de Pydantic vienen en inglés y no le dicen nada al usuario.
 function mensajeDetalle(detail: unknown): string | null {
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail) && detail.length) {
     const primero = detail[0] as { msg?: string };
-    if (primero?.msg) return primero.msg.replace(/^Value error, /i, '');
+    if (primero?.msg && /^Value error, /i.test(primero.msg)) return primero.msg.replace(/^Value error, /i, '');
+    return MENSAJE_DATOS;
   }
   return null;
 }
@@ -103,9 +112,16 @@ api.interceptors.response.use(
   async (error: AxiosError<{ detail?: unknown }>) => {
     const status = error.response?.status ?? 0;
     const sinConexion = !error.response;
+    if (sinConexion && __DEV__) {
+      // El detalle técnico queda en la consola de Expo para quien desarrolla, no en pantalla.
+      console.warn(`[api] Sin respuesta de ${API_BASE_URL}${error.config?.url ?? ''}: ${error.code ?? ''} ${error.message}`);
+    }
     const message = sinConexion
-      ? `No se pudo conectar con el servidor (${API_BASE_URL}). Verifica que el backend esté activo y en la misma red.`
-      : mensajeDetalle(error.response?.data?.detail) || error.message || 'Error en la solicitud';
+      ? (error.code === 'ECONNABORTED' || /timeout/i.test(error.message) ? MENSAJE_TARDANZA : MENSAJE_SIN_CONEXION)
+      : status >= 500
+        // Un 503 con texto propio ("No se pudo enviar el código...") sí se muestra; un error interno no.
+        ? (typeof error.response?.data?.detail === 'string' && !/internal server error/i.test(error.response.data.detail) ? error.response.data.detail : MENSAJE_SERVIDOR)
+        : mensajeDetalle(error.response?.data?.detail) || (status === 422 ? MENSAJE_DATOS : 'No se pudo completar la operación.');
 
     const esLogin = error.config?.url?.includes('/auth/login');
     if (status === 401 && !esLogin && tokenEnMemoria) {

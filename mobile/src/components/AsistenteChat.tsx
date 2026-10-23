@@ -62,7 +62,7 @@ export function AsistenteChat({ elevado = false }: { elevado?: boolean }) {
     } catch (error) {
       const mensaje = error instanceof ApiError && error.status === 429
         ? 'Has realizado muchas consultas. Espera un momento y vuelve a intentarlo.'
-        : 'No pude conectarme al asistente. Revisa que el backend esté activo e inténtalo de nuevo.';
+        : 'No pude conectarme al asistente. Revisa tu conexión a internet e inténtalo de nuevo.';
       setMensajes((actual) => [...actual, { role: 'assistant', content: mensaje }]);
     } finally {
       setCargando(false);

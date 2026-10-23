@@ -6,6 +6,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { registro, ApiError } from '../api/auth.api';
+import { MENSAJE_SIN_CONEXION } from '../api/httpClient';
 import { rutaPanel, useAuth } from '../context/AuthContext';
 import { useUI, type AuthTab } from '../context/UIContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -109,10 +110,13 @@ export function AuthModal() {
         setCaptchaRequerido(false);
         setAlerta({ texto: mensaje, tipo: 'error' });
       } else if ([400, 401, 422].includes(status) || /credenciales|contraseña|incorrect/i.test(mensaje)) {
-        setAlerta({ texto: 'Correo o contraseña incorrectos.', tipo: 'error' });
+        setAlerta({ texto: 'El correo o la contraseña no son correctos. Revísalos e inténtalo de nuevo.', tipo: 'error' });
         if (captchaRequerido) setCaptchaResuelto(false);
+      } else if (status === 0) {
+        // Sin conexión o el servidor tardó demasiado: httpClient ya trae un mensaje claro.
+        setAlerta({ texto: mensaje || MENSAJE_SIN_CONEXION, tipo: 'error' });
       } else {
-        setAlerta({ texto: status === 0 ? mensaje : 'No se pudo iniciar sesión. Verifica que el backend esté activo.', tipo: 'error' });
+        setAlerta({ texto: 'No pudimos iniciar tu sesión en este momento. Inténtalo de nuevo en unos minutos.', tipo: 'error' });
       }
     } finally {
       setCargando(false);
@@ -140,7 +144,7 @@ export function AuthModal() {
       const status = error instanceof ApiError ? error.status : 0;
       if (status === 409 || /ya está registrado|ya existe/i.test(mensaje)) setAlerta({ texto: 'Este correo ya está registrado, intenta con otro.', tipo: 'error' });
       else if (status === 400 || status === 422) setAlerta({ texto: mensaje || 'Los datos del registro no son válidos.', tipo: 'error' });
-      else setAlerta({ texto: status === 0 ? mensaje : 'No se pudo completar el registro.', tipo: 'error' });
+      else setAlerta({ texto: status === 0 ? mensaje || MENSAJE_SIN_CONEXION : 'No pudimos crear tu cuenta en este momento. Inténtalo de nuevo en unos minutos.', tipo: 'error' });
     } finally {
       setCargando(false);
     }
@@ -177,12 +181,11 @@ export function AuthModal() {
           <CampoTexto etiqueta="Contraseña" requerido value={loginPass} onChangeText={setLoginPass} password autoCapitalize="none" placeholder="••••••••" editable={!cargando} onSubmitEditing={hacerLogin} returnKeyType="go" />
           <View style={styles.filaEntre}>
             <Casilla marcada={recordarme} onChange={setRecordarme}>Recuérdame</Casilla>
-            <Pressable onPress={() => cambiarTab('recuperar')} hitSlop={6}>
-              <Text style={[styles.enlace, { color: colors.primary }]}>¿Olvidaste tu contraseña?</Text>
-            </Pressable>
           </View>
           {captchaRequerido && <CaptchaSimulado verificado={captchaResuelto} onVerificar={() => setCaptchaResuelto(true)} />}
           <Boton titulo={cargando ? 'Validando credenciales...' : 'Entrar'} cargando={cargando} onPress={hacerLogin} bloque style={{ marginTop: 12 }} />
+          {/* Botón de ancho completo: en el celular el enlace pequeño junto a "Recuérdame" pasaba desapercibido. */}
+          <Boton titulo="Olvidé mi contraseña" icono="key" variante="ghost" onPress={() => !cargando && cambiarTab('recuperar')} bloque style={{ marginTop: 8 }} />
         </View>
       )}
 
@@ -224,7 +227,6 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 10, borderRadius: Radius.sm, alignItems: 'center' },
   tabTexto: { fontWeight: '800', fontSize: 13.5 },
   filaEntre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  enlace: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   captcha: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderRadius: Radius.sm, marginTop: 12 },
   captchaCaja: { width: 26, height: 26, borderWidth: 2, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   barra: { height: 6, borderRadius: 3, overflow: 'hidden' },

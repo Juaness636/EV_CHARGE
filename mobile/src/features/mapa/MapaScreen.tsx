@@ -48,6 +48,7 @@ export function MapaScreen() {
   const ajustadoInicial = useRef(false);
   const [estaciones, setEstaciones] = useState<EstacionOCM[]>([]);
   const [cargandoEstaciones, setCargandoEstaciones] = useState(true);
+  const [errorEstaciones, setErrorEstaciones] = useState(false);
   const [estados, setEstados] = useState<Record<string, InfoEstado>>({});
   const [limites, setLimites] = useState<Limites | null>(null);
   const [filtro, setFiltro] = useState('TODOS');
@@ -78,10 +79,12 @@ export function MapaScreen() {
     } catch {
       // Caché dañada: se ignora.
     }
+    setErrorEstaciones(false);
     try {
       mostrar(await listarEstacionesMapa(), true);
     } catch (e) {
-      notificar({ tipo: 'error', titulo: 'Estaciones', mensaje: e instanceof Error ? e.message : 'No se pudieron cargar las estaciones.' });
+      setErrorEstaciones(true);
+      notificar({ tipo: 'error', titulo: 'Estaciones', mensaje: e instanceof Error ? e.message : 'No pudimos cargar las estaciones. Inténtalo de nuevo.' });
     } finally {
       setCargandoEstaciones(false);
     }
@@ -315,10 +318,18 @@ export function MapaScreen() {
             <Pressable style={s.control} onPress={() => mapa.current?.enviar({ tipo: 'zoom', delta: -1 })} accessibilityLabel="Alejar mapa"><Icono name="minus" size={15} color={colors.text} /></Pressable>
             <Pressable style={s.control} onPress={() => void nav.irAMiUbicacion()} accessibilityLabel="Ir a mi ubicación"><Icono name="location-crosshairs" size={15} color={colors.primary} /></Pressable>
           </View>
-          <View style={s.resumen}>
-            {cargandoEstaciones ? <LogoCargando tamano={18} conHalo={false} color={colors.primary} /> : <Icono name="charging-station" size={12} color={colors.primary} />}
-            <Text style={s.resumenTexto}>{cargandoEstaciones ? 'Cargando estaciones...' : `${visibles.length} estaciones`}</Text>
-          </View>
+          {errorEstaciones && !cargandoEstaciones && !estaciones.length ? (
+            // Sin estaciones ni caché: se ofrece reintentar en vez de dejar el mapa vacío.
+            <Pressable style={[s.resumen, { borderColor: colors.warning }]} onPress={() => { setCargandoEstaciones(true); void cargarEstaciones(); }} accessibilityRole="button" accessibilityLabel="Reintentar cargar estaciones">
+              <Icono name="rotate-right" size={12} color={colors.warning} />
+              <Text style={s.resumenTexto}>No cargaron las estaciones · Reintentar</Text>
+            </Pressable>
+          ) : (
+            <View style={s.resumen}>
+              {cargandoEstaciones ? <LogoCargando tamano={18} conHalo={false} color={colors.primary} /> : <Icono name="charging-station" size={12} color={colors.primary} />}
+              <Text style={s.resumenTexto}>{cargandoEstaciones ? 'Cargando estaciones...' : `${visibles.length} estaciones`}</Text>
+            </View>
+          )}
           {!escritorio && panelNavegacion}
         </View>
 
