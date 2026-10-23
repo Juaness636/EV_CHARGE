@@ -10,6 +10,14 @@ import { AsistenteChat } from '../components/AsistenteChat';
 const MapaPage = lazy(() => import('../features/mapa/MapaPage').then(({ MapaPage }) => ({ default: MapaPage })));
 const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage').then(({ DashboardPage }) => ({ default: DashboardPage })));
 const AdminPage = lazy(() => import('../features/admin/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
+const EmpresaDashboardPage = lazy(() => import('../features/empresa/DashboardPage').then(({ EmpresaDashboardPage }) => ({ default: EmpresaDashboardPage })));
+const EmpresaEstacionesPage = lazy(() => import('../features/empresa/EstacionesPage').then(({ EmpresaEstacionesPage }) => ({ default: EmpresaEstacionesPage })));
+const EmpresaMapaPage = lazy(() => import('../features/empresa/MapaPage').then(({ EmpresaMapaPage }) => ({ default: EmpresaMapaPage })));
+const EmpresaIncidentesPage = lazy(() => import('../features/empresa/IncidentesPage').then(({ EmpresaIncidentesPage }) => ({ default: EmpresaIncidentesPage })));
+const EmpresaHistorialPage = lazy(() => import('../features/empresa/HistorialPage').then(({ EmpresaHistorialPage }) => ({ default: EmpresaHistorialPage })));
+const EmpresaEstadisticasPage = lazy(() => import('../features/empresa/EstadisticasPage').then(({ EmpresaEstadisticasPage }) => ({ default: EmpresaEstadisticasPage })));
+const EmpresaResenasPage = lazy(() => import('../features/empresa/ResenasPage').then(({ EmpresaResenasPage }) => ({ default: EmpresaResenasPage })));
+const EmpresaPerfilPage = lazy(() => import('../features/empresa/PerfilPage').then(({ EmpresaPerfilPage }) => ({ default: EmpresaPerfilPage })));
 const ProductosPage = lazy(() => import('../features/productos/ProductosPage').then(({ ProductosPage }) => ({ default: ProductosPage })));
 
 // Redirige a "/" si no hay sesión iniciada.
@@ -18,6 +26,7 @@ function RutaPrivada({ children }: { children: ReactElement }) {
   if (cargando) return null;
   if (!usuario) return <Navigate to="/" replace />;
   if (usuario.is_admin) return <Navigate to="/admin" replace />;
+  if (usuario.rol === 'empresa') return <Navigate to="/empresa" replace />;
   return children;
 }
 
@@ -26,7 +35,17 @@ function RutaAdmin({ children }: { children: ReactElement }) {
   const { usuario, cargando } = useAuth();
   if (cargando) return null;
   if (!usuario) return <Navigate to="/" replace />;
-  if (!usuario.is_admin) return <Navigate to="/dashboard" replace />;
+  if (!usuario.is_admin) return <Navigate to={usuario.rol === 'empresa' ? '/empresa' : '/dashboard'} replace />;
+  return children;
+}
+
+// RN-E01: el panel de empresa es exclusivo del rol `empresa`. La barrera real está en
+// `/empresa/*` del backend; esto evita que un usuario común vea el panel vacío.
+function RutaEmpresa({ children }: { children: ReactElement }) {
+  const { usuario, cargando } = useAuth();
+  if (cargando) return null;
+  if (!usuario) return <Navigate to="/" replace />;
+  if (usuario.rol !== 'empresa') return <Navigate to={usuario.is_admin ? '/admin' : '/dashboard'} replace />;
   return children;
 }
 
@@ -66,6 +85,14 @@ export function AppRouter() {
           }
         />
         <Route path="/admin.html" element={<Navigate to="/admin" replace />} />
+        <Route path="/empresa" element={<RutaEmpresa><EmpresaDashboardPage /></RutaEmpresa>} />
+        <Route path="/empresa/estaciones" element={<RutaEmpresa><EmpresaEstacionesPage /></RutaEmpresa>} />
+        <Route path="/empresa/mapa" element={<RutaEmpresa><EmpresaMapaPage /></RutaEmpresa>} />
+        <Route path="/empresa/incidentes" element={<RutaEmpresa><EmpresaIncidentesPage /></RutaEmpresa>} />
+        <Route path="/empresa/historial" element={<RutaEmpresa><EmpresaHistorialPage /></RutaEmpresa>} />
+        <Route path="/empresa/estadisticas" element={<RutaEmpresa><EmpresaEstadisticasPage /></RutaEmpresa>} />
+        <Route path="/empresa/resenas" element={<RutaEmpresa><EmpresaResenasPage /></RutaEmpresa>} />
+        <Route path="/empresa/perfil" element={<RutaEmpresa><EmpresaPerfilPage /></RutaEmpresa>} />
         </Routes>
       </Suspense>
     </BrowserRouter>

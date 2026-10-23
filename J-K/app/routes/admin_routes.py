@@ -5,6 +5,13 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.utils.jwt import require_admin
 from app.controllers import admin_controller as ctrl
+from app.controllers.empresa_controller import (
+    cambiar_estado_empresa,
+    crear_empresa,
+    listar_empresas_admin,
+    obtener_empresa_admin,
+)
+from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaOut
 from app.schemas.admin_schema import (
     AdminEstadisticas,
     EstacionPropiaCreate,
@@ -76,7 +83,7 @@ def admin_actualizar_estacion(eid: str, data: EstacionPropiaUpdate, admin=Depend
 
 @router.patch("/estaciones/{eid}/estado")
 def admin_estado_estacion(eid: str, data: EstadoUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return ctrl.cambiar_estado_estacion(eid, data, db)
+    return ctrl.cambiar_estado_estacion(eid, data, db, admin)
 
 
 @router.patch("/estaciones-ocm/{eid}/estado")
@@ -142,3 +149,32 @@ def admin_notificaciones(admin=Depends(require_admin), db: Session = Depends(get
 @router.patch("/cargas/{cid}/estado")
 def admin_estado_carga(cid: str, data: AdminCargaUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.actualizar_carga_admin(cid, data.estado, db)
+
+
+# ---------------------------------------------------------------------------
+# Empresas: el admin crea la cuenta y la aprueba o suspende
+# ---------------------------------------------------------------------------
+
+@router.get("/empresas", response_model=list[EmpresaOut])
+def admin_empresas(
+    busqueda: str | None = Query(default=None),
+    estado: str | None = Query(default=None),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return listar_empresas_admin(db, busqueda, estado)
+
+
+@router.post("/empresas", response_model=EmpresaOut)
+def admin_empresas_crear(data: EmpresaCrear, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return crear_empresa(data, db)
+
+
+@router.get("/empresas/{eid}", response_model=EmpresaOut)
+def admin_empresa_detalle(eid: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return obtener_empresa_admin(eid, db)
+
+
+@router.patch("/empresas/{eid}/estado", response_model=EmpresaOut)
+def admin_empresa_estado(eid: str, data: EmpresaEstadoUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return cambiar_estado_empresa(eid, data, db)

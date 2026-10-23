@@ -39,8 +39,10 @@ const departamentoCanonico = (departamento?: string) => {
 
 const colorEstado = (estado: string) => estado === 'mantenimiento' ? '#f39c12' : estado === 'inactiva' ? '#e74c3c' : estado === 'reservada' ? '#3498db' : '#39a900';
 const nombreRumbo = (grados: number) => ['Norte', 'Noreste', 'Este', 'Sureste', 'Sur', 'Suroeste', 'Oeste', 'Noroeste'][Math.round((grados % 360) / 45) % 8];
-const crearIconoEstacion = (estado: string, seleccionado = false) => {
-  const color = colorEstado(estado);
+// RN-E10: una estación de empresa disponible se pinta con el color de su marca.
+const colorDeMarca = (estacion: EstacionOCM) => (estacion.Empresa?.estado === 'aprobada' ? estacion.Empresa.color_hex : undefined);
+const crearIconoEstacion = (estado: string, seleccionado = false, colorMarca?: string) => {
+  const color = estado === 'disponible' && colorMarca ? colorMarca : colorEstado(estado);
   const icono = estado === 'mantenimiento' ? 'fa-screwdriver-wrench' : estado === 'inactiva' ? 'fa-ban' : estado === 'reservada' ? 'fa-clock' : 'fa-bolt';
   const dimension = seleccionado ? 40 : 34;
   const sombra = seleccionado ? `0 0 0 3px #fff, 0 0 0 6px ${color}, 0 6px 18px rgba(0,0,0,0.6)` : `0 3px 12px rgba(0,0,0,0.45)`;
@@ -514,20 +516,22 @@ export function MapaPage() {
       const idsCargadoresCompatibles = conexionesCompatibles.map((conector) => `${id}-${(st.Connections || []).indexOf(conector) + 1}`);
       const todosCompatiblesReservados = idsCargadoresCompatibles.length > 0 && idsCargadoresCompatibles.every((cargadorId) => estadoInfo.cargadores_reservados?.includes(cargadorId));
       const estado = estadoInfo.estado === 'disponible' && todosCompatiblesReservados ? 'reservada' : estadoInfo.estado;
-      const marker = L.marker([st.AddressInfo.Latitude, st.AddressInfo.Longitude], { icon: crearIconoEstacion(estado) }).addTo(map);
+      const colorMarca = colorDeMarca(st);
+      const marker = L.marker([st.AddressInfo.Latitude, st.AddressInfo.Longitude], { icon: crearIconoEstacion(estado, false, colorMarca) }).addTo(map);
       marker.bindTooltip(st.AddressInfo.Title || `Estación ${id}`, { direction: 'top', offset: [0, -12], sticky: true });
       marker.on('click', () => {
         const anterior = marcadorSeleccionadoRef.current;
         if (anterior && anterior !== marker) {
-          const estadoAnterior = (anterior as L.Marker & { estadoEstacion?: string }).estadoEstacion || 'disponible';
-          anterior.setIcon(crearIconoEstacion(estadoAnterior));
+          const extendido = anterior as L.Marker & { estadoEstacion?: string; colorMarca?: string };
+          anterior.setIcon(crearIconoEstacion(extendido.estadoEstacion || 'disponible', false, extendido.colorMarca));
         }
-        marker.setIcon(crearIconoEstacion(estado, true));
+        marker.setIcon(crearIconoEstacion(estado, true, colorMarca));
         marcadorSeleccionadoRef.current = marker;
         setEstacionSeleccionada(st);
         setInfoRuta(null);
       });
       (marker as L.Marker & { estadoEstacion?: string }).estadoEstacion = estado;
+      (marker as L.Marker & { colorMarca?: string }).colorMarca = colorMarca;
       marcadoresRef.current.push(marker);
     });
   }, [estaciones, estadosEstaciones, filtro, filtroDepartamento, vehiculosUsuario, vehiculoFiltroId]);
@@ -686,7 +690,7 @@ export function MapaPage() {
                     fontWeight: 600,
                   }}
                 >
-                  {usuario.is_admin ? 'Admin' : 'Usuario'}
+                  {usuario.is_admin ? 'Admin' : usuario.rol === 'empresa' ? 'Empresa' : 'Usuario'}
                 </span>
               </span>
               <button className="btn-topbar-logout" onClick={cerrarSesion}>Salir</button>
@@ -817,7 +821,7 @@ export function MapaPage() {
             <div className="drawer-user-name">{usuario ? nombreCompleto : 'Invitado'}</div>
             <div className="drawer-user-email">{usuario ? usuario.email : 'Inicia sesión para acceder a todas las funciones de EV Charge.'}</div>
             <div className="drawer-user-role" style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-              {usuario ? (usuario.is_admin ? 'Administrador' : 'Usuario') : '—'}
+              {usuario ? (usuario.is_admin ? 'Administrador' : usuario.rol === 'empresa' ? 'Empresa' : 'Usuario') : '—'}
             </div>
           </div>
           <button className="drawer-close" onClick={() => setDrawerOpen(false)}><i className="fa-solid fa-xmark"></i></button>
@@ -832,6 +836,11 @@ export function MapaPage() {
           ) : usuario.is_admin ? (
             <>
               <Link className="anav" to="/admin" onClick={() => setDrawerOpen(false)}><span className="icon"><i className="fa-solid fa-chart-simple"></i></span> Panel admin</Link>
+              <a className="anav danger" href="#" onClick={(e) => { e.preventDefault(); setDrawerOpen(false); cerrarSesion(); }}><span className="icon"><i className="fa-solid fa-right-from-bracket"></i></span> Cerrar sesión</a>
+            </>
+          ) : usuario.rol === 'empresa' ? (
+            <>
+              <Link className="anav" to="/empresa" onClick={() => setDrawerOpen(false)}><span className="icon"><i className="fa-solid fa-building"></i></span> Panel de empresa</Link>
               <a className="anav danger" href="#" onClick={(e) => { e.preventDefault(); setDrawerOpen(false); cerrarSesion(); }}><span className="icon"><i className="fa-solid fa-right-from-bracket"></i></span> Cerrar sesión</a>
             </>
           ) : (

@@ -347,7 +347,15 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onRegistr
       )}
 
       <div style={{ margin: '8px 0', fontSize: 13, color: '#aaa' }}><i className="fa-solid fa-location-dot"></i> {direccion}{ciudad && ` · ${ciudad}`}</div>
-      <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Operador: {operador}</div>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+        Operador: {operador}
+        {estacion.Empresa && estacion.Empresa.nombre !== operador && (
+          <span style={{ marginLeft: 8 }}>
+            <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: estacion.Empresa.color_hex, marginRight: 5 }} />
+            {estacion.Empresa.nombre}
+          </span>
+        )}
+      </div>
 
       {!usuario.is_admin && !tieneVehiculo && (
         <div className="vehicle-register-notice" role="status">
@@ -367,16 +375,17 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onRegistr
         const reservados = (estado?.cargadores_reservados as string[] | undefined) || [];
         const reservado = reservados.includes(cargadorId);
         const reservaDelCargador = estado?.reservas_por_cargador?.find((reserva) => reserva.cargador_id === cargadorId);
-        const bloqueado = reservado || estadoAdministrativo !== 'activa';
-        const recomendado = compatible && !reservado && estadoAdministrativo === 'activa';
-        return <div className={`connector-card connector-status-${reservado ? 'reservado' : estadoAdministrativo !== 'activa' ? estadoAdministrativo : 'disponible'}${cargadorSeleccionado === cargadorId ? ' connector-selected' : ''}${compatible ? ' connector-compatible' : ' connector-incompatible'}${recomendado ? ' connector-recommended' : ''}`} key={cargadorId}>
+        const fueraDeServicio = c.Estado === 'fuera_servicio';
+        const bloqueado = reservado || fueraDeServicio || estadoAdministrativo !== 'activa';
+        const recomendado = compatible && !reservado && !fueraDeServicio && estadoAdministrativo === 'activa';
+        return <div className={`connector-card connector-status-${reservado ? 'reservado' : estadoAdministrativo !== 'activa' ? estadoAdministrativo : fueraDeServicio ? 'inactiva' : 'disponible'}${cargadorSeleccionado === cargadorId ? ' connector-selected' : ''}${compatible ? ' connector-compatible' : ' connector-incompatible'}${recomendado ? ' connector-recommended' : ''}`} key={cargadorId}>
           <div className="connector-heading"><strong><i className="fa-solid fa-plug"></i> {tipoCargador || 'Genérico'}</strong>{recomendado && <span className="connector-recommended-badge"><i className="fa-solid fa-check"></i> Para tu vehículo</span>}</div>
           <small>{c.PowerKW ? `${c.PowerKW} kW` : 'Potencia no especificada'} · {c.CurrentType?.Title || 'AC/DC'}</small>{' '}
           <small>Bahías: {c.Quantity || 1}</small>
-          <div className="connector-status-row"><small>ID: {cargadorId}</small><span className={`connector-state ${bloqueado ? (reservado ? 'reserved' : 'unavailable') : 'available'}`}>{reservado ? 'Reservado' : estadoAdministrativo === 'mantenimiento' ? 'Mantenimiento' : estadoAdministrativo === 'inactiva' ? 'Fuera de servicio' : 'Disponible'}</span></div>
+          <div className="connector-status-row"><small>ID: {cargadorId}</small><span className={`connector-state ${bloqueado ? (reservado ? 'reserved' : 'unavailable') : 'available'}`}>{reservado ? 'Reservado' : estadoAdministrativo === 'mantenimiento' ? 'Mantenimiento' : estadoAdministrativo === 'inactiva' || fueraDeServicio ? 'Fuera de servicio' : 'Disponible'}</span></div>
           {reservado && reservaDelCargador && <small className="connector-reserved-by"><i className="fa-solid fa-user"></i> Reservado por {reservaDelCargador.reservado_por}</small>}
           {compatible && <small className="connector-compatible-label"><i className="fa-solid fa-circle-check"></i> Compatible con tu búsqueda</small>}
-          {!usuario.is_admin && <button type="button" className="connector-select-button" disabled={bloqueado || !compatible} onClick={() => setCargadorSeleccionado(cargadorSeleccionado === cargadorId ? null : cargadorId)}>{cargadorSeleccionado === cargadorId ? 'Cargador seleccionado' : bloqueado ? 'No disponible' : compatible ? 'Seleccionar cargador' : 'No compatible'}</button>}
+          {!usuario.is_admin && usuario.rol !== 'empresa' && <button type="button" className="connector-select-button" disabled={bloqueado || !compatible} onClick={() => setCargadorSeleccionado(cargadorSeleccionado === cargadorId ? null : cargadorId)}>{cargadorSeleccionado === cargadorId ? 'Cargador seleccionado' : bloqueado ? 'No disponible' : compatible ? 'Seleccionar cargador' : 'No compatible'}</button>}
         </div>;
       })}
 

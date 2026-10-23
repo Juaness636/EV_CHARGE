@@ -1,6 +1,7 @@
 // Corresponde a: app/controllers/admin_controller.py + app/routes/admin_routes.py
 // Todas requieren usuario admin (require_admin en el backend).
 import { api } from './httpClient';
+import type { EmpresaPerfil, EstadoEmpresa } from './empresa.api';
 
 export interface AdminEstadisticas {
   total_usuarios: number;
@@ -10,6 +11,8 @@ export interface AdminEstadisticas {
   total_kwh_cargados: number;
   total_reportes_abiertos: number;
   total_estaciones_propias: number;
+  total_empresas?: number;
+  empresas_pendientes?: number;
 }
 
 export interface EstacionPropiaCreate {
@@ -35,6 +38,15 @@ export interface EstacionCargadorData {
   bahias?: number;
 }
 
+// RN-E10: nombre, color y logo de la empresa dueña de una estación.
+export interface MarcaEmpresa {
+  id: string;
+  nombre: string;
+  color_hex: string;
+  logo_url?: string | null;
+  estado: EstadoEmpresa;
+}
+
 export interface AdminEstacionOcm {
   id: string;
   nombre: string;
@@ -44,6 +56,7 @@ export interface AdminEstacionOcm {
   estado: 'activa' | 'mantenimiento' | 'inactiva';
   origen: string;
   operador: string;
+  empresa?: MarcaEmpresa | null;
   conectores: Array<{
     tipo: string;
     potencia_kw?: number;
@@ -185,8 +198,9 @@ export async function actualizarEstacion(id: string, payload: EstacionPropiaCrea
   return data;
 }
 
-export async function cambiarEstadoEstacion(id: string, estado: 'activa' | 'mantenimiento' | 'inactiva'): Promise<unknown> {
-  const { data } = await api.patch(`/admin/estaciones/${id}/estado`, { estado });
+// En estaciones de empresa el motivo queda en el historial de la empresa.
+export async function cambiarEstadoEstacion(id: string, estado: 'activa' | 'mantenimiento' | 'inactiva', motivo?: string): Promise<unknown> {
+  const { data } = await api.patch(`/admin/estaciones/${id}/estado`, { estado, motivo });
   return data;
 }
 
@@ -239,5 +253,51 @@ export async function listarContactosAdmin(): Promise<ContactoAdmin[]> {
 
 export async function responderContactoAdmin(id: string, respuesta: string): Promise<ContactoAdmin> {
   const { data } = await api.patch<ContactoAdmin>(`/admin/contactos/${id}/respuesta`, { respuesta });
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Empresas: el admin es el único que puede crearlas y aprobarlas.
+// ---------------------------------------------------------------------------
+
+export interface EmpresaCrear {
+  nombre_comercial: string;
+  razon_social?: string;
+  nit?: string;
+  telefono?: string;
+  email_contacto?: string;
+  direccion_sede?: string;
+  descripcion?: string;
+  color_hex: string;
+  logo_url?: string;
+  estado?: 'pendiente' | 'aprobada' | 'suspendida';
+  // La cuenta con la que la empresa entra al sistema: un solo request.
+  usuario_nombre: string;
+  usuario_apellido?: string;
+  usuario_email: string;
+  usuario_password: string;
+}
+
+export async function listarEmpresasAdmin(params: { busqueda?: string; estado?: string } = {}): Promise<EmpresaPerfil[]> {
+  const { data } = await api.get<EmpresaPerfil[]>('/admin/empresas', { params });
+  return data;
+}
+
+export async function obtenerEmpresaAdmin(id: string): Promise<EmpresaPerfil> {
+  const { data } = await api.get<EmpresaPerfil>(`/admin/empresas/${id}`);
+  return data;
+}
+
+export async function crearEmpresaAdmin(payload: EmpresaCrear): Promise<EmpresaPerfil> {
+  const { data } = await api.post<EmpresaPerfil>('/admin/empresas', payload);
+  return data;
+}
+
+export async function cambiarEstadoEmpresaAdmin(
+  id: string,
+  estado: EstadoEmpresa,
+  motivo?: string,
+): Promise<EmpresaPerfil> {
+  const { data } = await api.patch<EmpresaPerfil>(`/admin/empresas/${id}/estado`, { estado, motivo });
   return data;
 }

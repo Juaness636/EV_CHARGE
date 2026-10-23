@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Boolean, DateTime, Integer
 from sqlalchemy.orm import relationship
 from app.config.database import Base
 from app.models.utils import generar_uuid, ahora_utc
+from app.utils.constantes import ROL_USUARIO
 from datetime import datetime, timezone 
 
 class usuarios(Base):
@@ -14,6 +15,8 @@ class usuarios(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False)
+    # usuario | admin | empresa. `is_admin` se mantiene para el panel de administración.
+    rol = Column(String, nullable=False, default=ROL_USUARIO)
     compartir_nombre_reserva = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=ahora_utc)
 
@@ -29,3 +32,4 @@ class usuarios(Base):
     favoritos_rel = relationship("Favoritos", back_populates="usuario", cascade="all, delete-orphan")
     reportes_rel = relationship("Reportes", back_populates="usuario", cascade="all, delete-orphan")
     calificaciones_rel = relationship("Calificaciones", back_populates="usuario", cascade="all, delete-orphan")
+    empresa_rel = relationship("Empresa", back_populates="usuario", uselist=False, cascade="all, delete-orphan")

@@ -14,10 +14,12 @@ from app.models.notificacion_model import Notificacion
 from app.models.estacion_propia_model import EstacionPropia
 from app.models.estacion_cargador_model import EstacionCargador
 from app.models.estado_estacion_model import EstadoEstacion
+from app.models.empresa_model import Empresa
 from app.schemas.admin_schema import EstacionPropiaCreate, EstacionPropiaUpdate, EstadoUpdate, AdminReservaUpdate
 from app.models.utils import ahora_utc
 from app.controllers.notificaciones_controller import crear_notificacion
-from app.models.estado_estacion_model import EstadoEstacion
+from app.controllers.empresa_controller import marca_empresa
+from app.utils.constantes import EMPRESA_APROBADA, EMPRESA_PENDIENTE, ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
 import os
 import requests
 import time
@@ -88,7 +90,11 @@ def actualizar_usuario(uid: str, data, db: Session):
         raise HTTPException(status_code=400, detail="Solo se puede modificar el rol del usuario.")
     if "is_admin" not in data or not isinstance(data["is_admin"], bool):
         raise HTTPException(status_code=400, detail="El rol debe indicar si el usuario es administrador.")
+    # Una cuenta de empresa se gestiona desde el módulo de empresas, no como administrador.
+    if usuario.rol == ROL_EMPRESA:
+        raise HTTPException(status_code=400, detail="Las cuentas de empresa no pueden ser administradoras.")
     usuario.is_admin = data["is_admin"]
+    usuario.rol = ROL_ADMIN if data["is_admin"] else ROL_USUARIO
 
     db.commit()
     db.refresh(usuario)
@@ -105,7 +111,9 @@ def obtener_estadisticas(db: Session):
         "total_cargas": total_cargas,
         "total_kwh_cargados": float(total_kwh_cargados),
         "total_reportes_abiertos": db.query(Reportes).filter(Reportes.estado == "abierto").count(),
-        "total_estaciones_propias": db.query(EstacionPropia).count(),
+        "total_estaciones_propias": db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False)).count(),
+        "total_empresas": db.query(Empresa).count(),
+        "empresas_pendientes": db.query(Empresa).filter(Empresa.estado == EMPRESA_PENDIENTE).count(),
     }
 
 
@@ -169,7 +177,7 @@ def cambiar_estado_reporte(rid: str, estado: str, db: Session):
 
 
 def listar_estaciones(db: Session, busqueda: str | None = None, estado: str | None = None):
-    consulta = db.query(EstacionPropia)
+    consulta = db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False))
     if busqueda:
         termino = f"%{busqueda.strip()}%"
         consulta = consulta.filter(
@@ -199,8 +207,10 @@ def crear_estacion(data: EstacionPropiaCreate, db: Session):
         "corriente": "No especificada",
         "bahias": 1,
     }]
-    for cargador in cargadores:
-        db.add(EstacionCargador(estacion_id=nueva.id, **cargador.model_dump(exclude={"id"})))
+    for numero, cargador in enumerate(cargadores, start=1):
+        datos_cargador = cargador.model_dump(exclude={"id"}) if hasattr(cargador, "model_dump") else dict(cargador)
+        datos_cargador["numero"] = datos_cargador.get("numero") or numero
+        db.add(EstacionCargador(estacion_id=nueva.id, **datos_cargador))
     db.commit()
     return nueva
 
@@ -209,6 +219,13 @@ def actualizar_estacion(eid: str, data: EstacionPropiaUpdate, db: Session):
     estacion = db.query(EstacionPropia).filter(EstacionPropia.id == eid).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación no encontrada.")
+    if estacion.empresa_id:
+        # Los datos y cargadores de una estación de empresa los mantiene la empresa
+        # (con su historial); el admin puede cambiar su estado o retirarla.
+        raise HTTPException(
+            status_code=400,
+            detail="Las estaciones de empresa las edita la propia empresa. Puedes cambiar su estado o retirarla.",
+        )
     datos = data.model_dump(exclude_unset=True)
     cargadores = datos.pop("cargadores", None)
     nuevo_id = datos.pop("id", None)
@@ -230,19 +247,45 @@ def actualizar_estacion(eid: str, data: EstacionPropiaUpdate, db: Session):
         for cargador in existentes:
             db.delete(cargador)
         db.flush()
-        for cargador in cargadores:
-            db.add(EstacionCargador(estacion_id=estacion.id, **{key: value for key, value in cargador.items() if key != "id"}))
+        for numero, cargador in enumerate(cargadores, start=1):
+            datos_cargador = {key: value for key, value in cargador.items() if key != "id" and value is not None}
+            datos_cargador["numero"] = datos_cargador.get("numero") or numero
+            db.add(EstacionCargador(estacion_id=estacion.id, **datos_cargador))
     db.commit()
     db.refresh(estacion)
     return estacion
 
 
-def cambiar_estado_estacion(eid: str, data: EstadoUpdate, db: Session):
+def cambiar_estado_estacion(eid: str, data: EstadoUpdate, db: Session, admin=None):
     if data.estado not in {"activa", "mantenimiento", "inactiva"}:
         raise HTTPException(status_code=400, detail="Estado de estación no válido.")
     estacion = db.query(EstacionPropia).filter(EstacionPropia.id == eid).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación no encontrada.")
+    if estacion.empresa_id:
+        # Las estaciones de empresa pasan por la misma regla que usa la empresa:
+        # motivo, historial y cancelación de reservas futuras.
+        from app.controllers.estacion_estado_controller import cambiar_estado
+        from app.controllers.empresa_controller import notificar_empresa
+
+        motivo = (data.motivo or "").strip() or "Cambio realizado por el administrador de EV Charge"
+        cambiar_estado(
+            db,
+            estacion,
+            data.estado,
+            motivo,
+            actor_id=admin.id if admin else None,
+            actor_nombre="Administrador EV Charge",
+        )
+        notificar_empresa(
+            db,
+            estacion.id,
+            "Estado de estación actualizado",
+            f"El administrador cambió {estacion.nombre} a {data.estado}. Motivo: {motivo}",
+        )
+        db.commit()
+        db.refresh(estacion)
+        return estacion
     estacion.estado = data.estado
     estacion.activa = data.estado == "activa"
     db.commit()
@@ -342,7 +385,8 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
         })
     ids_externos = {item["id"] for item in resultado}
     centros_ciudad = {nombre: (latitud, longitud) for nombre, latitud, longitud in CENTROS_COLOMBIA}
-    for estacion in db.query(EstacionPropia).all():
+    empresas = {empresa.id: empresa for empresa in db.query(Empresa).all()}
+    for estacion in db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False)).all():
         if estacion.id in ids_externos:
             continue
         ciudad_propia = min(
@@ -352,13 +396,20 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
                 + (estacion.lon - centros_ciudad[nombre][1]) ** 2
             ),
         )
-        cargadores = db.query(EstacionCargador).filter(EstacionCargador.estacion_id == estacion.id).all()
+        cargadores = (
+            db.query(EstacionCargador)
+            .filter(EstacionCargador.estacion_id == estacion.id)
+            .order_by(EstacionCargador.numero.asc().nullslast(), EstacionCargador.id.asc())
+            .all()
+        )
         conectores = [{
             "id": cargador.id,
+            "numero": cargador.numero,
             "tipo": cargador.tipo_conector,
             "potencia_kw": cargador.potencia_kw,
             "corriente": cargador.corriente or "No especificada",
             "bahias": cargador.bahias,
+            "estado": cargador.estado or "disponible",
         } for cargador in cargadores]
         if not conectores:
             conectores = [{
@@ -377,7 +428,8 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             "estado": estacion.estado or ("activa" if estacion.activa else "inactiva"),
             "ciudad": ciudad_propia,
             "departamento": DEPARTAMENTO_POR_CIUDAD.get(ciudad_propia, ""),
-            "origen": "EV Charge",
+            "origen": "Empresa" if estacion.empresa_id else "EV Charge",
+            "empresa": marca_empresa(empresas.get(estacion.empresa_id)),
             "conectores": conectores,
         })
     if busqueda:
@@ -394,7 +446,12 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
 
 
 def listar_estaciones_mapa(db: Session):
-    estaciones = listar_estaciones_ocm_admin(db)
+    estaciones = [
+        estacion
+        for estacion in listar_estaciones_ocm_admin(db)
+        # RN-E11: una empresa pendiente o suspendida no publica sus estaciones en el mapa.
+        if not estacion.get("empresa") or estacion["empresa"]["estado"] == EMPRESA_APROBADA
+    ]
     return [{
         "ID": estacion["id"],
         "AddressInfo": {
@@ -406,13 +463,18 @@ def listar_estaciones_mapa(db: Session):
             "StateOrProvince": estacion.get("departamento", ""),
         },
         "OperatorInfo": {"Title": estacion["operador"]},
+        # RN-E10: nombre, color y logo de la empresa para pintar su marcador.
+        "Empresa": estacion.get("empresa"),
         "City": estacion.get("ciudad", ""),
         "StateOrProvince": estacion.get("departamento", ""),
         "Connections": [{
+            "ID": conector.get("id"),
             "ConnectionType": {"Title": conector["tipo"]},
             "PowerKW": conector["potencia_kw"],
             "CurrentType": {"Title": conector["corriente"]},
             "Quantity": conector["bahias"],
+            # Los cargadores de empresa pueden quedar fuera de servicio individualmente.
+            "Estado": conector.get("estado") or "disponible",
         } for conector in estacion["conectores"]],
     } for estacion in estaciones]
 
@@ -478,9 +540,34 @@ def eliminar_estacion_ocm(eid: str, db: Session):
 
 
 def eliminar_estacion(eid: str, db: Session):
-    estacion = db.query(EstacionPropia).filter(EstacionPropia.id == eid).first()
+    estacion = db.query(EstacionPropia).filter(EstacionPropia.id == eid, EstacionPropia.eliminada.is_(False)).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación no encontrada.")
+    if estacion.empresa_id:
+        # Las estaciones de empresa se borran de forma lógica: su historial y
+        # sus estadísticas siguen perteneciendo a la empresa.
+        from app.controllers.empresa_estaciones_controller import cancelar_reservas_futuras_por_estacion
+        from app.controllers.historial_controller import registrar_historial
+        from app.controllers.empresa_controller import notificar_empresa
+
+        motivo = "Estación retirada por el administrador de EV Charge"
+        canceladas = cancelar_reservas_futuras_por_estacion(db, estacion, motivo)
+        estacion.eliminada = True
+        estacion.estado = "inactiva"
+        estacion.activa = False
+        registrar_historial(
+            db,
+            empresa_id=estacion.empresa_id,
+            usuario_id=None,
+            usuario_nombre="Administrador EV Charge",
+            estacion=estacion,
+            accion="eliminar",
+            motivo=motivo,
+            detalle={"reservas_canceladas": canceladas},
+        )
+        notificar_empresa(db, estacion.id, "Estación eliminada", f"El administrador retiró {estacion.nombre}.")
+        db.commit()
+        return {"ok": True}
     db.delete(estacion)
     db.commit()
     return {"ok": True}

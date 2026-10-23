@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from app.models.calificacion_model import Calificaciones
 from app.schemas.calificaciones_schema import CalificacionCreate, CalificacionUpdate
 from app.controllers.notificaciones_controller import crear_notificacion
+from app.controllers.empresa_controller import notificar_empresa
 from app.utils.content_filter import validar_contenido
 
 
@@ -23,6 +24,7 @@ def calificar(db: Session, usuario_id: str, data: CalificacionCreate):
     cal = Calificaciones(usuario_id=usuario_id, **data.model_dump())
     db.add(cal)
     crear_notificacion(db, usuario_id, "Calificación enviada", f"Calificaste {data.estacion_nombre or data.estacion_ocm_id} con {data.puntaje}/5.", "calificacion")
+    notificar_empresa(db, data.estacion_ocm_id, "Nueva reseña", f"{data.estacion_nombre or data.estacion_ocm_id} recibió {data.puntaje}/5.", "calificacion")
     db.commit()
     return {"ok": True}
 
