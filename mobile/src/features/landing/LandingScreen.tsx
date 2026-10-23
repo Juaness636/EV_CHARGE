@@ -1,7 +1,7 @@
 // Pantalla de inicio (landing). Equivale a App.tsx del frontend web:
 // hero, categorías, servicios, quiénes somos, cifras, contacto, preguntas frecuentes y pie.
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image as RNImage, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -18,7 +18,7 @@ import { CampanaNotificaciones, Logo, SelectorTema } from '../../components/Cabe
 import { notificar } from '../../components/Notificaciones';
 import { trasCerrarModal } from '../../components/capas';
 import { AppModal, Boton, CampoTexto, Icono } from '../../components/ui';
-import { catalogoProductos, estiloCategoria, infoCategorias } from '../productos/productos.data';
+import { catalogoProductos } from '../productos/productos.data';
 import { Escenario } from '../productos/Escenario';
 import { pesos } from '../../utils/formato';
 import { Presionable } from '../../components/ui/Presionable';
@@ -29,20 +29,20 @@ type Seccion = 'inicio' | 'categoria' | 'servicios' | 'nosotros' | 'cifras' | 'c
 
 const enlaces: Array<{ id: Seccion; texto: string }> = [
   { id: 'inicio', texto: 'Inicio' },
-  { id: 'categoria', texto: 'Categoría' },
+  { id: 'categoria', texto: 'Tienda' },
   { id: 'servicios', texto: 'Servicios' },
   { id: 'nosotros', texto: 'Quiénes somos' },
   { id: 'cifras', texto: 'En números' },
   { id: 'contacto', texto: 'Contacto' },
 ];
 
-const servicios = [
-  { img: require('../../../assets/images/seccion1.jpg'), titulo: 'Mapa en tiempo real', desc: 'Visualiza todas las estaciones de carga cerca de ti en Bogotá, con información actualizada.', icono: 'map-location-dot' },
-  { img: require('../../../assets/images/seccion2.jpg'), titulo: 'Filtro por tu vehículo', desc: 'Registra tu auto y el sistema filtra automáticamente las estaciones compatibles.', icono: 'car-side' },
-  { img: require('../../../assets/images/seccion3.jpg'), titulo: 'Planificador de viaje', desc: 'Calcula las paradas de recarga óptimas según tu autonomía usando rutas viales reales.', icono: 'compass' },
-  { img: require('../../../assets/images/seccion4.jpg'), titulo: 'Comunidad activa', desc: 'Califica estaciones, reporta cargadores dañados y consulta la experiencia de otros conductores.', icono: 'star' },
-  { img: require('../../../assets/images/seccion5.jpg'), titulo: 'Historial de cargas', desc: 'Lleva el registro de cada sesión: kWh cargados, costo estimado y estación utilizada.', icono: 'clipboard-list' },
-  { img: require('../../../assets/images/seccion6.jpg'), titulo: 'Reservas inteligentes', desc: 'Programa tus recargas con anticipación, reserva estaciones disponibles y organiza tus viajes de forma eficiente.', icono: 'calendar-check' },
+const servicios: Array<{ img: number; titulo: string; desc: string; icono: string; dato: string; ruta: '/mapa' | '/dashboard' }> = [
+  { img: require('../../../assets/images/seccion1.jpg'), titulo: 'Mapa en tiempo real', desc: 'Visualiza todas las estaciones de carga cerca de ti en Bogotá, con disponibilidad, conectores y precios actualizados.', icono: 'map-location-dot', dato: '47 estaciones', ruta: '/mapa' },
+  { img: require('../../../assets/images/seccion6.jpg'), titulo: 'Reservas inteligentes', desc: 'Reserva tu cargador con anticipación y llega sin filas.', icono: 'calendar-check', dato: 'Pago verificado', ruta: '/mapa' },
+  { img: require('../../../assets/images/seccion2.jpg'), titulo: 'Filtro por tu vehículo', desc: 'Registra tu auto y verás solo las estaciones compatibles.', icono: 'car-side', dato: '5 conectores', ruta: '/dashboard' },
+  { img: require('../../../assets/images/seccion3.jpg'), titulo: 'Planificador de viaje', desc: 'Paradas de recarga óptimas según tu autonomía, con rutas viales reales.', icono: 'compass', dato: 'Rutas reales', ruta: '/mapa' },
+  { img: require('../../../assets/images/seccion4.jpg'), titulo: 'Comunidad activa', desc: 'Califica estaciones y reporta cargadores dañados.', icono: 'star', dato: 'Reseñas reales', ruta: '/mapa' },
+  { img: require('../../../assets/images/seccion5.jpg'), titulo: 'Historial de cargas', desc: 'Cada sesión registrada: kWh cargados, costo y estación utilizada.', icono: 'clipboard-list', dato: 'kWh y costos', ruta: '/dashboard' },
 ];
 
 const cifras = [
@@ -135,10 +135,9 @@ export function LandingScreen() {
   };
 
   const year = new Date().getFullYear();
-  const colsCategorias = columnas(260);
-  const colsServicios = columnas(330);
   const colsCifras = width < 520 ? 2 : 4;
-  const colsDestacados = columnas(250);
+  const colsDestacados = width < 520 ? 2 : columnas(250);
+  const compacto = width < 520;
 
   return (
     <View style={s.pantalla}>
@@ -184,7 +183,12 @@ export function LandingScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: insets.bottom }}
         scrollEventThrottle={48}
-        onLayout={(e) => { altoVista.current = e.nativeEvent.layout.height; setLimiteVisible((v) => Math.max(v, e.nativeEvent.layout.height)); }}
+        onLayout={(e) => {
+          // Leer la altura antes del setState: en Android el evento se libera y nativeEvent queda en null.
+          const alto = e.nativeEvent.layout.height;
+          altoVista.current = alto;
+          setLimiteVisible((v) => Math.max(v, alto));
+        }}
         onScroll={(e) => {
           const limite = e.nativeEvent.contentOffset.y + altoVista.current;
           setLimiteVisible((v) => (limite > v + 40 ? limite : v));
@@ -280,42 +284,8 @@ export function LandingScreen() {
           <IndicadorScroll onPress={() => irA('categoria')} />
         </View>
 
-        {/* CATEGORÍAS */}
-        <SeccionRevelar onLayout={registrar('categoria')} style={s.seccion}>
-          <Encabezado eyebrow="Categorías" titulo="Encuentra lo que necesitas para tu vehículo" sub="Explora nuestras categorías de productos y soluciones para movilidad eléctrica." />
-          <View style={s.grid}>
-            {infoCategorias.map((c, i) => (
-              <Revelar key={c.key} orden={i} style={{ width: anchoTarjeta(colsCategorias) }}>
-              <Presionable
-                onPress={() => router.push({ pathname: '/productos', params: { categoria: c.key } })}
-                style={s.tarjetaCategoria}
-                elevarAlPasar
-                accessibilityRole="link"
-              >
-                <Image source={c.img} style={[StyleSheet.absoluteFill, { bottom: 70 }]} contentFit="cover" transition={400} />
-                <LinearGradient colors={['transparent', estiloCategoria[c.key].fondo[1], estiloCategoria[c.key].fondo[2]]} locations={[0.35, 0.7, 1]} style={StyleSheet.absoluteFill} />
-                <LinearGradient colors={['transparent', estiloCategoria[c.key].acento, 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.bordeAcento} />
-                <View style={[s.iconoCategoria, { backgroundColor: estiloCategoria[c.key].acento }]}><Icono name={c.icono} size={14} color="#04110a" /></View>
-                <Text style={[s.lemaCategoria, { color: estiloCategoria[c.key].acento }]}>{estiloCategoria[c.key].lema}</Text>
-                <View style={s.categoriaTexto}>
-                  <Text style={s.categoriaTitulo}>{c.key}</Text>
-                  <Text style={s.categoriaDesc} numberOfLines={2}>{c.descripcion}</Text>
-                  <View style={s.filaAccion}>
-                    <Text style={[s.accionTexto, { color: estiloCategoria[c.key].acento }]}>Explorar categoría</Text>
-                    <Icono name="arrow-right" size={12} color={estiloCategoria[c.key].acento} />
-                  </View>
-                </View>
-              </Presionable>
-              </Revelar>
-            ))}
-          </View>
-          <Revelar orden={4}>
-            <Boton titulo="Ver todos los productos" variante="soft" icono="bag-shopping" onPress={() => router.push('/productos')} style={{ alignSelf: 'center', marginTop: Spacing.md }} />
-          </Revelar>
-        </SeccionRevelar>
-
         {/* PRODUCTOS DESTACADOS */}
-        <SeccionRevelar style={[s.seccion, s.seccionAlterna]}>
+        <SeccionRevelar onLayout={registrar('categoria')} style={[s.seccion, s.seccionAlterna]}>
           <Encabezado eyebrow="Tienda" titulo="Lo más pedido por conductores EV" sub="Equipos con instalación certificada y garantía oficial en Colombia." />
           <View style={s.grid}>
             {destacados.map((p, i) => (
@@ -325,12 +295,12 @@ export function LandingScreen() {
                     <Escenario producto={p} indice={i} />
                     <View style={s.productoEtiqueta}><Text style={s.productoEtiquetaTexto}>{p.etiqueta}</Text></View>
                   </View>
-                  <View style={{ padding: Spacing.md, gap: 4 }}>
-                    <Text style={s.productoTipo}>{p.tipo}</Text>
-                    <Text style={s.tarjetaTitulo} numberOfLines={1}>{p.nombre}</Text>
+                  <View style={{ padding: compacto ? Spacing.sm + 4 : Spacing.md, gap: 4 }}>
+                    <Text style={s.productoTipo} numberOfLines={1}>{p.tipo}</Text>
+                    <Text style={[s.tarjetaTitulo, compacto && { fontSize: 14 }]} numberOfLines={compacto ? 2 : 1}>{p.nombre}</Text>
                     <View style={[s.filaAccion, { justifyContent: 'space-between', marginTop: 4 }]}>
-                      <Text style={s.productoPrecio}>{pesos(p.monto)}</Text>
-                      <View style={s.productoFlecha}><Icono name="arrow-right" size={12} color="#fff" /></View>
+                      <Text style={[s.productoPrecio, compacto && { fontSize: 15 }]}>{pesos(p.monto)}</Text>
+                      {!compacto && <View style={s.productoFlecha}><Icono name="arrow-right" size={12} color="#fff" /></View>}
                     </View>
                   </View>
                 </Presionable>
@@ -342,25 +312,33 @@ export function LandingScreen() {
           </Revelar>
         </SeccionRevelar>
 
-        {/* SERVICIOS */}
+        {/* SERVICIOS: mosaico (bento) con la primera tarjeta destacada */}
         <SeccionRevelar onLayout={registrar('servicios')} style={s.seccion}>
-          <Encabezado eyebrow="Lo que hacemos" titulo="Todo lo que necesita tu vehículo eléctrico" />
-          <View style={s.grid}>
-            {servicios.map((sv, i) => (
-              <Revelar key={sv.titulo} orden={i % colsServicios} style={{ width: anchoTarjeta(colsServicios) }}>
-                <Presionable style={s.tarjetaServicio} elevarAlPasar escalaPresion={0.98}>
-                  <View style={s.servicioImgCaja}>
-                    <Image source={sv.img} style={s.servicioImg} contentFit="cover" transition={500} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFill} />
-                    <View style={s.servicioTituloCaja}>
-                      <View style={s.servicioIcono}><Icono name={sv.icono} size={15} color="#fff" /></View>
-                      <Text style={s.servicioTitulo}>{sv.titulo}</Text>
-                    </View>
-                  </View>
-                  <Text style={[s.tarjetaTexto, { padding: Spacing.md }]}>{sv.desc}</Text>
-                </Presionable>
-              </Revelar>
-            ))}
+          <Revelar>
+            <View style={[s.serviciosCabecera, escritorio && { flexDirection: 'row', alignItems: 'flex-end' }]}>
+              <View style={[{ gap: 8 }, escritorio && { flex: 1.3 }]}>
+                <Text style={s.eyebrowTexto}>Lo que hacemos</Text>
+                <Text style={[s.seccionTitulo, { textAlign: escritorio ? 'left' : 'center' }, escritorio && { fontSize: 38, lineHeight: 44 }]}>
+                  Todo lo que necesita{'\n'}tu <TextoDegradado style={[s.seccionTitulo, escritorio && { fontSize: 38, lineHeight: 44 }]}>vehículo eléctrico</TextoDegradado>
+                </Text>
+              </View>
+              <View style={[{ gap: 12 }, escritorio ? { flex: 1, alignItems: 'flex-start' } : { alignItems: 'center' }]}>
+                <Text style={[s.seccionSub, escritorio && { textAlign: 'left' }]}>Seis herramientas conectadas entre sí: encuentra, reserva, planifica y lleva el control de cada carga desde un solo lugar.</Text>
+                <Boton titulo="Probar el mapa" icono="arrow-right" iconoDerecha variante="soft" pequeno onPress={() => router.push('/mapa')} />
+              </View>
+            </View>
+          </Revelar>
+          <View style={s.bento}>
+            {servicios.map((sv, i) => {
+              // PC: fila 1 = destacada (2/3) + 1; fila 2 = tres tarjetas; fila 3 = banda horizontal.
+              const ancho = !escritorio ? '100%' : i === 0 ? '65.6%' : i === 5 ? '100%' : '32.2%';
+              const alto = !escritorio ? 280 : i === 0 || i === 1 ? 420 : i === 5 ? 240 : 320;
+              return (
+                <Revelar key={sv.titulo} orden={i} desde={i === 0 ? 'escala' : 'abajo'} style={{ width: ancho }}>
+                  <TarjetaServicio servicio={sv} indice={i} alto={alto} destacada={i === 0} banda={escritorio && i === 5} onPress={() => router.push(sv.ruta)} />
+                </Revelar>
+              );
+            })}
           </View>
         </SeccionRevelar>
 
@@ -533,6 +511,60 @@ export function LandingScreen() {
   );
 }
 
+// Tarjeta de servicio con foto a sangre, zoom al pasar el mouse y borde verde que se enciende.
+function TarjetaServicio({ servicio, indice, alto, destacada, banda, onPress }: {
+  servicio: (typeof servicios)[number]; indice: number; alto: number; destacada: boolean; banda: boolean; onPress: () => void;
+}) {
+  const s = useThemedStyles(crearEstilos);
+  const { colors } = useTheme();
+  const reducir = useReducirMovimiento();
+  const [activo, setActivo] = useState(false);
+  const zoom = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reducir) return;
+    Animated.timing(zoom, { toValue: activo ? 1 : 0, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [activo, reducir, zoom]);
+  return (
+    <Presionable
+      onPress={onPress}
+      onHoverIn={() => setActivo(true)}
+      onHoverOut={() => setActivo(false)}
+      elevarAlPasar
+      escalaPresion={0.98}
+      accessibilityRole="link"
+      accessibilityLabel={servicio.titulo}
+      style={[s.servicio, { height: alto }, activo && { borderColor: colors.primaryBorder }]}
+    >
+      <Animated.View style={[banda ? s.servicioFotoBanda : StyleSheet.absoluteFill, { transform: [{ scale: zoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }]}>
+        {/* Las fotos traen un rótulo abajo: se ancla arriba y el degradado lo cubre. */}
+        <Image source={servicio.img} style={[StyleSheet.absoluteFill, !banda && { bottom: '-14%' }]} contentFit="cover" contentPosition="top" transition={500} />
+      </Animated.View>
+      <LinearGradient
+        colors={banda ? ['rgba(5,8,6,0)', 'rgba(5,8,6,0.9)', '#050806'] : ['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.05)', 'rgba(3,6,4,0.95)', '#030604']}
+        locations={banda ? [0.2, 0.5, 0.62] : [0, 0.25, 0.6, 0.8]}
+        start={banda ? { x: 0, y: 0 } : { x: 0, y: 0 }}
+        end={banda ? { x: 1, y: 0 } : { x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <Text style={[s.servicioNumero, destacada && { fontSize: 96 }]}>{String(indice + 1).padStart(2, '0')}</Text>
+      <View style={[s.servicioChip, estiloVidrio(colors, 10), { borderColor: 'rgba(255,255,255,0.16)', backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+        <Icono name={servicio.icono} size={12} color={colors.neon} />
+        <Text style={s.servicioChipTexto}>{servicio.dato}</Text>
+      </View>
+      <View style={[s.servicioCuerpo, banda && { left: '52%', top: 0, justifyContent: 'center' }]}>
+        <Text style={[s.servicioTitulo, destacada && { fontSize: 30, lineHeight: 36 }]}>{servicio.titulo}</Text>
+        <Text style={[s.servicioDesc, destacada && { fontSize: 15.5, maxWidth: 460 }]}>{servicio.desc}</Text>
+        <View style={s.filaAccion}>
+          <Text style={[s.accionTexto, { color: colors.neon }]}>{servicio.ruta === '/mapa' ? 'Abrir el mapa' : 'Ir a mi panel'}</Text>
+          <Animated.View style={{ transform: [{ translateX: zoom.interpolate({ inputRange: [0, 1], outputRange: [0, 6] }) }] }}>
+            <Icono name="arrow-right" size={12} color={colors.neon} />
+          </Animated.View>
+        </View>
+      </View>
+    </Presionable>
+  );
+}
+
 function Encabezado({ eyebrow, titulo, sub }: { eyebrow: string; titulo: string; sub?: string }) {
   const s = useThemedStyles(crearEstilos);
   return (
@@ -577,7 +609,7 @@ function IndicadorScroll({ onPress }: { onPress: () => void }) {
     return () => bucle.stop();
   }, [reducir, v]);
   return (
-    <Pressable onPress={onPress} style={{ alignSelf: 'center', alignItems: 'center', marginTop: Spacing.xl, gap: 6 }} accessibilityLabel="Desplazarse a categorías">
+    <Pressable onPress={onPress} style={{ alignSelf: 'center', alignItems: 'center', marginTop: Spacing.xl, gap: 6 }} accessibilityLabel="Desplazarse a la tienda">
       <Text style={{ color: colors.textDim, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Desplázate</Text>
       <Animated.View style={{ transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, 8] }) }] }}>
         <Icono name="chevron-down" size={16} color={colors.primary} />
@@ -622,35 +654,33 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   cintaItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22 },
   cintaTexto: { color: c.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
   lineaTitulo: { width: 48, height: 3, borderRadius: 2, backgroundColor: c.primary, marginVertical: 2 },
-  iconoCategoria: { position: 'absolute', top: 14, left: 14, width: 36, height: 36, borderRadius: 12, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
-  servicioImgCaja: { height: 190, overflow: 'hidden' },
-  servicioTituloCaja: { position: 'absolute', left: 14, right: 14, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  servicioIcono: { width: 34, height: 34, borderRadius: 10, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
-  servicioTitulo: { color: '#fff', fontSize: 17, fontWeight: '900', flex: 1, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
   seccion: { paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.md, width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO + Spacing.md * 2, alignSelf: 'center' },
   seccionAlterna: { maxWidth: undefined, backgroundColor: c.bg2, alignItems: 'center' },
   encabezado: { alignItems: 'center', gap: 8, marginBottom: Spacing.lg, maxWidth: 720, alignSelf: 'center' },
   seccionTitulo: { color: c.text, fontSize: 28, fontWeight: '900', textAlign: 'center', lineHeight: 35, letterSpacing: -0.3 },
   seccionSub: { color: c.textMuted, fontSize: 14.5, textAlign: 'center', lineHeight: 21 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO },
-  tarjetaCategoria: { height: 360, borderRadius: Radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: '#050806', justifyContent: 'flex-end', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  categoriaTexto: { padding: Spacing.md, gap: 6 },
-  categoriaTitulo: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  categoriaDesc: { color: 'rgba(255,255,255,0.8)', fontSize: 13, lineHeight: 19 },
   tarjetaTitulo: { color: c.text, fontSize: 16, fontWeight: '800' },
   tarjetaTexto: { color: c.textMuted, fontSize: 13.5, lineHeight: 20 },
   filaAccion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   accionTexto: { color: c.primary, fontWeight: '800', fontSize: 13 },
   tarjetaProducto: { backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
   bordeAcento: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
-  lemaCategoria: { position: 'absolute', top: 20, right: 16, fontSize: 11, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase' },
   productoEtiqueta: { position: 'absolute', zIndex: 3, top: 12, left: 12, backgroundColor: c.primary, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   productoEtiquetaTexto: { color: '#fff', fontSize: 11, fontWeight: '800' },
   productoTipo: { color: c.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   productoPrecio: { color: c.text, fontSize: 18, fontWeight: '900' },
   productoFlecha: { width: 32, height: 32, borderRadius: 16, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
-  tarjetaServicio: { backgroundColor: c.card, borderRadius: Radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
-  servicioImg: { width: '100%', height: '100%' },
+  serviciosCabecera: { gap: Spacing.md, marginBottom: Spacing.xl, alignItems: 'center', width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center' },
+  bento: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center' },
+  servicio: { borderRadius: Radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.border, backgroundColor: '#050806', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 4 },
+  servicioFotoBanda: { position: 'absolute', top: 0, bottom: 0, left: 0, width: '60%' },
+  servicioNumero: { position: 'absolute', top: 6, right: 16, fontSize: 64, fontWeight: '900', color: 'rgba(255,255,255,0.14)', letterSpacing: -2 },
+  servicioChip: { position: 'absolute', top: 16, left: 16, flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: Radius.full, paddingHorizontal: 11, paddingVertical: 6 },
+  servicioChipTexto: { color: '#fff', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.4 },
+  servicioCuerpo: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: Spacing.lg, gap: 8 },
+  servicioTitulo: { color: '#fff', fontSize: 21, lineHeight: 26, fontWeight: '900', letterSpacing: -0.3 },
+  servicioDesc: { color: 'rgba(255,255,255,0.78)', fontSize: 13.5, lineHeight: 20 },
   nosotros: { padding: Spacing.lg, gap: Spacing.lg, width: '100%', maxWidth: ANCHO_MAXIMO_CONTENIDO, alignSelf: 'center', paddingVertical: Spacing.xxl },
   nosotrosImgCaja: { minHeight: 280, borderRadius: Radius.xl, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', padding: Spacing.md, borderWidth: 1, borderColor: c.primaryBorder },
   bannerTitulo: { position: 'absolute', top: 18, color: c.primary, opacity: 0.18, fontSize: 52, fontWeight: '900', letterSpacing: 4 },
