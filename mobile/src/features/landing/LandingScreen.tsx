@@ -183,7 +183,12 @@ export function LandingScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: insets.bottom }}
         scrollEventThrottle={48}
-        onLayout={(e) => { altoVista.current = e.nativeEvent.layout.height; setLimiteVisible((v) => Math.max(v, e.nativeEvent.layout.height)); }}
+        onLayout={(e) => {
+          // Leer la altura antes del setState: en Android el evento se libera y nativeEvent queda en null.
+          const alto = e.nativeEvent.layout.height;
+          altoVista.current = alto;
+          setLimiteVisible((v) => Math.max(v, alto));
+        }}
         onScroll={(e) => {
           const limite = e.nativeEvent.contentOffset.y + altoVista.current;
           setLimiteVisible((v) => (limite > v + 40 ? limite : v));
