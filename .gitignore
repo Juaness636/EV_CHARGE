@@ -1,0 +1,20 @@
+# Variables de entorno con credenciales (nunca subir al repositorio)
+.env
+.env.*
+!.env.example
+
+# Dependencias y compilados
+node_modules/
+dist/
+.expo/
+__pycache__/
+*.pyc
+
+# Respaldo local de la versión móvil anterior (el historial de git ya la conserva)
+mobile-respaldo-anterior/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,5 +1,6 @@
-// Servicio de Mapas y Rutas para React Native
+// Corresponde a: app/controllers/mapa_controller.py + app/routes/mapa_routes.py
 import { api } from './httpClient';
+import type { EstacionOCM } from '../features/mapa/types';
 
 export interface RutaVial {
   type: string;
@@ -30,35 +31,15 @@ export interface PlanViaje {
   estaciones_en_ruta: EstacionConRuta[];
 }
 
-export interface EstacionAPI {
-  id: string | number;
-  nombre: string;
-  direccion?: string;
-  lat: number;
-  lon: number;
-  estado?: string;
-  puntos_carga?: number;
-  conectores?: string[];
-}
-
-export async function listarEstacionesMapa(): Promise<EstacionAPI[]> {
-  const { data } = await api.get<EstacionAPI[]>('/estaciones-mapa');
+export async function listarEstacionesMapa(): Promise<EstacionOCM[]> {
+  const { data } = await api.get<EstacionOCM[]>('/estaciones-mapa', { timeout: 45000 });
   return data;
 }
 
-export async function listarEstacionesCercanas(
-  latitud: number,
-  longitud: number,
-  radioKm = 25,
-): Promise<EstacionAPI[]> {
-  const { data } = await api.get<EstacionAPI[]>('/estaciones-cercanas', {
+export async function listarEstacionesCercanas(latitud: number, longitud: number, radioKm = 25): Promise<EstacionOCM[]> {
+  const { data } = await api.get<EstacionOCM[]>('/estaciones-cercanas', {
     params: { latitud, longitud, radio_km: radioKm },
   });
-  return data;
-}
-
-export async function listarEstacionesBogota(): Promise<EstacionAPI[]> {
-  const { data } = await api.get<EstacionAPI[]>('/estaciones-bogota');
   return data;
 }
 
@@ -77,6 +58,7 @@ export async function planificarViaje(
       destino_lon: destinoLon,
       autonomia_km: autonomiaKm,
     },
+    timeout: 30000,
   });
   return data;
 }
