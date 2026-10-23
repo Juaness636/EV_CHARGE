@@ -14,6 +14,10 @@ import {
   eliminarEstacion,
   listarEstaciones,
   quitarCargador,
+  subirFotoEstacion,
+  eliminarFotoEstacion,
+  urlMedia,
+  FOTOS_MAXIMAS_POR_ESTACION,
   type CargadorCreate,
   type EstacionEmpresa,
   type EstacionEmpresaCreate,
@@ -218,6 +222,28 @@ function Contenido() {
             </tr>;
           })}
         </Table>
+
+        {/* Fotos: las ven todos los usuarios en el detalle de la estación del mapa. */}
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Fotos ({(estacion.fotos || []).length}/{FOTOS_MAXIMAS_POR_ESTACION})</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {(estacion.fotos || []).map((foto) => (
+              <div key={foto.id} style={{ position: 'relative' }}>
+                <img src={urlMedia(foto.url)} alt={`Foto de ${estacion.nombre}`} style={{ width: 120, height: 84, objectFit: 'cover', borderRadius: 8 }} />
+                {puedeOperar && <button type="button" className="btn-tbl danger" style={{ position: 'absolute', top: 4, right: 4, padding: '0 6px' }}
+                  aria-label="Quitar foto" onClick={() => { if (window.confirm('¿Quitar esta foto?')) void ejecutar(() => eliminarFotoEstacion(estacion.id, foto.id), 'Foto eliminada.'); }}>×</button>}
+              </div>
+            ))}
+            {puedeOperar && (estacion.fotos || []).length < FOTOS_MAXIMAS_POR_ESTACION && <label className="btn-tbl" style={{ cursor: 'pointer' }}>
+              Agregar foto
+              <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => {
+                const archivo = e.target.files?.[0];
+                e.target.value = '';
+                if (archivo) void ejecutar(() => subirFotoEstacion(estacion.id, archivo), 'Foto subida.');
+              }} />
+            </label>}
+          </div>
+        </div>
 
         {puedeOperar && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <button className="btn-tbl" onClick={() => void ejecutar(() => agregarCargador(estacion.id, cargadorVacio(siguienteNumero(estacion.cargadores))), 'Cargador agregado.')}>Agregar cargador</button>

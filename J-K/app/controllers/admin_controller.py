@@ -19,6 +19,7 @@ from app.schemas.admin_schema import EstacionPropiaCreate, EstacionPropiaUpdate,
 from app.models.utils import ahora_utc
 from app.controllers.notificaciones_controller import crear_notificacion
 from app.controllers.empresa_controller import marca_empresa
+from app.controllers.empresa_fotos_controller import urls_fotos_por_estacion
 from app.utils.constantes import EMPRESA_APROBADA, EMPRESA_PENDIENTE, ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
 import os
 import requests
@@ -93,7 +94,6 @@ def actualizar_usuario(uid: str, data, db: Session):
     # Una cuenta de empresa se gestiona desde el módulo de empresas, no como administrador.
     if usuario.rol == ROL_EMPRESA:
         raise HTTPException(status_code=400, detail="Las cuentas de empresa no pueden ser administradoras.")
-    usuario.is_admin = data["is_admin"]
     usuario.rol = ROL_ADMIN if data["is_admin"] else ROL_USUARIO
 
     db.commit()
@@ -386,7 +386,9 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
     ids_externos = {item["id"] for item in resultado}
     centros_ciudad = {nombre: (latitud, longitud) for nombre, latitud, longitud in CENTROS_COLOMBIA}
     empresas = {empresa.id: empresa for empresa in db.query(Empresa).all()}
-    for estacion in db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False)).all():
+    propias = db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False)).all()
+    fotos_por_estacion = urls_fotos_por_estacion(db, [estacion.id for estacion in propias])
+    for estacion in propias:
         if estacion.id in ids_externos:
             continue
         ciudad_propia = min(
@@ -430,6 +432,7 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             "departamento": DEPARTAMENTO_POR_CIUDAD.get(ciudad_propia, ""),
             "origen": "Empresa" if estacion.empresa_id else "EV Charge",
             "empresa": marca_empresa(empresas.get(estacion.empresa_id)),
+            "fotos": fotos_por_estacion.get(estacion.id, []),
             "conectores": conectores,
         })
     if busqueda:
@@ -465,6 +468,8 @@ def listar_estaciones_mapa(db: Session):
         "OperatorInfo": {"Title": estacion["operador"]},
         # RN-E10: nombre, color y logo de la empresa para pintar su marcador.
         "Empresa": estacion.get("empresa"),
+        # Fotos que subió la empresa dueña (rutas relativas al backend, servidas en /media).
+        "Fotos": estacion.get("fotos") or [],
         "City": estacion.get("ciudad", ""),
         "StateOrProvince": estacion.get("departamento", ""),
         "Connections": [{

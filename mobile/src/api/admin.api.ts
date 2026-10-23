@@ -1,6 +1,7 @@
 // Corresponde a: app/controllers/admin_controller.py + app/routes/admin_routes.py
 // Todas requieren usuario admin (require_admin en el backend).
 import { api } from './httpClient';
+import type { EmpresaPerfil, EstadoEmpresa } from './empresa.api';
 
 export interface AdminEstadisticas {
   total_usuarios: number;
@@ -64,6 +65,8 @@ export interface UserAdmin {
   apellido?: string;
   email: string;
   is_admin: boolean;
+  // usuario | admin | empresa (is_admin se deriva de rol en el backend).
+  rol?: string;
   created_at?: string;
 }
 
@@ -239,5 +242,40 @@ export async function listarContactosAdmin(): Promise<ContactoAdmin[]> {
 
 export async function responderContactoAdmin(id: string, respuesta: string): Promise<ContactoAdmin> {
   const { data } = await api.patch<ContactoAdmin>(`/admin/contactos/${id}/respuesta`, { respuesta });
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Empresas: solo el admin las crea, aprueba o suspende.
+// ---------------------------------------------------------------------------
+
+export interface EmpresaCrear {
+  nombre_comercial: string;
+  razon_social?: string;
+  nit?: string;
+  telefono?: string;
+  email_contacto?: string;
+  color_hex: string;
+  estado?: EstadoEmpresa;
+  // Cuenta de acceso: una nueva (nombre + correo + contraseña) o un usuario ya registrado.
+  usuario_nombre?: string;
+  usuario_apellido?: string;
+  usuario_email?: string;
+  usuario_password?: string;
+  usuario_existente_email?: string;
+}
+
+export async function listarEmpresasAdmin(params: { busqueda?: string; estado?: string } = {}): Promise<EmpresaPerfil[]> {
+  const { data } = await api.get<EmpresaPerfil[]>('/admin/empresas', { params });
+  return data;
+}
+
+export async function crearEmpresaAdmin(payload: EmpresaCrear): Promise<EmpresaPerfil> {
+  const { data } = await api.post<EmpresaPerfil>('/admin/empresas', payload);
+  return data;
+}
+
+export async function cambiarEstadoEmpresaAdmin(id: string, estado: EstadoEmpresa, motivo?: string): Promise<EmpresaPerfil> {
+  const { data } = await api.patch<EmpresaPerfil>(`/admin/empresas/${id}/estado`, { estado, motivo });
   return data;
 }

@@ -13,6 +13,7 @@ import { emitir } from '../../../utils/eventos';
 import { etiquetaEstado } from '../../../utils/estaciones';
 import { fechaHora } from '../../../utils/formato';
 import { useCarga } from '../../../utils/useCarga';
+import { FormEmpresa } from './EmpresasAdmin';
 import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Estrellas, Insignia, ItemLista, KPI, tonoEstado, Vacio } from '../../../components/ui';
 
@@ -57,6 +58,8 @@ export function UsuariosAdmin({ version }: PropsAdmin) {
   const [busqueda, setBusqueda] = useState('');
   const filtrados = usuarios.filter((u) => `${u.nombre} ${u.apellido ?? ''} ${u.email}`.toLowerCase().includes(busqueda.toLowerCase()));
 
+  const [vincular, setVincular] = useState<string | undefined>();
+
   const cambiarRol = async (u: UserAdmin, rol: string) => {
     const esAdmin = rol === 'admin';
     if (esAdmin === u.is_admin) return;
@@ -69,14 +72,26 @@ export function UsuariosAdmin({ version }: PropsAdmin) {
       <CampoTexto icono="magnifying-glass" value={busqueda} onChangeText={setBusqueda} placeholder="Buscar por nombre, apellido o correo" />
       {error ? <Alerta texto={error} /> : null}
       {cargando && !usuarios.length ? <Cargando /> : filtrados.length === 0 ? <Vacio texto="No hay usuarios que coincidan." icono="users" /> : filtrados.map((u) => (
-        <ItemLista key={u.id} titulo={nombreDe(u)} insignia={<Insignia texto={u.is_admin ? 'Administrador' : 'Usuario'} tono={u.is_admin ? 'verde' : 'gris'} />}>
+        <ItemLista
+          key={u.id}
+          titulo={nombreDe(u)}
+          insignia={<Insignia texto={u.rol === 'empresa' ? 'Empresa' : u.is_admin ? 'Administrador' : 'Usuario'} tono={u.rol === 'empresa' ? 'azul' : u.is_admin ? 'verde' : 'gris'} />}
+          acciones={u.rol === 'usuario' || (!u.rol && !u.is_admin)
+            ? <Boton titulo="Vincular a una empresa" icono="building" pequeno variante="outline" onPress={() => setVincular(u.email)} />
+            : undefined}
+        >
           <Dato etiqueta="Correo" valor={u.email} />
           <Dato etiqueta="Fecha de creación" valor={fechaHora(u.created_at)} />
-          <View style={{ maxWidth: 260, marginTop: 6 }}>
-            <CampoSelect etiqueta="Rol" valor={u.is_admin ? 'admin' : 'usuario'} onChange={(v) => void cambiarRol(u, v)} opciones={[{ valor: 'usuario', etiqueta: 'Usuario' }, { valor: 'admin', etiqueta: 'Administrador' }]} />
-          </View>
+          {u.rol === 'empresa' ? (
+            <Dato etiqueta="Rol" valor="Cuenta de empresa (se gestiona en Empresas)" />
+          ) : (
+            <View style={{ maxWidth: 260, marginTop: 6 }}>
+              <CampoSelect etiqueta="Rol" valor={u.is_admin ? 'admin' : 'usuario'} onChange={(v) => void cambiarRol(u, v)} opciones={[{ valor: 'usuario', etiqueta: 'Usuario' }, { valor: 'admin', etiqueta: 'Administrador' }]} />
+            </View>
+          )}
         </ItemLista>
       ))}
+      <FormEmpresa visible={!!vincular} correoExistente={vincular} onCerrar={() => setVincular(undefined)} onCreada={recargar} />
     </>
   );
 }

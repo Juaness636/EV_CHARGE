@@ -41,6 +41,12 @@
       "expo-router",
       "expo-image",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "EV Charge usa tus fotos para que tu empresa publique imágenes de sus estaciones."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "EV Charge usa tu ubicación para mostrar estaciones cercanas y calcular rutas."

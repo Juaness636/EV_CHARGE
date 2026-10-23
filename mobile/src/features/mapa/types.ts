@@ -17,6 +17,8 @@ export interface EstacionOCM {
   OperatorInfo?: { Title?: string };
   // Presente en estaciones de empresas aprobadas: nombre y color de marca (RN-E10).
   Empresa?: { id: string; nombre: string; color_hex: string; logo_url?: string | null; estado: string } | null;
+  // Fotos que subió la empresa dueña: rutas /media/... relativas al backend.
+  Fotos?: string[];
   Connections?: Array<{
     ID?: string | null;
     ConnectionType?: { Title?: string };

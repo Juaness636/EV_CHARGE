@@ -3,6 +3,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 
+from app.schemas.vehiculo_schema import VehiculoOut
+
 
 class UsuarioRegistro(BaseModel):
     nombre: str
@@ -23,6 +25,12 @@ class UsuarioOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PerfilOut(BaseModel):
+    """Perfil propio: nunca expone password_hash ni el PIN de recuperación."""
+    usuario: UsuarioOut
+    vehiculo_activo: Optional[VehiculoOut] = None
 
 
 class TokenOut(BaseModel):

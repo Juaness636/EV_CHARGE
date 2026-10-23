@@ -12,7 +12,7 @@ import {
 } from '../../api/empresa.api';
 import { fecha } from './comunes';
 
-const ACCIONES: AccionHistorial[] = ['crear', 'editar', 'agregar_cargador', 'quitar_cargador', 'cambiar_estado', 'abrir_incidente', 'cerrar_incidente', 'eliminar'];
+const ACCIONES: AccionHistorial[] = ['crear', 'editar', 'agregar_cargador', 'quitar_cargador', 'cambiar_estado', 'abrir_incidente', 'cerrar_incidente', 'eliminar', 'subir_foto', 'quitar_foto'];
 const TAMANO_PAGINA = 20;
 
 export function EmpresaHistorialPage() {

@@ -30,6 +30,7 @@ import {
   useEstilos,
   useColores,
 } from './componentes';
+import { FotosEstacion } from './FotosEstacion';
 
 type Conector = (typeof TIPOS_CONECTOR)[number];
 
@@ -225,6 +226,9 @@ export const EstacionesTab: React.FC = () => {
                     }}
                   />
                 ) : null}
+
+                <View style={estilos.separador} />
+                <FotosEstacion estacion={estacion} onCambio={reemplazar} />
 
                 <View style={estilos.separador} />
                 <Boton

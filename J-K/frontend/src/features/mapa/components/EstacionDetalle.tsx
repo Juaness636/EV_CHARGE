@@ -15,6 +15,7 @@ import { notificar } from '../../../components/GlobalNotifications';
 import { cotizarReserva } from '../../../api/tarifas.api';
 import type { EstacionOCM } from '../types';
 import { contieneLenguajeOfensivo, mensajeContenidoOfensivo } from '../../../utils/contentFilter';
+import { urlMedia } from '../../../api/empresa.api';
 
 interface Props {
   estacion: EstacionOCM;
@@ -356,6 +357,16 @@ export function EstacionDetalle({ estacion, usuario, onLoginRequerido, onRegistr
           </span>
         )}
       </div>
+
+      {(estacion.Fotos || []).length > 0 && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 10 }}>
+          {(estacion.Fotos || []).map((ruta, i) => (
+            <a key={ruta} href={urlMedia(ruta)} target="_blank" rel="noopener noreferrer">
+              <img src={urlMedia(ruta)} alt={`Foto ${i + 1} de ${nombre}`} style={{ width: 132, height: 92, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+            </a>
+          ))}
+        </div>
+      )}
 
       {!usuario.is_admin && !tieneVehiculo && (
         <div className="vehicle-register-notice" role="status">

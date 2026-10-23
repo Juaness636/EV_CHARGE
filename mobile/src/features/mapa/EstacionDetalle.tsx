@@ -20,6 +20,7 @@ import { emitir, escuchar } from '../../utils/eventos';
 import { conectorCoincide, etiquetaEstado } from '../../utils/estaciones';
 import { fechaCorta, fechaHora, pesos, proximaHora, sumarHoras } from '../../utils/formato';
 import { ModalPago } from '../../components/ModalPago';
+import { GaleriaFotos } from './GaleriaFotos';
 import { notificar } from '../../components/Notificaciones';
 import { Boton, CampoSelect, CampoTexto, Estrellas, Icono, Insignia, SelectorDuracion, SelectorFechaHora, tonoEstado } from '../../components/ui';
 import type { EstacionOCM } from './types';
@@ -158,6 +159,8 @@ export function EstacionDetalle({
           <Text style={s.textoDim}>{estacion.Empresa.nombre}</Text>
         </View>
       )}
+      {/* Visibles también sin sesión: son la cara pública de la estación. */}
+      <GaleriaFotos fotos={estacion.Fotos || []} nombre={nombre} />
     </View>
   );
 

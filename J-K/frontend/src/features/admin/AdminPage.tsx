@@ -394,6 +394,7 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
     descripcion: '', color_hex: '#16a34a', usuario_nombre: '', usuario_apellido: '', usuario_email: '', usuario_password: '',
   };
   const [form, setForm] = useState<EmpresaCrear>(vacio);
+  const [modoCuenta, setModoCuenta] = useState<'nueva' | 'existente'>('nueva');
   const [query, setQuery] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | EstadoEmpresa>('todos');
   const [motivoOp, setMotivoOp] = useState<{ id: string; nombre: string; estado: EstadoEmpresa } | null>(null);
@@ -406,11 +407,17 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (form.nombre_comercial.trim().length < 2 || !form.usuario_email.trim() || form.usuario_password.length < 8) return;
+    if (form.nombre_comercial.trim().length < 2) return;
+    const { usuario_nombre, usuario_apellido, usuario_email, usuario_password, usuario_existente_email, ...empresa } = form;
+    if (modoCuenta === 'existente' ? !usuario_existente_email?.trim() : !usuario_email?.trim() || (usuario_password?.length ?? 0) < 8) return;
+    // El backend exige una sola opción: cuenta nueva o usuario ya registrado.
+    const cuenta = modoCuenta === 'existente'
+      ? { usuario_existente_email: usuario_existente_email?.trim() }
+      : { usuario_nombre, usuario_apellido, usuario_email: usuario_email?.trim(), usuario_password };
     await run(() => crearEmpresaAdmin({
-      ...form,
+      ...empresa,
+      ...cuenta,
       nombre_comercial: form.nombre_comercial.trim(),
-      usuario_email: form.usuario_email.trim(),
       // Campos opcionales vacíos se omiten: el backend valida NIT y correo solo si vienen.
       nit: form.nit?.trim() || undefined,
       email_contacto: form.email_contacto?.trim() || undefined,
@@ -445,10 +452,16 @@ function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Pr
         <option value="pendiente">Pendiente</option>
       </select></div>
       <div className="full-width"><label>Descripcion</label><textarea rows={3} value={form.descripcion ?? ''} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} /></div>
-      {campo('usuario_nombre', 'Nombre del representante')}
-      {campo('usuario_apellido', 'Apellido del representante')}
-      {campo('usuario_email', 'Correo de acceso', 'email')}
-      {campo('usuario_password', 'Contraseña inicial (8+ con mayúscula, número y símbolo)', 'password')}
+      <div className="full-width"><label>Cuenta de acceso</label><select value={modoCuenta} onChange={(e) => setModoCuenta(e.target.value as 'nueva' | 'existente')}>
+        <option value="nueva">Crear una cuenta nueva</option>
+        <option value="existente">Vincular un usuario ya registrado</option>
+      </select></div>
+      {modoCuenta === 'existente' ? campo('usuario_existente_email', 'Correo del usuario registrado (pasa a ser la cuenta de la empresa)', 'email') : <>
+        {campo('usuario_nombre', 'Nombre del representante')}
+        {campo('usuario_apellido', 'Apellido del representante')}
+        {campo('usuario_email', 'Correo de acceso', 'email')}
+        {campo('usuario_password', 'Contraseña inicial (8+ con mayúscula, número y símbolo)', 'password')}
+      </>}
       <div className="full-width station-form-actions"><button type="submit" className="btn-save-estacion">Crear empresa</button></div>
     </form>
 

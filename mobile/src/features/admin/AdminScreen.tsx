@@ -9,12 +9,14 @@ import {
   CalificacionesAdmin, ContactosAdmin, NotificacionesAdmin, ReportesAdmin, ReservasAdmin, ResumenAdmin, UsuariosAdmin,
 } from './panels/AdminPaneles';
 import { EstacionesAdmin } from './panels/EstacionesAdmin';
+import { EmpresasAdmin } from './panels/EmpresasAdmin';
 
-type PanelAdmin = 'Resumen' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
+type PanelAdmin = 'Resumen' | 'Usuarios' | 'Empresas' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
 
 const PANELES: ItemPanel<PanelAdmin>[] = [
   { clave: 'Resumen', icono: 'chart-simple' },
   { clave: 'Usuarios', icono: 'users' },
+  { clave: 'Empresas', icono: 'building' },
   { clave: 'Reportes', icono: 'triangle-exclamation' },
   { clave: 'Estaciones', icono: 'charging-station' },
   { clave: 'Reservas', icono: 'calendar-check' },
@@ -50,6 +52,7 @@ export function AdminScreen() {
     >
       {panel === 'Resumen' && <ResumenAdmin version={version} />}
       {panel === 'Usuarios' && <UsuariosAdmin version={version} />}
+      {panel === 'Empresas' && <EmpresasAdmin version={version} />}
       {panel === 'Reportes' && <ReportesAdmin version={version} />}
       {panel === 'Estaciones' && <EstacionesAdmin version={version} />}
       {panel === 'Reservas' && <ReservasAdmin version={version} />}

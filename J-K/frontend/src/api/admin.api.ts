@@ -271,11 +271,12 @@ export interface EmpresaCrear {
   color_hex: string;
   logo_url?: string;
   estado?: 'pendiente' | 'aprobada' | 'suspendida';
-  // La cuenta con la que la empresa entra al sistema: un solo request.
-  usuario_nombre: string;
+  // Cuenta de acceso: una nueva (nombre + correo + contraseña) o un usuario ya registrado.
+  usuario_nombre?: string;
   usuario_apellido?: string;
-  usuario_email: string;
-  usuario_password: string;
+  usuario_email?: string;
+  usuario_password?: string;
+  usuario_existente_email?: string;
 }
 
 export async function listarEmpresasAdmin(params: { busqueda?: string; estado?: string } = {}): Promise<EmpresaPerfil[]> {

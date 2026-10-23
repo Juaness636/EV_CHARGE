@@ -1,7 +1,7 @@
 // Corresponde a: J-K/app/controllers/empresa_*.py + J-K/app/routes/empresa_routes.py
 // Todas las rutas cuelgan de /empresa y el backend deduce la empresa del token:
 // ningún método manda empresa_id, y un 404 aquí significa "eso no es tuyo".
-import { api } from './httpClient';
+import { api, API_BASE_URL } from './httpClient';
 
 export type EstadoEmpresa = 'pendiente' | 'aprobada' | 'suspendida';
 export type EstadoEstacion = 'activa' | 'mantenimiento' | 'inactiva';
@@ -18,7 +18,9 @@ export type AccionHistorial =
   | 'cambiar_estado'
   | 'abrir_incidente'
   | 'cerrar_incidente'
-  | 'eliminar';
+  | 'eliminar'
+  | 'subir_foto'
+  | 'quitar_foto';
 
 // RN-E04: el backend exige 10 caracteres como mínimo al inhabilitar o borrar.
 export const LONGITUD_MINIMA_MOTIVO = 10;
@@ -84,6 +86,34 @@ export interface EstacionEmpresa {
   cargadores_disponibles: number;
   incidentes_abiertos: number;
   reservas_canceladas?: number;
+  fotos: FotoEstacion[];
+}
+
+// Mismos límites del backend (app/utils/constantes.py).
+export const FOTOS_MAXIMAS_POR_ESTACION = 8;
+
+export interface FotoEstacion {
+  id: string;
+  // Ruta relativa al backend (/media/...); usar urlMedia() para mostrarla.
+  url: string;
+}
+
+export const urlMedia = (ruta: string) => (/^https?:\/\//.test(ruta) ? ruta : `${API_BASE_URL}${ruta}`);
+
+export async function subirFotoEstacion(estacionId: string, archivo: File): Promise<EstacionEmpresa> {
+  const form = new FormData();
+  form.append('archivo', archivo);
+  const { data } = await api.post<EstacionEmpresa>(`/empresa/estaciones/${estacionId}/fotos`, form, {
+    // La instancia manda JSON por defecto; con multipart axios deja que el navegador ponga el boundary.
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  });
+  return data;
+}
+
+export async function eliminarFotoEstacion(estacionId: string, fotoId: string): Promise<EstacionEmpresa> {
+  const { data } = await api.delete<EstacionEmpresa>(`/empresa/estaciones/${estacionId}/fotos/${fotoId}`);
+  return data;
 }
 
 export interface EstacionEmpresaCreate {
