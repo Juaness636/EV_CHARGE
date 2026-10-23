@@ -6,7 +6,7 @@ import { listarVehiculos } from '../../../api/vehiculos.api';
 import { misReservas } from '../../../api/reservas.api';
 import { listarMetodosPago } from '../../../api/metodosPago.api';
 import { listarFavoritos, quitarFavorito, type Favorito } from '../../../api/favoritos.api';
-import { listarCompras } from '../../../api/compras.api';
+import { enviarMensajeCompra, etiquetaPedido, listarCompras, obtenerCompra, pedidoCerrado, type CompraDetalle } from '../../../api/compras.api';
 import { estadisticasCargas, listarCargas } from '../../../api/cargas.api';
 import { obtenerEstadoEstacion } from '../../../api/estado.api';
 import { mensajeError } from '../../../api/httpClient';
@@ -15,7 +15,8 @@ import { etiquetaEstado } from '../../../utils/estaciones';
 import { fechaHora, pesos } from '../../../utils/formato';
 import { useCarga } from '../../../utils/useCarga';
 import { confirmar, notificar } from '../../../components/Notificaciones';
-import { Alerta, Boton, Cargando, Dato, Icono, Insignia, ItemLista, KPI, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
+import { Alerta, AppModal, Boton, Cargando, Dato, Icono, Insignia, ItemLista, KPI, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
+import { ConversacionPedido } from '../../../components/ConversacionPedido';
 import type { PropsPanel } from '../tipos';
 
 export const totalReservasPagadas = (reservas: Array<{ estado?: string; costo_pagado?: number }>) =>
@@ -72,17 +73,28 @@ export function InicioPanel({ version, irA }: PropsPanel) {
 
 export function ComprasPanel({ version, irA }: PropsPanel) {
   const { colors } = useTheme();
-  const { datos, cargando, error } = useCarga(async () => {
+  const { datos, cargando, error, recargar } = useCarga(async () => {
     const [compras, vehiculos] = await Promise.all([listarCompras(), listarVehiculos()]);
     return { compras, vehiculos };
   }, null, [version]);
+  const [pedido, setPedido] = useState<CompraDetalle | null>(null);
+
+  const abrirPedido = async (id: string) => {
+    try {
+      setPedido(await obtenerCompra(id));
+      void recargar();
+    } catch (e) {
+      notificar({ tipo: 'error', titulo: 'No se pudo abrir el pedido', mensaje: mensajeError(e) });
+    }
+  };
+
   if (cargando && !datos) return <Cargando />;
   if (error) return <Alerta texto={error} />;
   if (!datos) return null;
   const total = datos.compras.reduce((t, c) => t + Number(c.monto || 0), 0);
   return (
     <>
-      <Tarjeta><Text style={{ color: colors.textMuted }}>Aquí encontrarás los productos adquiridos mediante el pago simulado de EV Charge.</Text></Tarjeta>
+      <Tarjeta><Text style={{ color: colors.textMuted }}>Aquí encontrarás tus pedidos de productos, su estado de envío y los mensajes del equipo de EV Charge.</Text></Tarjeta>
       <View style={styles.kpis}>
         <KPI etiqueta="Compras registradas" valor={datos.compras.length} icono="bag-shopping" />
         <KPI etiqueta="Total gastado en compras" valor={pesos(total)} icono="wallet" />
@@ -90,13 +102,45 @@ export function ComprasPanel({ version, irA }: PropsPanel) {
       {datos.vehiculos.length === 0 && <AvisoVehiculo texto="Registra un vehículo para completar los cálculos generales de tu actividad." onRegistrar={() => irA('Vehículos')} />}
       {datos.compras.length === 0 && <Vacio texto="Todavía no tienes compras realizadas." icono="bag-shopping" />}
       {datos.compras.map((c) => (
-        <ItemLista key={c.id} titulo={c.producto} insignia={<Insignia texto="Compra aprobada" tono="verde" />}>
+        <ItemLista
+          key={c.id}
+          titulo={c.cantidad > 1 ? `${c.producto} × ${c.cantidad}` : c.producto}
+          insignia={<Insignia texto={etiquetaPedido(c.estado_pedido)} tono={tonoEstado(c.estado_pedido)} />}
+          acciones={<Boton titulo={c.mensajes_sin_leer ? `Ver pedido · ${c.mensajes_sin_leer} nuevo${c.mensajes_sin_leer === 1 ? '' : 's'}` : 'Ver pedido'} icono="comments" pequeno variante={c.mensajes_sin_leer ? 'primary' : 'soft'} onPress={() => void abrirPedido(c.id)} />}
+        >
           <Dato etiqueta="Valor" valor={pesos(c.monto)} />
           <Dato etiqueta="Pago" valor={c.metodo} />
           <Dato etiqueta="Fecha" valor={fechaHora(c.created_at)} />
-          <Dato etiqueta="Transacción" valor={c.transaccion_id} />
+          {c.direccion_envio ? <Dato etiqueta="Envío a" valor={`${c.direccion_envio}, ${c.ciudad}`} /> : null}
         </ItemLista>
       ))}
+
+      <AppModal visible={!!pedido} onClose={() => setPedido(null)} titulo={pedido?.producto} anchoMaximo={560}>
+        {pedido && (
+          <>
+            <Insignia texto={etiquetaPedido(pedido.estado_pedido)} tono={tonoEstado(pedido.estado_pedido)} />
+            <Dato etiqueta="Cantidad" valor={pedido.cantidad} />
+            <Dato etiqueta="Total pagado" valor={pesos(pedido.monto)} />
+            <Dato etiqueta="Transacción" valor={pedido.transaccion_id} />
+            {pedido.direccion_envio ? (
+              <>
+                <Dato etiqueta="Recibe" valor={`${pedido.contacto_nombre} · ${pedido.contacto_telefono}`} />
+                <Dato etiqueta="Dirección" valor={`${pedido.direccion_envio}, ${pedido.ciudad}`} />
+                {pedido.notas_cliente ? <Dato etiqueta="Indicaciones" valor={pedido.notas_cliente} /> : null}
+              </>
+            ) : <Dato etiqueta="Envío" valor="Coordinaremos la dirección contigo por mensaje." />}
+            <View style={{ height: 8 }} />
+            <ConversacionPedido
+              mensajes={pedido.mensajes}
+              cerrado={pedidoCerrado(pedido.estado_pedido)}
+              onEnviar={async (texto) => {
+                const mensaje = await enviarMensajeCompra(pedido.id, texto);
+                setPedido((p) => (p ? { ...p, mensajes: [...p.mensajes, mensaje] } : p));
+              }}
+            />
+          </>
+        )}
+      </AppModal>
     </>
   );
 }

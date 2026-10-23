@@ -178,7 +178,7 @@ export function ProductosScreen() {
         metodosGuardados={metodosPago}
         onCerrar={() => setCompra(null)}
         onExito={() => {
-          notificar({ tipo: 'success', titulo: 'Compra completada', mensaje: `La compra de ${compra?.nombre} fue aprobada correctamente.` });
+          notificar({ tipo: 'success', titulo: 'Compra completada', mensaje: `Tu pedido de ${compra?.nombre} quedó registrado. Síguelo en Mis compras.` });
           emitir('notificaciones-actualizadas');
         }}
       />
