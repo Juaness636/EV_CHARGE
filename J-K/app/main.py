@@ -40,6 +40,7 @@ from app.routes.contacto_routes import router as contacto_router
 from app.routes.estado_routes import router as estado_router
 from app.routes import pagos
 from app.routes.compras_routes import router as compras_router
+from app.routes.admin_compras_routes import router as admin_compras_router
 from app.routes import asistente_routes
 from app.routes.empresa_routes import router as empresa_router
 from app.controllers.empresa_fotos_controller import DIRECTORIO_MEDIA, PREFIJO_URL_MEDIA
@@ -92,6 +93,15 @@ with engine.begin() as connection:
         "SELECT id, ROW_NUMBER() OVER (PARTITION BY estacion_id ORDER BY id) AS rn FROM estacion_cargadores"
         ") n WHERE c.id = n.id AND c.numero IS NULL"
     ))
+    # Gestión de pedidos: estado logístico, cantidad y datos de envío de cada compra.
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS cantidad INTEGER NOT NULL DEFAULT 1"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS estado_pedido VARCHAR(20) NOT NULL DEFAULT 'pendiente'"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS contacto_nombre VARCHAR"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS contacto_telefono VARCHAR(20)"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS direccion_envio VARCHAR"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS ciudad VARCHAR"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS notas_cliente TEXT"))
+    connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
     # Los métodos existentes se conservan como identificadores enmascarados;
     # nunca se necesita guardar el número completo de una tarjeta.
     connection.execute(text("UPDATE metodos_pago SET numero = CONCAT('**** ', RIGHT(regexp_replace(numero, '[^0-9]', '', 'g'), 4)) WHERE numero IS NOT NULL AND numero !~ '\\*' AND length(regexp_replace(numero, '[^0-9]', '', 'g')) >= 4"))
@@ -148,6 +158,7 @@ app.include_router(contacto_router)
 app.include_router(estado_router)
 app.include_router(pagos.router)
 app.include_router(compras_router)
+app.include_router(admin_compras_router)
 app.include_router(asistente_routes.router)
 app.include_router(empresa_router)
 

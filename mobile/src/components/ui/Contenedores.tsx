@@ -41,10 +41,10 @@ export function Insignia({ texto, tono = 'gris', icono }: { texto: string; tono?
 // Tono de insignia según el estado devuelto por el backend.
 export function tonoEstado(estado?: string): TonoInsignia {
   const valor = (estado || '').toLowerCase();
-  if (['activa', 'activo', 'disponible', 'resuelto', 'validada', 'respondido', 'aprobada', 'realizada'].includes(valor)) return 'verde';
-  if (['reservada', 'pendiente'].includes(valor)) return 'azul';
+  if (['activa', 'activo', 'disponible', 'resuelto', 'validada', 'respondido', 'aprobada', 'realizada', 'entregado'].includes(valor)) return 'verde';
+  if (['reservada', 'pendiente', 'confirmado', 'enviado'].includes(valor)) return 'azul';
   if (['mantenimiento', 'abierto'].includes(valor)) return 'amarillo';
-  if (['inactiva', 'inactivo', 'cancelada', 'rechazada', 'fuera_servicio'].includes(valor)) return 'rojo';
+  if (['inactiva', 'inactivo', 'cancelada', 'cancelado', 'rechazada', 'fuera_servicio'].includes(valor)) return 'rojo';
   return 'gris';
 }
 

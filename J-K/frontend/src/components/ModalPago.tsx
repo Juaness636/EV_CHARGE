@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { crearMetodoPago, type MetodoPago } from '../api/metodosPago.api';
 import { API_BASE_URL } from '../api/httpClient';
+import { useAuth } from '../context/AuthContext';
 
 interface ModalPagoProps {
   tipo: 'producto' | 'reserva';
   tituloItem: string;
+  // En productos es el precio unitario; el total se multiplica por la cantidad elegida.
   monto: number;
   idReferencia?: string; // ID de reserva o ID de producto
   onCerrar: () => void;
@@ -39,6 +41,18 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
   const [error, setError] = useState('');
   const [exito, setExito] = useState(false);
   const metodosDisponibles = metodosGuardados.filter((metodo) => metodo.estado !== false);
+  const { usuario } = useAuth();
+  const esProducto = tipo === 'producto';
+  const [cantidad, setCantidad] = useState(1);
+  // Datos de contacto y envío que recibe el administrador para gestionar el pedido.
+  const [envio, setEnvio] = useState({
+    contacto_nombre: [usuario?.nombre, usuario?.apellido].filter(Boolean).join(' '),
+    contacto_telefono: '',
+    direccion_envio: '',
+    ciudad: '',
+    notas_cliente: '',
+  });
+  const total = esProducto ? monto * cantidad : monto;
 
   useEffect(() => {
     setMetodoGuardadoId(metodosDisponibles[0]?.id || '');
@@ -58,6 +72,12 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
     const token = localStorage.getItem('ev_token');
 
     try {
+      if (esProducto) {
+        if (envio.contacto_nombre.trim().length < 3) { setError('Escribe el nombre de quien recibe el pedido.'); return; }
+        if (!/^\+?\d{7,15}$/.test(envio.contacto_telefono)) { setError('Escribe un teléfono de contacto válido (7 a 15 dígitos).'); return; }
+        if (envio.direccion_envio.trim().length < 5) { setError('Escribe la dirección de envío completa.'); return; }
+        if (envio.ciudad.trim().length < 2) { setError('Escribe la ciudad de entrega.'); return; }
+      }
       const metodoGuardado = modoPago === 'guardado' ? metodosDisponibles.find((metodo) => metodo.id === metodoGuardadoId) : undefined;
       if (modoPago === 'guardado' && !metodoGuardado) { setError('Selecciona un método registrado o agrega uno nuevo.'); return; }
       if (modoPago === 'nuevo' && esTarjeta && (numeroTarjeta.replace(/\D/g, '').length < 13 || !/^\d{2}\/\d{2}$/.test(expiracion) || !/^\d{3,4}$/.test(cvv))) { setError('Revisa el número, vencimiento y CVV de la tarjeta.'); return; }
@@ -75,10 +95,11 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
         {
           tipo_pago: tipo,
           item: tituloItem,
-          monto: monto,
+          monto: total,
           metodo: metodoGuardado?.tipo || metodoPago,
           metodo_id: metodoGuardado?.id || metodoNuevoId,
           referencia_id: idReferencia || 'PAGO-' + Date.now(),
+          ...(esProducto ? { cantidad, envio: { ...envio, notas_cliente: envio.notas_cliente.trim() || undefined } } : {}),
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -114,14 +135,27 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
 
         <div style={styles.montoBox}>
           <span>Total a pagar:</span>
-          <span style={styles.montoText}>${monto.toLocaleString('es-CO')} COP</span>
+          <span style={styles.montoText}>${total.toLocaleString('es-CO')} COP</span>
         </div>
 
         {error && <div style={styles.alertError}>{error}</div>}
-        {exito && <div style={styles.alertSuccess}>🎉 ¡Pago aprobado con éxito!</div>}
+        {exito && <div style={styles.alertSuccess}>🎉 ¡Pago aprobado con éxito!{esProducto && ' Te contactaremos para coordinar el envío; sigue tu pedido en Mis compras.'}</div>}
 
         {!exito && (
           <form onSubmit={handleProcesarPago} style={styles.form}>
+            {esProducto && (
+              <>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Cantidad (${monto.toLocaleString('es-CO')} c/u)</label>
+                  <input type="number" min={1} max={10} value={cantidad} onChange={(e) => setCantidad(Math.min(10, Math.max(1, Number(e.target.value) || 1)))} style={styles.input} />
+                </div>
+                <div style={styles.inputGroup}><label style={styles.label}>Nombre de quien recibe</label><input required value={envio.contacto_nombre} onChange={(e) => setEnvio({ ...envio, contacto_nombre: e.target.value })} placeholder="Ej. Juan Pérez" style={styles.input} /></div>
+                <div style={styles.inputGroup}><label style={styles.label}>Teléfono de contacto</label><input required inputMode="tel" value={envio.contacto_telefono} onChange={(e) => setEnvio({ ...envio, contacto_telefono: e.target.value.replace(/[^\d+]/g, '').slice(0, 16) })} placeholder="300 000 0000" style={styles.input} /></div>
+                <div style={styles.inputGroup}><label style={styles.label}>Dirección de envío</label><input required value={envio.direccion_envio} onChange={(e) => setEnvio({ ...envio, direccion_envio: e.target.value })} placeholder="Calle 00 # 00-00, apto, barrio" style={styles.input} /></div>
+                <div style={styles.inputGroup}><label style={styles.label}>Ciudad</label><input required value={envio.ciudad} onChange={(e) => setEnvio({ ...envio, ciudad: e.target.value })} placeholder="Ej. Bogotá" style={styles.input} /></div>
+                <div style={styles.inputGroup}><label style={styles.label}>Indicaciones (opcional)</label><textarea rows={2} maxLength={500} value={envio.notas_cliente} onChange={(e) => setEnvio({ ...envio, notas_cliente: e.target.value })} placeholder="Horario de entrega, referencias..." style={styles.input} /></div>
+              </>
+            )}
             <div style={styles.paymentModeSwitch}><button type="button" style={modoPago === 'guardado' ? styles.modeActive : styles.modeButton} onClick={() => setModoPago('guardado')} disabled={!metodosDisponibles.length}>Usar método registrado</button><button type="button" style={modoPago === 'nuevo' ? styles.modeActive : styles.modeButton} onClick={() => setModoPago('nuevo')}>Agregar método</button></div>
             {modoPago === 'guardado' ? <div style={styles.inputGroup}><label style={styles.label}>Método registrado</label><select required value={metodoGuardadoId} onChange={(e) => setMetodoGuardadoId(e.target.value)} style={{ ...styles.input, colorScheme: 'dark' }}><option value="" style={optionStyle}>Selecciona un método</option>{metodosDisponibles.map((metodo) => <option key={metodo.id} value={metodo.id} style={optionStyle}>{metodo.tipo} · termina en {metodo.numero.slice(-4)}</option>)}</select></div> : <div style={styles.inputGroup}><label style={styles.label}>Tipo de método</label><select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} style={{ ...styles.input, colorScheme: 'dark' }}><option style={optionStyle}>Tarjeta crédito</option><option style={optionStyle}>Tarjeta débito</option><option style={optionStyle}>Nequi</option><option style={optionStyle}>Daviplata</option><option style={optionStyle}>PSE</option></select></div>}
 
@@ -201,7 +235,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
             {modoPago === 'nuevo' && <label style={styles.saveMethod}><input type="checkbox" checked={guardarMetodo} onChange={(e) => setGuardarMetodo(e.target.checked)} /> Guardar este método para futuras reservas</label>}
 
             <button type="submit" disabled={cargando} style={styles.btnPagar}>
-              {cargando ? 'Procesando pago...' : `Pagar $${monto.toLocaleString('es-CO')}`}
+              {cargando ? 'Procesando pago...' : `Pagar $${total.toLocaleString('es-CO')}`}
             </button>
           </form>
         )}

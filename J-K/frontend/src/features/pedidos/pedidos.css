@@ -1,0 +1,20 @@
+/* Pedidos de productos: conversación comprador ↔ administrador y ficha del pedido. */
+.pedido-detalle { margin-top: 20px; padding: 18px; border: 1px solid var(--border, rgba(127,127,127,0.25)); border-radius: 12px; display: grid; gap: 14px; }
+.pedido-detalle h3 { margin: 0; }
+.pedido-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.pedido-grid p { margin: 2px 0; }
+.pedido-acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pedido-acciones a { text-decoration: none; }
+.pedido-chat { display: flex; flex-direction: column; gap: 8px; }
+.pedido-burbuja { max-width: 80%; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(127,127,127,0.25); background: rgba(127,127,127,0.08); }
+.pedido-burbuja.propio { align-self: flex-end; border-color: rgba(57,169,0,0.45); background: rgba(57,169,0,0.12); }
+.pedido-burbuja small { display: block; opacity: 0.7; font-size: 11px; }
+.pedido-burbuja p { margin: 2px 0; white-space: pre-wrap; }
+.pedido-chat textarea { width: 100%; min-height: 70px; box-sizing: border-box; }
+.pedido-sin-leer { display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 6px; border-radius: 9px; background: #39a900; color: #fff; font-size: 11px; font-weight: 800; text-align: center; }
+.estado-pedido { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.estado-pedido.pendiente { color: #f39c12; background: rgba(243,156,18,0.14); }
+.estado-pedido.confirmado, .estado-pedido.enviado { color: #3b82f6; background: rgba(59,130,246,0.14); }
+.estado-pedido.entregado { color: #39a900; background: rgba(57,169,0,0.14); }
+.estado-pedido.cancelado { color: #e74c3c; background: rgba(231,76,60,0.14); }
+@media (max-width: 640px) { .pedido-burbuja { max-width: 95%; } .pedido-detalle { padding: 12px; } }

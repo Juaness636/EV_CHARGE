@@ -9,6 +9,7 @@ from app.controllers.notificaciones_controller import crear_notificacion
 from app.models.metodo_pago_model import MetodosPago
 from app.models.compra_model import Compras
 from app.models.pago_reserva_model import PagosReserva
+from app.utils.catalogo_productos import precio_producto
 
 router = APIRouter(
     prefix="/api/pagos",
@@ -33,6 +34,21 @@ def procesar_pago(
             detail="El monto a pagar debe ser mayor a 0."
         )
 
+    monto = pago_in.monto
+    if pago_in.tipo_pago == "producto":
+        # El precio lo fija el catálogo del servidor; nunca el valor que envía el cliente.
+        precio = precio_producto(pago_in.item)
+        if precio is None:
+            raise HTTPException(status_code=400, detail="El producto seleccionado no existe en el catálogo.")
+        monto = float(precio * pago_in.cantidad)
+        if abs(pago_in.monto - monto) > 0.5:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El precio de {pago_in.item} cambió. El total actual es ${monto:,.0f} COP; recarga el catálogo e inténtalo de nuevo.",
+            )
+        if pago_in.envio is None:
+            raise HTTPException(status_code=400, detail="Indica los datos de contacto y la dirección de envío.")
+
     metodo_guardado = None
     if pago_in.metodo_id:
         metodo_guardado = db.query(MetodosPago).filter(
@@ -51,18 +67,26 @@ def procesar_pago(
         db,
         current_user.id,
         titulo,
-        f"Se aprobó el pago de ${pago_in.monto:,.0f} COP por {pago_in.item}.",
+        f"Se aprobó el pago de ${monto:,.0f} COP por {pago_in.item}.",
         tipo,
     )
     if pago_in.tipo_pago == "producto":
+        envio = pago_in.envio
         db.add(Compras(
             usuario_id=current_user.id,
-            producto=pago_in.item,
-            monto=pago_in.monto,
+            producto=pago_in.item.strip(),
+            cantidad=pago_in.cantidad,
+            monto=monto,
             metodo=metodo_guardado.tipo if metodo_guardado else pago_in.metodo,
             metodo_id=pago_in.metodo_id,
             transaccion_id=transaccion_id,
             estado="aprobada",
+            estado_pedido="pendiente",
+            contacto_nombre=envio.contacto_nombre.strip(),
+            contacto_telefono=envio.contacto_telefono.strip(),
+            direccion_envio=envio.direccion_envio.strip(),
+            ciudad=envio.ciudad.strip(),
+            notas_cliente=(envio.notas_cliente or "").strip() or None,
         ))
     else:
         # Queda registrado para que /reservar-confirmada pueda verificarlo:
@@ -70,7 +94,7 @@ def procesar_pago(
         db.add(PagosReserva(
             usuario_id=current_user.id,
             transaccion_id=transaccion_id,
-            monto=pago_in.monto,
+            monto=monto,
             metodo=metodo_guardado.tipo if metodo_guardado else pago_in.metodo,
             metodo_id=pago_in.metodo_id,
             estado="aprobado",
@@ -81,7 +105,7 @@ def procesar_pago(
         "id": 1,
         "transaccion_id": transaccion_id,
         "estado": "aprobado",
-        "monto": pago_in.monto,
+        "monto": monto,
         "item": pago_in.item,
-        "mensaje": f"Pago de ${pago_in.monto:,.0f} COP aprobado exitosamente para {current_user.nombre} mediante {pago_in.metodo.capitalize()}."
+        "mensaje": f"Pago de ${monto:,.0f} COP aprobado exitosamente para {current_user.nombre} mediante {pago_in.metodo.capitalize()}."
     }
