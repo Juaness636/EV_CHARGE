@@ -282,7 +282,7 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   opcionTexto: { color: c.text, fontSize: 14.5, fontWeight: '600' },
   chips: { gap: 8, paddingVertical: 4 },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: Radius.full, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.cardElevated,
   },
   chipActiva: { borderColor: c.primary, backgroundColor: c.primarySoft },
@@ -290,9 +290,9 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   casillaFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   casilla: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: c.borderStrong, alignItems: 'center', justifyContent: 'center' },
   casillaTexto: { color: c.textMuted, fontSize: 13.5 },
-  duracionFila: { flexDirection: 'row', gap: 6 },
+  duracionFila: { flexDirection: 'row', gap: 8 },
   duracionPaso: {
-    flex: 1, height: 38, borderRadius: Radius.sm, borderWidth: 1, borderColor: c.borderStrong,
+    flex: 1, height: 44, borderRadius: Radius.md, borderWidth: 1, borderColor: c.borderStrong,
     alignItems: 'center', justifyContent: 'center', backgroundColor: c.cardElevated,
   },
   duracionTexto: { color: c.textMuted, fontWeight: '800', fontSize: 13 },

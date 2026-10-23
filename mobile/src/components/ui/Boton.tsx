@@ -102,7 +102,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   normal: { paddingVertical: 12, paddingHorizontal: 18, minHeight: 46 },
-  pequeno: { paddingVertical: 7, paddingHorizontal: 12, minHeight: 34, borderRadius: Radius.sm },
+  // 40 px de alto: área táctil cómoda en el celular aunque el botón sea "pequeño".
+  pequeno: { paddingVertical: 8, paddingHorizontal: 14, minHeight: 40, borderRadius: Radius.sm },
   bloque: { alignSelf: 'stretch' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   texto: { fontSize: 14, fontWeight: '700' },

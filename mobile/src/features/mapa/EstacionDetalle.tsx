@@ -2,6 +2,7 @@
 // cotización y pago, favoritos, calificar y reportar. Equivale a EstacionDetalle.tsx del web.
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Presionable } from '../../components/ui/Presionable';
 import type { Usuario } from '../../api/auth.api';
 import { obtenerEstadoEstacion, type EstadoEstacion } from '../../api/estado.api';
 import { listarFavoritos, agregarFavorito, quitarFavorito } from '../../api/favoritos.api';
@@ -148,10 +149,16 @@ export function EstacionDetalle({
   }, [cargadorSeleccionado, duracion, nombre, operador]);
 
   const encabezado = (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 8 }}>
       <Text style={s.nombre}>{nombre}</Text>
-      <Text style={s.texto}><Icono name="location-dot" size={12} color={colors.textDim} />  {direccion}{ciudad ? ` · ${ciudad}` : ''}</Text>
-      <Text style={s.textoDim}>Operador: {operador}</Text>
+      <View style={s.filaIcono}>
+        <Icono name="location-dot" size={13} color={colors.primary} />
+        <Text style={[s.texto, { flex: 1 }]}>{direccion}{ciudad ? ` · ${ciudad}` : ''}</Text>
+      </View>
+      <View style={s.filaIcono}>
+        <Icono name="building" size={12} color={colors.textDim} />
+        <Text style={s.textoDim}>Operador: {operador}</Text>
+      </View>
       {estacion.Empresa && estacion.Empresa.nombre !== operador && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: estacion.Empresa.color_hex }} />
@@ -294,9 +301,18 @@ export function EstacionDetalle({
   const calificacionesVisibles = resumen ? (verTodas ? resumen.calificaciones : resumen.calificaciones.slice(0, 2)) : [];
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 18 }}>
       {encabezado}
-      {insigniaEstado}
+      <View style={s.filaEstado}>
+        {insigniaEstado}
+        {resumen && resumen.total > 0 && (
+          <View style={s.notaPromedio}>
+            <Icono name="star" size={12} color="#f5b301" />
+            <Text style={s.notaTexto}>{resumen.promedio.toFixed(1)}</Text>
+            <Text style={s.textoDim}>({resumen.total})</Text>
+          </View>
+        )}
+      </View>
 
       {usuario.is_admin && (
         <CampoSelect
@@ -319,25 +335,26 @@ export function EstacionDetalle({
       )}
 
       {esCliente && (
-        <View style={s.acciones}>
-          <Boton titulo="Favorito" pequeno icono="star" variante={esFavorito ? 'primary' : 'outline'} onPress={toggleFavorito} />
-          {lat != null && lon != null && <Boton titulo="Ruta" pequeno icono="route" variante="soft" onPress={() => onCalcularRuta(lat, lon)} />}
-          <Boton titulo="Calificar" pequeno icono="star-half-stroke" variante={mostrarCalificar ? 'soft' : 'outline'} onPress={() => setMostrarCalificar((v) => !v)} />
-          <Boton titulo="Reportar" pequeno icono="bullhorn" variante={mostrarReporte ? 'soft' : 'outline'} onPress={() => setMostrarReporte((v) => !v)} />
+        <View style={s.accionesGrid}>
+          <AccionEstacion icono="heart" titulo={esFavorito ? 'Guardada' : 'Favorito'} color="#ff5c8a" activa={esFavorito} onPress={toggleFavorito} />
+          {lat != null && lon != null && <AccionEstacion icono="route" titulo="Cómo llegar" color="#3ea6ff" onPress={() => onCalcularRuta(lat, lon)} />}
+          <AccionEstacion icono="star" titulo="Calificar" color="#f5b301" activa={mostrarCalificar} onPress={() => { setMostrarCalificar((v) => !v); setMostrarReporte(false); }} />
+          <AccionEstacion icono="bullhorn" titulo="Reportar" color="#ff6b4a" activa={mostrarReporte} onPress={() => { setMostrarReporte((v) => !v); setMostrarCalificar(false); }} />
         </View>
       )}
 
       {mostrarCalificar && (
-        <View style={s.caja}>
-          <Text style={s.subtitulo}>Tu calificación</Text>
-          <Estrellas valor={puntaje} tamano={26} onChange={setPuntaje} />
-          <CampoTexto value={comentario} onChangeText={setComentario} placeholder="Comentario (opcional)" multiline />
-          <Boton titulo="Enviar calificación" pequeno onPress={enviarCalificacion} style={{ alignSelf: 'flex-start' }} />
+        <View style={[s.caja, s.cajaDestacada, { borderColor: 'rgba(245,179,1,0.45)' }]}>
+          <Text style={[s.subtitulo, { textAlign: 'center' }]}>¿Cómo fue tu experiencia?</Text>
+          <View style={{ alignItems: 'center' }}><Estrellas valor={puntaje} tamano={36} onChange={setPuntaje} /></View>
+          <Text style={[s.textoDim, { textAlign: 'center' }]}>{['Toca una estrella', 'Muy mala', 'Mala', 'Regular', 'Buena', '¡Excelente!'][puntaje]}</Text>
+          <CampoTexto value={comentario} onChangeText={setComentario} placeholder="Cuéntales a otros conductores (opcional)" multiline />
+          <Boton titulo="Enviar calificación" icono="paper-plane" iconoDerecha onPress={enviarCalificacion} disabled={!puntaje} bloque />
         </View>
       )}
 
       {mostrarReporte && (
-        <View style={s.caja}>
+        <View style={[s.caja, s.cajaDestacada, { borderColor: 'rgba(255,107,74,0.45)' }]}>
           <Text style={s.subtitulo}>¿Qué problema encontraste?</Text>
           <View style={s.acciones}>
             {TIPOS_REPORTE.map((t) => (
@@ -345,11 +362,15 @@ export function EstacionDetalle({
             ))}
           </View>
           <CampoTexto value={descReporte} onChangeText={setDescReporte} placeholder="Descripción" multiline />
-          <Boton titulo={enviandoReporte ? 'Enviando...' : 'Enviar reporte'} pequeno cargando={enviandoReporte} onPress={enviarReporte} style={{ alignSelf: 'flex-start' }} />
+          <Boton titulo={enviandoReporte ? 'Enviando...' : 'Enviar reporte'} icono="paper-plane" iconoDerecha cargando={enviandoReporte} onPress={enviarReporte} bloque />
         </View>
       )}
 
-      <Text style={s.seccion}>Conectores</Text>
+      {esCliente && estadoPanel === 'disponible' ? (
+        <Paso numero={1} titulo="Elige un cargador" sub="Toca el que quieras reservar" />
+      ) : (
+        <Text style={s.seccion}>Conectores</Text>
+      )}
       {conexiones.length === 0 && <Text style={s.textoDim}>Esta estación no reporta conectores.</Text>}
       {conexiones.map((c, i) => {
         const cargadorId = `${ocmId}-${i + 1}`;
@@ -363,44 +384,61 @@ export function EstacionDetalle({
         const recomendado = compatible && !bloqueado && !!tipoConectorVehiculo;
         const etiqueta = reservado ? 'Reservado' : estadoAdmin === 'mantenimiento' ? 'Mantenimiento' : estadoAdmin === 'inactiva' || fueraDeServicio ? 'Fuera de servicio' : 'Disponible';
         return (
-          <View key={cargadorId} style={[s.conector, seleccionado && { borderColor: colors.primary, backgroundColor: colors.primarySoft }, !compatible && { opacity: 0.6 }]}>
-            <View style={s.filaEntre}>
-              <Text style={s.subtitulo}><Icono name="plug" size={13} color={colors.primary} />  {tipo}</Text>
-              {recomendado && <Insignia texto="Para tu vehículo" tono="verde" icono="check" />}
+          <Presionable
+            key={cargadorId}
+            disabled={!esCliente || bloqueado || !compatible}
+            onPress={() => setCargadorSeleccionado(seleccionado ? null : cargadorId)}
+            escalaPresion={0.98}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: seleccionado, disabled: !esCliente || bloqueado || !compatible }}
+            accessibilityLabel={`${tipo}, ${etiqueta}`}
+            style={[s.conector, seleccionado && { borderColor: colors.primary, backgroundColor: colors.primarySoft }, !compatible && { opacity: 0.6 }]}
+          >
+            <View style={s.conectorFila}>
+              <View style={[s.conectorIcono, { backgroundColor: bloqueado ? colors.errorSoft : colors.primarySoft }]}>
+                <Icono name="plug" size={16} color={bloqueado ? colors.error : colors.primary} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={s.subtitulo} numberOfLines={1}>{tipo}</Text>
+                <Text style={s.textoDim}>{c.CurrentType?.Title || 'AC/DC'} · Bahías: {c.Quantity || 1}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.potencia}>{c.PowerKW ? `${c.PowerKW}` : '—'}</Text>
+                <Text style={s.textoDim}>kW</Text>
+              </View>
+              {esCliente && (
+                <View style={[s.radio, seleccionado && { borderColor: colors.primary }]}>
+                  {seleccionado && <View style={s.radioPunto} />}
+                </View>
+              )}
             </View>
-            <Text style={s.textoDim}>{c.PowerKW ? `${c.PowerKW} kW` : 'Potencia no especificada'} · {c.CurrentType?.Title || 'AC/DC'} · Bahías: {c.Quantity || 1}</Text>
             <View style={s.filaEntre}>
-              <Text style={s.textoDim}>ID: {cargadorId}</Text>
               <Insignia texto={etiqueta} tono={reservado ? 'azul' : bloqueado ? 'rojo' : 'verde'} />
+              {recomendado ? <Insignia texto="Para tu vehículo" tono="verde" icono="check" /> : !compatible ? <Text style={s.textoDim}>No compatible</Text> : <Text style={s.textoDim}>ID {cargadorId}</Text>}
             </View>
             {reservado && reservaDe && <Text style={s.textoDim}><Icono name="user" size={11} color={colors.textDim} />  Reservado por {reservaDe.reservado_por}</Text>}
-            {esCliente && (
-              <Boton
-                titulo={seleccionado ? 'Cargador seleccionado' : bloqueado ? 'No disponible' : compatible ? 'Seleccionar cargador' : 'No compatible'}
-                pequeno
-                variante={seleccionado ? 'primary' : 'outline'}
-                disabled={bloqueado || !compatible}
-                onPress={() => setCargadorSeleccionado(seleccionado ? null : cargadorId)}
-              />
-            )}
-          </View>
+          </Presionable>
         );
       })}
 
       {estadoPanel === 'disponible' && esCliente && (
-        <View style={s.caja}>
-          <Text style={s.subtitulo}><Icono name="calendar-plus" size={13} color={colors.primary} />  Reservar</Text>
+        <View style={{ gap: 14 }}>
+          <Paso numero={2} titulo="¿Cuándo y cuánto tiempo?" />
           <SelectorDuracion valor={duracion} onChange={setDuracion} />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
             <View style={{ flex: 1 }}><SelectorFechaHora valor={inicio} onChange={setInicio} /></View>
             <Boton titulo="Ahora" variante="outline" pequeno onPress={() => setInicio(proximaHora())} style={{ marginBottom: 12 }} />
           </View>
-          <Text style={s.textoDim}>Fin: {fechaHora(fin)}</Text>
+          <Paso numero={3} titulo="Confirma y paga" />
           <View style={[s.precio, { borderColor: colors.primaryBorder }]}>
-            <Text style={s.texto}><Icono name="receipt" size={12} color={colors.primary} />  Costo estimado</Text>
-            <Text style={[s.subtitulo, { color: colors.primary }]}>{cargandoPrecio ? 'Calculando…' : precioEstimado != null ? pesos(precioEstimado) : 'Selecciona un cargador'}</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={s.textoDim}>Costo estimado</Text>
+              <Text style={s.precioValor}>{cargandoPrecio ? 'Calculando…' : precioEstimado != null ? pesos(precioEstimado) : '—'}</Text>
+              <Text style={s.textoDim}>Termina: {fechaHora(fin)}</Text>
+            </View>
+            <Icono name="receipt" size={22} color={colors.primary} />
           </View>
-          <Boton titulo={reservando ? 'Procesando...' : 'Confirmar reserva'} icono="calendar-check" cargando={reservando} disabled={!cargadorSeleccionado} onPress={confirmarReserva} bloque />
+          <Boton titulo={reservando ? 'Procesando...' : cargadorSeleccionado ? 'Reservar y pagar' : 'Elige un cargador arriba'} icono="calendar-check" cargando={reservando} disabled={!cargadorSeleccionado} onPress={confirmarReserva} bloque />
         </View>
       )}
 
@@ -460,8 +498,60 @@ export function EstacionDetalle({
   );
 }
 
+// Botón grande de acción (icono en círculo de color + texto): fácil de tocar en el celular.
+function AccionEstacion({ icono, titulo, color, activa = false, onPress }: { icono: string; titulo: string; color: string; activa?: boolean; onPress: () => void }) {
+  const s = useThemedStyles(crearEstilos);
+  return (
+    <Presionable
+      onPress={onPress}
+      elevarAlPasar
+      accessibilityRole="button"
+      accessibilityState={{ selected: activa }}
+      accessibilityLabel={titulo}
+      style={[s.accion, activa && { borderColor: color, backgroundColor: `${color}1f` }]}
+    >
+      <View style={[s.accionIcono, { backgroundColor: activa ? color : `${color}26` }]}>
+        <Icono name={icono} size={17} color={activa ? '#fff' : color} />
+      </View>
+      <Text style={s.accionTexto} numberOfLines={1}>{titulo}</Text>
+    </Presionable>
+  );
+}
+
+// Encabezado numerado de cada paso de la reserva.
+function Paso({ numero, titulo, sub }: { numero: number; titulo: string; sub?: string }) {
+  const s = useThemedStyles(crearEstilos);
+  return (
+    <View style={s.paso}>
+      <View style={s.pasoNumero}><Text style={s.pasoNumeroTexto}>{numero}</Text></View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.subtitulo}>{titulo}</Text>
+        {sub && <Text style={s.textoDim}>{sub}</Text>}
+      </View>
+    </View>
+  );
+}
+
 const crearEstilos = (c: Palette) => StyleSheet.create({
-  nombre: { color: c.text, fontSize: 19, fontWeight: '900' },
+  filaIcono: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  filaEstado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
+  notaPromedio: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full, backgroundColor: 'rgba(245,179,1,0.14)' },
+  notaTexto: { color: c.text, fontWeight: '900', fontSize: 13 },
+  accionesGrid: { flexDirection: 'row', gap: 10 },
+  accion: { flex: 1, minHeight: 84, alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 4, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, backgroundColor: c.cardElevated },
+  accionIcono: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  accionTexto: { color: c.text, fontSize: 12, fontWeight: '800' },
+  cajaDestacada: { padding: Spacing.lg, gap: 14 },
+  paso: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  pasoNumero: { width: 28, height: 28, borderRadius: 14, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
+  pasoNumeroTexto: { color: '#fff', fontWeight: '900', fontSize: 13 },
+  conectorFila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  conectorIcono: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  potencia: { color: c.text, fontSize: 20, fontWeight: '900', lineHeight: 22 },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: c.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  radioPunto: { width: 12, height: 12, borderRadius: 6, backgroundColor: c.primary },
+  precioValor: { color: c.text, fontSize: 22, fontWeight: '900' },
+  nombre: { color: c.text, fontSize: 22, fontWeight: '900', lineHeight: 28 },
   texto: { color: c.textMuted, fontSize: 13.5, lineHeight: 19 },
   textoDim: { color: c.textDim, fontSize: 12.5, lineHeight: 18 },
   subtitulo: { color: c.text, fontSize: 14.5, fontWeight: '800' },
@@ -469,9 +559,9 @@ const crearEstilos = (c: Palette) => StyleSheet.create({
   bloqueo: { flexDirection: 'row', gap: 10, alignItems: 'center', padding: 12, borderRadius: Radius.md, backgroundColor: c.cardElevated },
   aviso: { flexDirection: 'row', gap: 10, alignItems: 'center', padding: 12, borderRadius: Radius.md, borderWidth: 1, backgroundColor: c.warningSoft },
   acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  caja: { gap: 10, padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.cardElevated },
-  conector: { gap: 7, padding: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.cardElevated },
+  caja: { gap: 12, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, backgroundColor: c.cardElevated },
+  conector: { gap: 12, padding: 14, borderRadius: Radius.lg, borderWidth: 1, borderColor: c.border, backgroundColor: c.cardElevated },
   filaEntre: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  precio: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: Radius.md, borderWidth: 1, backgroundColor: c.primarySoft },
-  item: { gap: 4, paddingVertical: 8, borderTopWidth: 1, borderTopColor: c.border },
+  precio: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderRadius: Radius.lg, borderWidth: 1, backgroundColor: c.primarySoft },
+  item: { gap: 6, paddingVertical: 12, borderTopWidth: 1, borderTopColor: c.border },
 });
