@@ -40,6 +40,7 @@ from app.routes.estado_routes import router as estado_router
 from app.routes import pagos
 from app.routes.compras_routes import router as compras_router
 from app.routes import asistente_routes
+from app.routes.empresa_routes import router as empresa_router
 
 # ==========================================
 # CREACIÓN AUTOMÁTICA DE TABLAS
@@ -65,6 +66,22 @@ with engine.begin() as connection:
     connection.execute(text("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS admin_leida BOOLEAN NOT NULL DEFAULT FALSE"))
     connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS compartir_nombre_reserva BOOLEAN NOT NULL DEFAULT FALSE"))
     connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS reservante_nombre VARCHAR"))
+    # Módulo de empresas: roles, estaciones de empresa y cargadores con número y estado.
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR NOT NULL DEFAULT 'usuario'"))
+    connection.execute(text("UPDATE usuarios SET rol = 'admin' WHERE is_admin = TRUE AND rol = 'usuario'"))
+    connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS empresa_id VARCHAR REFERENCES empresas(id) ON DELETE CASCADE"))
+    connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS eliminada BOOLEAN NOT NULL DEFAULT FALSE"))
+    connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN tipo_conector DROP NOT NULL"))
+    connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN potencia_kw DROP NOT NULL"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_estaciones_propias_empresa_id ON estaciones_propias (empresa_id)"))
+    connection.execute(text("ALTER TABLE estacion_cargadores ADD COLUMN IF NOT EXISTS numero INTEGER"))
+    connection.execute(text("ALTER TABLE estacion_cargadores ADD COLUMN IF NOT EXISTS estado VARCHAR NOT NULL DEFAULT 'disponible'"))
+    # Numera los cargadores existentes (1, 2, 3...) dentro de cada estación.
+    connection.execute(text(
+        "UPDATE estacion_cargadores c SET numero = n.rn FROM ("
+        "SELECT id, ROW_NUMBER() OVER (PARTITION BY estacion_id ORDER BY id) AS rn FROM estacion_cargadores"
+        ") n WHERE c.id = n.id AND c.numero IS NULL"
+    ))
     # Los métodos existentes se conservan como identificadores enmascarados;
     # nunca se necesita guardar el número completo de una tarjeta.
     connection.execute(text("UPDATE metodos_pago SET numero = CONCAT('**** ', RIGHT(regexp_replace(numero, '[^0-9]', '', 'g'), 4)) WHERE numero IS NOT NULL AND numero !~ '\\*' AND length(regexp_replace(numero, '[^0-9]', '', 'g')) >= 4"))
@@ -122,6 +139,7 @@ app.include_router(estado_router)
 app.include_router(pagos.router)
 app.include_router(compras_router)
 app.include_router(asistente_routes.router)
+app.include_router(empresa_router)
 
 # ==========================================
 # RUTA RAÍZ

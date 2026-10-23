@@ -408,7 +408,7 @@ function App() {
       }
       
       closeAuthModal();
-      window.location.href = data.usuario.is_admin ? '/admin' : '/dashboard';
+      window.location.href = data.usuario.is_admin ? '/admin' : data.usuario.rol === 'empresa' ? '/empresa' : '/dashboard';
     } catch (error: any) {
       const errorMsg = error instanceof Error ? error.message : String(error?.message || error?.detail || '');
       const errorStatus = error instanceof ApiError ? error.status : error?.status ?? error?.response?.status ?? error?.response?.data?.status;

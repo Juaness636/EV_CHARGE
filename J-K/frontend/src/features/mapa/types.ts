@@ -15,10 +15,14 @@ export interface EstacionOCM {
     Longitude: number;
   };
   OperatorInfo?: { Title?: string };
+  // Presente en estaciones de empresas aprobadas: nombre y color de marca (RN-E10).
+  Empresa?: { id: string; nombre: string; color_hex: string; logo_url?: string | null; estado: string } | null;
   Connections?: Array<{
+    ID?: string | null;
     ConnectionType?: { Title?: string };
     PowerKW?: number;
     CurrentType?: { Title?: string };
     Quantity?: number;
+    Estado?: 'disponible' | 'fuera_servicio';
   }>;
 }

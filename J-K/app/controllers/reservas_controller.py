@@ -11,6 +11,9 @@ from app.models.pago_reserva_model import PagosReserva
 from app.models.utils import ahora_utc
 from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate, ReservaUpdate
 from app.controllers.notificaciones_controller import crear_notificacion
+from app.controllers.empresa_controller import notificar_empresa
+from app.controllers.empresa_estaciones_controller import cargador_por_referencia
+from app.utils.constantes import CARGADOR_ESTADO_DISPONIBLE, EMPRESA_APROBADA
 
 
 def _aware(dt):
@@ -55,6 +58,12 @@ def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str
     estado_estacion = estado_externo.estado if estado_externo else (estacion_propia.estado if estacion_propia else "activa")
     if estado_estacion in {"mantenimiento", "inactiva"}:
         raise HTTPException(status_code=400, detail="Esta estación no está disponible para reservar")
+    if estacion_propia and (estacion_propia.eliminada or (estacion_propia.empresa and estacion_propia.empresa.estado != EMPRESA_APROBADA)):
+        raise HTTPException(status_code=400, detail="Esta estación no está disponible para reservar")
+    if estacion_propia and data.cargador_id:
+        cargador = cargador_por_referencia(db, estacion_propia.id, data.cargador_id)
+        if cargador and cargador.estado != CARGADOR_ESTADO_DISPONIBLE:
+            raise HTTPException(status_code=400, detail="Este cargador está fuera de servicio")
 
     cargador_id = data.cargador_id or f"{data.estacion_ocm_id}-general"
     existente = db.query(Reservas).filter(
@@ -101,6 +110,14 @@ def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str
         usuario_id,
         "Reserva aceptada" if estado == "activa" else "Solicitud de reserva recibida",
         f"Tu reserva de {data.estacion_nombre or data.estacion_ocm_id} fue aceptada después del pago." if estado == "activa" else f"Recibimos tu solicitud para {data.estacion_nombre or data.estacion_ocm_id}. Está pendiente de revisión por el administrador.",
+        "reserva",
+    )
+    notificar_empresa(
+        db,
+        data.estacion_ocm_id,
+        "Nueva reserva",
+        f"Se registró una reserva en {data.estacion_nombre or data.estacion_ocm_id} "
+        f"para el {data.fecha_hora_inicio.strftime('%d/%m/%Y %H:%M')}.",
         "reserva",
     )
     db.commit()

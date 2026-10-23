@@ -17,6 +17,7 @@ class UsuarioOut(BaseModel):
     apellido: Optional[str] = ""
     email: EmailStr
     is_admin: bool = False
+    rol: str = "usuario"
     compartir_nombre_reserva: bool = False
     created_at: datetime
 

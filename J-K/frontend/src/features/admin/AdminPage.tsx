@@ -14,14 +14,16 @@ import {
   type EstacionCargadorData,
   type AdminEstadisticas, type AdminReservaDetail, type ReporteAdmin, type CalificacionAdmin, type ContactoAdmin,
   type UserAdmin, type AdminNotificacion,
+  listarEmpresasAdmin, crearEmpresaAdmin, cambiarEstadoEmpresaAdmin, type EmpresaCrear, type MarcaEmpresa,
 } from '../../api/admin.api';
+import { LONGITUD_MINIMA_MOTIVO, type EmpresaPerfil, type EstadoEmpresa } from '../../api/empresa.api';
 
 type ThemeMode = 'dark' | 'light' | 'system';
 
-type Panel = 'Resumen' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
+type Panel = 'Resumen' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Empresas' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
 type Row = Record<string, unknown>;
 const TIPOS_CARGADOR = ['CCS', 'Type 2', 'CHAdeMO', 'GB/T', 'J1772'] as const;
-const panels: Panel[] = ['Resumen', 'Usuarios', 'Reportes', 'Estaciones', 'Reservas', 'Notificaciones', 'Calificaciones', 'Contactos', 'Perfil'];
+const panels: Panel[] = ['Resumen', 'Usuarios', 'Reportes', 'Estaciones', 'Empresas', 'Reservas', 'Notificaciones', 'Calificaciones', 'Contactos', 'Perfil'];
 const date = (value?: string) => value ? new Date(value).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sin fecha';
 const getStatusClass = (status?: string) => {
   const value = (status || '').toLowerCase();
@@ -95,6 +97,8 @@ export function AdminPage() {
           ? await listarReportesAdmin()
           : panel === 'Estaciones'
             ? await listarEstacionesOcmAdmin()
+            : panel === 'Empresas'
+              ? await listarEmpresasAdmin()
             : panel === 'Reservas'
               ? await listarReservasAdmin()
               : panel === 'Notificaciones'
@@ -145,7 +149,7 @@ export function AdminPage() {
         <header id="admin-header"><div><h1>{panel}</h1><p>Panel de administracion EV Charge</p></div></header>
         <section className="panel active">
           {error && <div className="alert alert-error">{error}</div>}
-          {loading ? <p className="empty">Cargando...</p> : panel === 'Resumen' ? <Summary stats={stats} /> : panel === 'Usuarios' ? <Users rows={rows} /> : panel === 'Reportes' ? <Reports rows={rows as unknown as ReporteAdmin[]} run={run} /> : panel === 'Estaciones' ? <StationsAdmin rows={rows} run={run} /> : panel === 'Reservas' ? <Reservations rows={rows as unknown as AdminReservaDetail[]} run={run} /> : panel === 'Notificaciones' ? <Notifications rows={rows as unknown as AdminNotificacion[]} /> : panel === 'Calificaciones' ? <Ratings rows={rows as unknown as CalificacionAdmin[]} /> : panel === 'Contactos' ? <Contacts rows={rows as unknown as ContactoAdmin[]} run={run} /> : <ProfilePanel usuario={usuario} />}
+          {loading ? <p className="empty">Cargando...</p> : panel === 'Resumen' ? <Summary stats={stats} /> : panel === 'Usuarios' ? <Users rows={rows} /> : panel === 'Reportes' ? <Reports rows={rows as unknown as ReporteAdmin[]} run={run} /> : panel === 'Estaciones' ? <StationsAdmin rows={rows} run={run} /> : panel === 'Empresas' ? <EmpresasAdmin rows={rows as unknown as EmpresaPerfil[]} run={run} /> : panel === 'Reservas' ? <Reservations rows={rows as unknown as AdminReservaDetail[]} run={run} /> : panel === 'Notificaciones' ? <Notifications rows={rows as unknown as AdminNotificacion[]} /> : panel === 'Calificaciones' ? <Ratings rows={rows as unknown as CalificacionAdmin[]} /> : panel === 'Contactos' ? <Contacts rows={rows as unknown as ContactoAdmin[]} run={run} /> : <ProfilePanel usuario={usuario} />}
         </section>
       </main>
       <div className="theme-floating-widget">
@@ -164,7 +168,7 @@ export function AdminPage() {
 }
 
 function Summary({ stats }: { stats: AdminEstadisticas | null }) {
-  const cards = stats ? [['Usuarios', stats.total_usuarios], ['Vehiculos', stats.total_vehiculos], ['Reservas activas', stats.total_reservas_activas], ['Cargas', stats.total_cargas], ['Reportes abiertos', stats.total_reportes_abiertos], ['Estaciones propias', stats.total_estaciones_propias]] : [];
+  const cards = stats ? [['Usuarios', stats.total_usuarios], ['Vehiculos', stats.total_vehiculos], ['Reservas activas', stats.total_reservas_activas], ['Cargas', stats.total_cargas], ['Reportes abiertos', stats.total_reportes_abiertos], ['Estaciones propias', stats.total_estaciones_propias], ['Empresas', stats.total_empresas ?? 0], ['Empresas pendientes', stats.empresas_pendientes ?? 0]] : [];
   return <div className="kpi-grid">{cards.map(([name, count]) => <div className="kpi-card" key={String(name)}><div className="kpi-label">{name}</div><div className="kpi-num">{String(count)}</div></div>)}</div>;
 }
 
@@ -193,7 +197,7 @@ function Users({ rows }: { rows: Row[] }) {
       {filteredRows.map((r) => <tr key={String(r.id)}>
         <td><strong>{String(r.nombre || '')} {String(r.apellido || '')}</strong></td>
         <td>{String(r.email || '')}</td>
-        <td>{r.is_admin ? 'Administrador' : 'Usuario'}</td><td>{date(String(r.created_at || ''))}</td>
+        <td>{r.rol === 'empresa' ? 'Empresa' : r.is_admin ? 'Administrador' : 'Usuario'}</td><td>{date(String(r.created_at || ''))}</td>
         <td>
           <button className="btn-tbl" onClick={() => { setEditingId(String(r.id)); setForm({ is_admin: Boolean(r.is_admin) }); }}>Editar rol</button>
         </td>
@@ -379,8 +383,107 @@ function StationsAdmin({ rows, run }: { rows: Row[]; run: (f: () => Promise<unkn
     </div>
 
     <Table headers={['Estacion', 'Proveedor', 'Estado', 'Acciones']}>
-      {filteredRows.map((r) => { const esExterna = String(r.origen || '') === 'OpenChargeMap'; const id = String(r.id || ''); const estado = String(r.estado || 'activa') as 'activa' | 'mantenimiento' | 'inactiva'; const conectores = r.conectores as Array<{ id?: unknown; tipo?: unknown; potencia_kw?: unknown; corriente?: unknown; bahias?: unknown }> | undefined; const etiquetaEstado = estado === 'inactiva' ? 'Fuera de servicio' : estado; return <tr key={`${esExterna ? 'ocm' : 'propia'}-${id}`}><td>{String(r.nombre || '')}<br /><small>ID: {id}</small><br /><small>{esExterna ? 'OpenChargeMap' : 'EV Charge'}</small></td><td>{String(r.operador || '')}</td><td><span className={`status-badge ${getStatusClass(estado)}`}>{etiquetaEstado}</span></td><td><button className="btn-tbl" onClick={() => { setEditingId(id); setEditingOrigin(esExterna ? 'OpenChargeMap' : 'EV Charge'); setCargadores(esExterna ? [] : (conectores || []).map((cargador) => ({ id: String(cargador.id || ''), tipo_conector: String(cargador.tipo || 'CCS'), potencia_kw: Number(cargador.potencia_kw || 0), corriente: String(cargador.corriente || 'No especificada'), bahias: Number(cargador.bahias || 1) }))); setForm({ id, nombre: String(r.nombre || ''), direccion: String(r.direccion || ''), lat: String(r.lat ?? ''), lon: String(r.lon ?? ''), tipo_conector: String(r.tipo_conector || conectores?.[0]?.tipo || 'CCS'), potencia_kw: String(r.potencia_kw ?? conectores?.[0]?.potencia_kw ?? ''), descripcion: String(r.descripcion || ''), operador: String(r.operador || 'EV Charge'), estado }); }}>Editar</button> <button className="btn-tbl" onClick={() => void run(() => esExterna ? cambiarEstadoEstacionOcm(id, estado === 'activa' ? 'inactiva' : 'activa') : cambiarEstadoEstacion(id, estado === 'activa' ? 'inactiva' : 'activa'))}>{estado === 'activa' ? 'Fuera de servicio' : 'Activar'}</button> <button className="btn-tbl danger" onClick={() => void run(() => esExterna ? eliminarEstacionOcmAdmin(id) : eliminarEstacionAdmin(id))}>Eliminar</button></td></tr>; })}
+      {filteredRows.map((r) => { const esExterna = String(r.origen || '') === 'OpenChargeMap'; const id = String(r.id || ''); const estado = String(r.estado || 'activa') as 'activa' | 'mantenimiento' | 'inactiva'; const conectores = r.conectores as Array<{ id?: unknown; tipo?: unknown; potencia_kw?: unknown; corriente?: unknown; bahias?: unknown }> | undefined; const etiquetaEstado = estado === 'inactiva' ? 'Fuera de servicio' : estado; const marca = r.empresa as MarcaEmpresa | null | undefined; const nuevoEstado = estado === 'activa' ? 'inactiva' : 'activa'; const cambiarEstado = () => { if (esExterna) return run(() => cambiarEstadoEstacionOcm(id, nuevoEstado)); if (!marca) return run(() => cambiarEstadoEstacion(id, nuevoEstado)); /* Estación de empresa: el motivo queda en su historial (RN-E04). */ const motivo = window.prompt(`Motivo para cambiar ${String(r.nombre || '')} a ${nuevoEstado === 'activa' ? 'activa' : 'fuera de servicio'} (mínimo ${LONGITUD_MINIMA_MOTIVO} caracteres). La empresa recibirá este motivo.`); if (!motivo || motivo.trim().length < LONGITUD_MINIMA_MOTIVO) return Promise.resolve(); return run(() => cambiarEstadoEstacion(id, nuevoEstado, motivo.trim())); }; return <tr key={`${esExterna ? 'ocm' : 'propia'}-${id}`}><td>{String(r.nombre || '')}<br /><small>ID: {id}</small><br /><small>{esExterna ? 'OpenChargeMap' : marca ? <><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: marca.color_hex, marginRight: 5 }} />{marca.nombre} ({marca.estado})</> : 'EV Charge'}</small></td><td>{String(r.operador || '')}</td><td><span className={`status-badge ${getStatusClass(estado)}`}>{etiquetaEstado}</span></td><td>{!marca && <><button className="btn-tbl" onClick={() => { setEditingId(id); setEditingOrigin(esExterna ? 'OpenChargeMap' : 'EV Charge'); setCargadores(esExterna ? [] : (conectores || []).map((cargador) => ({ id: String(cargador.id || ''), tipo_conector: String(cargador.tipo || 'CCS'), potencia_kw: Number(cargador.potencia_kw || 0), corriente: String(cargador.corriente || 'No especificada'), bahias: Number(cargador.bahias || 1) }))); setForm({ id, nombre: String(r.nombre || ''), direccion: String(r.direccion || ''), lat: String(r.lat ?? ''), lon: String(r.lon ?? ''), tipo_conector: String(r.tipo_conector || conectores?.[0]?.tipo || 'CCS'), potencia_kw: String(r.potencia_kw ?? conectores?.[0]?.potencia_kw ?? ''), descripcion: String(r.descripcion || ''), operador: String(r.operador || 'EV Charge'), estado }); }}>Editar</button> </>}<button className="btn-tbl" onClick={() => void cambiarEstado()}>{estado === 'activa' ? 'Fuera de servicio' : 'Activar'}</button> <button className="btn-tbl danger" onClick={() => void run(() => esExterna ? eliminarEstacionOcmAdmin(id) : eliminarEstacionAdmin(id))}>Eliminar</button></td></tr>; })}
     </Table>
+  </>;
+}
+
+function EmpresasAdmin({ rows, run }: { rows: EmpresaPerfil[]; run: (f: () => Promise<unknown>) => Promise<void> }) {
+  const vacio: EmpresaCrear = {
+    nombre_comercial: '', razon_social: '', nit: '', telefono: '', email_contacto: '', direccion_sede: '',
+    descripcion: '', color_hex: '#16a34a', usuario_nombre: '', usuario_apellido: '', usuario_email: '', usuario_password: '',
+  };
+  const [form, setForm] = useState<EmpresaCrear>(vacio);
+  const [query, setQuery] = useState('');
+  const [estadoFiltro, setEstadoFiltro] = useState<'todos' | EstadoEmpresa>('todos');
+  const [motivoOp, setMotivoOp] = useState<{ id: string; nombre: string; estado: EstadoEmpresa } | null>(null);
+  const [motivo, setMotivo] = useState('');
+
+  const filtradas = rows.filter((e) => {
+    const texto = `${e.nombre_comercial} ${e.razon_social || ''} ${e.nit || ''} ${e.email_contacto || ''}`.toLowerCase();
+    return (!query || texto.includes(query.toLowerCase())) && (estadoFiltro === 'todos' || e.estado === estadoFiltro);
+  });
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (form.nombre_comercial.trim().length < 2 || !form.usuario_email.trim() || form.usuario_password.length < 8) return;
+    await run(() => crearEmpresaAdmin({
+      ...form,
+      nombre_comercial: form.nombre_comercial.trim(),
+      usuario_email: form.usuario_email.trim(),
+      // Campos opcionales vacíos se omiten: el backend valida NIT y correo solo si vienen.
+      nit: form.nit?.trim() || undefined,
+      email_contacto: form.email_contacto?.trim() || undefined,
+      estado: form.estado ?? 'aprobada',
+    }));
+    setForm(vacio);
+  };
+
+  const confirmarMotivo = async () => {
+    if (!motivoOp || motivo.trim().length < LONGITUD_MINIMA_MOTIVO) return;
+    await run(() => cambiarEstadoEmpresaAdmin(motivoOp.id, motivoOp.estado, motivo.trim()));
+    setMotivoOp(null);
+    setMotivo('');
+  };
+
+  const campo = (key: keyof EmpresaCrear, label: string, type = 'text') => (
+    <div><label>{label}</label><input type={type} value={String(form[key] ?? '')} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></div>
+  );
+
+  return <>
+    <form className="admin-form-grid station-form" onSubmit={handleSubmit}>
+      {campo('nombre_comercial', 'Nombre comercial')}
+      {campo('razon_social', 'Razon social')}
+      {campo('nit', 'NIT')}
+      {campo('telefono', 'Telefono')}
+      {campo('email_contacto', 'Correo de contacto', 'email')}
+      {campo('direccion_sede', 'Direccion de la sede')}
+      <div><label>Color de marca</label><input type="color" value={form.color_hex} onChange={(e) => setForm({ ...form, color_hex: e.target.value })} /></div>
+      {/* RN-E08: `pendiente` deja la empresa sin publicar hasta que el admin la apruebe. */}
+      <div><label>Estado inicial</label><select value={form.estado ?? 'aprobada'} onChange={(e) => setForm({ ...form, estado: e.target.value as EmpresaCrear['estado'] })}>
+        <option value="aprobada">Aprobada</option>
+        <option value="pendiente">Pendiente</option>
+      </select></div>
+      <div className="full-width"><label>Descripcion</label><textarea rows={3} value={form.descripcion ?? ''} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} /></div>
+      {campo('usuario_nombre', 'Nombre del representante')}
+      {campo('usuario_apellido', 'Apellido del representante')}
+      {campo('usuario_email', 'Correo de acceso', 'email')}
+      {campo('usuario_password', 'Contraseña inicial (8+ con mayúscula, número y símbolo)', 'password')}
+      <div className="full-width station-form-actions"><button type="submit" className="btn-save-estacion">Crear empresa</button></div>
+    </form>
+
+    <div className="panel-toolbar">
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar empresa por nombre, NIT o correo" />
+      <div className="filter-pills">
+        {(['todos', 'aprobada', 'pendiente', 'suspendida'] as const).map((estado) => (
+          <button key={estado} className={`pill ${estadoFiltro === estado ? 'active' : ''}`} onClick={() => setEstadoFiltro(estado)}>{estado === 'todos' ? 'Todas' : estado}</button>
+        ))}
+      </div>
+    </div>
+
+    <Table headers={['Empresa', 'Contacto', 'Estaciones', 'Estado', 'Acciones']}>
+      {filtradas.map((e) => <tr key={e.id}>
+        <td><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: e.color_hex, marginRight: 6 }} /><strong>{e.nombre_comercial}</strong><br /><small>{e.razon_social || 'Sin razon social'}{e.nit ? ` - NIT ${e.nit}` : ''}</small></td>
+        <td>{e.email_contacto || e.telefono || 'Sin contacto'}<br /><small>Acceso: {e.usuario_email || 'Sin correo'}</small><br /><small>{e.direccion_sede || 'Sin direccion'}</small></td>
+        <td>{e.total_estaciones}</td>
+        <td><span className={`status-badge ${getStatusClass(e.estado)}`}>{e.estado}</span></td>
+        <td>
+          {e.estado !== 'aprobada' && <button className="btn-tbl" onClick={() => void run(() => cambiarEstadoEmpresaAdmin(e.id, 'aprobada'))}>Aprobar</button>}
+          {e.estado !== 'suspendida' && <button className="btn-tbl danger" onClick={() => { setMotivoOp({ id: e.id, nombre: e.nombre_comercial, estado: 'suspendida' }); setMotivo(''); }}>Suspender</button>}
+        </td>
+      </tr>)}
+    </Table>
+
+    {motivoOp && <form className="admin-form-grid" onSubmit={(event) => { event.preventDefault(); void confirmarMotivo(); }} style={{ marginTop: 20 }}>
+      <div className="full-width">
+        <label>{`Motivo para suspender ${motivoOp.nombre}`}</label>
+        <textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder={`Minimo ${LONGITUD_MINIMA_MOTIVO} caracteres: la empresa recibe este motivo en sus notificaciones`} />
+      </div>
+      <div className="full-width station-form-actions">
+        <button type="submit" className="btn-save-estacion" disabled={motivo.trim().length < LONGITUD_MINIMA_MOTIVO}>Suspender</button>
+        {' '}<button type="button" className="btn-tbl" onClick={() => setMotivoOp(null)}>Cancelar</button>
+      </div>
+    </form>}
   </>;
 }
 

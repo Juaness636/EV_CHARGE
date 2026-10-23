@@ -7,6 +7,7 @@ from app.models.reporte_model import Reportes
 from app.models.utils import ahora_utc
 from app.schemas.reportes_schema import ReporteCreate, ReporteUpdate
 from app.controllers.notificaciones_controller import crear_notificacion
+from app.controllers.empresa_controller import notificar_empresa
 from app.utils.content_filter import validar_contenido
 
 
@@ -26,6 +27,7 @@ def crear_reporte(db: Session, usuario_id: str, data: ReporteCreate):
     rep = Reportes(usuario_id=usuario_id, **data.model_dump())
     db.add(rep)
     crear_notificacion(db, usuario_id, "Reporte enviado", f"Reportaste {data.estacion_nombre or data.estacion_ocm_id}: {data.tipo}.", "reporte")
+    notificar_empresa(db, data.estacion_ocm_id, "Nuevo reporte de un usuario", f"Reportaron {data.estacion_nombre or data.estacion_ocm_id}: {data.tipo}.", "reporte")
     db.commit()
     db.refresh(rep)
     return rep

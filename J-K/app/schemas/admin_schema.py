@@ -1,15 +1,26 @@
 # Backend/schemas/admin_schema.py
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.utils.constantes import ESTADOS_CARGADOR
 from typing import Optional
 from datetime import datetime
 
 
 class EstacionCargadorData(BaseModel):
     id: Optional[str] = None
+    numero: Optional[int] = None
     tipo_conector: str
     potencia_kw: float
     corriente: Optional[str] = "No especificada"
     bahias: int = 1
+    estado: Optional[str] = None
+
+    @field_validator("estado")
+    @classmethod
+    def _estado_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ESTADOS_CARGADOR:
+            raise ValueError("Estado de cargador debe ser 'disponible' o 'fuera_servicio'")
+        return v
 
 
 class AdminEstadisticas(BaseModel):
@@ -20,6 +31,8 @@ class AdminEstadisticas(BaseModel):
     total_kwh_cargados: float
     total_reportes_abiertos: int
     total_estaciones_propias: int
+    total_empresas: int = 0
+    empresas_pendientes: int = 0
 
 
 class EstacionPropiaCreate(BaseModel):
@@ -52,6 +65,8 @@ class EstacionPropiaUpdate(BaseModel):
 
 class EstadoUpdate(BaseModel):
     estado: str
+    # Obligatorio en la práctica para estaciones de empresa: queda en su historial.
+    motivo: Optional[str] = None
 
 
 class AdminEstacionOcmUpdate(BaseModel):
