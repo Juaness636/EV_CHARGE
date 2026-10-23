@@ -9,7 +9,6 @@ Convenciones:
 """
 
 from datetime import date, datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -32,6 +31,7 @@ from app.utils.constantes import (
     ESTADO_RESERVA_CANCELADA,
     INCIDENTES_NO_CERRADOS,
     ZONA_HORARIA_COLOMBIA,
+    zona_colombia,
 )
 
 SEMANAS_MAX_ATRAS = 52
@@ -42,8 +42,8 @@ PAGO_APROBADO = "aprobado"
 COMPRA_APROBADA = "aprobada"
 
 
-def _zona() -> ZoneInfo:
-    return ZoneInfo(ZONA_HORARIA_COLOMBIA)
+def _zona():
+    return zona_colombia()
 
 
 def _lunes(dia: date) -> date:

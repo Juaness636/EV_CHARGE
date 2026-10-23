@@ -8,7 +8,6 @@ lo que vale. El mes sin datos devuelve un documento con el aviso, no un 500.
 """
 
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -20,7 +19,7 @@ from app.controllers.empresa_estadisticas_controller import (
     resumen_empresa,
     serie_temporal,
 )
-from app.utils.constantes import ZONA_HORARIA_COLOMBIA
+from app.utils.constantes import zona_colombia
 
 MESES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -39,7 +38,7 @@ def _rango_mes(mes: str) -> tuple[datetime, datetime, str]:
             detail="Parámetro 'mes' inválido. Usa el formato AAAA-MM (ej: 2026-10).",
         ) from None
 
-    zona = ZoneInfo(ZONA_HORARIA_COLOMBIA)
+    zona = zona_colombia()
     inicio_local = datetime(anio, numero, 1, tzinfo=zona)
     fin_local = (
         datetime(anio + 1, 1, 1, tzinfo=zona)
@@ -186,7 +185,7 @@ def generar_reporte_mensual(mes: str, ctx: dict, db: Session) -> str:
 {tabla_resenas}
 
 <footer>
-  Generado el {datetime.now(ZoneInfo(ZONA_HORARIA_COLOMBIA)).strftime("%d/%m/%Y %H:%M")} (hora de Colombia).
+  Generado el {datetime.now(zona_colombia()).strftime("%d/%m/%Y %H:%M")} (hora de Colombia).
   Los ingresos son una estimación a partir del costo registrado en cada carga validada: no hay medición
   física ni integración OCPP con los cargadores.
 </footer>

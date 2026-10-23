@@ -95,4 +95,16 @@ TIPOS_CONECTOR = ("CCS", "Type 2", "CHAdeMO", "GB/T", "J1772")
 # Los meses y días de las estadísticas se cortan en hora de Colombia.
 ZONA_HORARIA_COLOMBIA = "America/Bogota"
 
+
+def zona_colombia():
+    """Zona horaria de Colombia. Windows no trae la base de zonas horarias (falta el
+    paquete tzdata), así que si ZoneInfo falla se usa UTC-5 fijo: Colombia no tiene
+    horario de verano, por lo que el resultado es el mismo."""
+    from datetime import timedelta, timezone
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    try:
+        return ZoneInfo(ZONA_HORARIA_COLOMBIA)
+    except ZoneInfoNotFoundError:
+        return timezone(timedelta(hours=-5), "COT")
+
 LONGITUD_MINIMA_MOTIVO = 10
