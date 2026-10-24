@@ -39,10 +39,10 @@ const departamentoCanonico = (departamento?: string) => {
 
 const colorEstado = (estado: string) => estado === 'mantenimiento' ? '#f39c12' : estado === 'inactiva' ? '#e74c3c' : estado === 'reservada' ? '#3498db' : '#39a900';
 const nombreRumbo = (grados: number) => ['Norte', 'Noreste', 'Este', 'Sureste', 'Sur', 'Suroeste', 'Oeste', 'Noroeste'][Math.round((grados % 360) / 45) % 8];
-// RN-E10: una estación de empresa disponible se pinta con el color de su marca.
-const colorDeMarca = (estacion: EstacionOCM) => (estacion.Empresa?.estado === 'aprobada' ? estacion.Empresa.color_hex : undefined);
-const crearIconoEstacion = (estado: string, seleccionado = false, colorMarca?: string) => {
-  const color = estado === 'disponible' && colorMarca ? colorMarca : colorEstado(estado);
+// El color del pin siempre es el del estado (verde = disponible), nunca el de la marca de la empresa:
+// la marca se ve en el detalle de la estación.
+const crearIconoEstacion = (estado: string, seleccionado = false) => {
+  const color = colorEstado(estado);
   const icono = estado === 'mantenimiento' ? 'fa-screwdriver-wrench' : estado === 'inactiva' ? 'fa-ban' : estado === 'reservada' ? 'fa-clock' : 'fa-bolt';
   const dimension = seleccionado ? 40 : 34;
   const sombra = seleccionado ? `0 0 0 3px #fff, 0 0 0 6px ${color}, 0 6px 18px rgba(0,0,0,0.6)` : `0 3px 12px rgba(0,0,0,0.45)`;
@@ -516,22 +516,20 @@ export function MapaPage() {
       const idsCargadoresCompatibles = conexionesCompatibles.map((conector) => `${id}-${(st.Connections || []).indexOf(conector) + 1}`);
       const todosCompatiblesReservados = idsCargadoresCompatibles.length > 0 && idsCargadoresCompatibles.every((cargadorId) => estadoInfo.cargadores_reservados?.includes(cargadorId));
       const estado = estadoInfo.estado === 'disponible' && todosCompatiblesReservados ? 'reservada' : estadoInfo.estado;
-      const colorMarca = colorDeMarca(st);
-      const marker = L.marker([st.AddressInfo.Latitude, st.AddressInfo.Longitude], { icon: crearIconoEstacion(estado, false, colorMarca) }).addTo(map);
+      const marker = L.marker([st.AddressInfo.Latitude, st.AddressInfo.Longitude], { icon: crearIconoEstacion(estado, false) }).addTo(map);
       marker.bindTooltip(st.AddressInfo.Title || `Estación ${id}`, { direction: 'top', offset: [0, -12], sticky: true });
       marker.on('click', () => {
         const anterior = marcadorSeleccionadoRef.current;
         if (anterior && anterior !== marker) {
-          const extendido = anterior as L.Marker & { estadoEstacion?: string; colorMarca?: string };
-          anterior.setIcon(crearIconoEstacion(extendido.estadoEstacion || 'disponible', false, extendido.colorMarca));
+          const extendido = anterior as L.Marker & { estadoEstacion?: string };
+          anterior.setIcon(crearIconoEstacion(extendido.estadoEstacion || 'disponible', false));
         }
-        marker.setIcon(crearIconoEstacion(estado, true, colorMarca));
+        marker.setIcon(crearIconoEstacion(estado, true));
         marcadorSeleccionadoRef.current = marker;
         setEstacionSeleccionada(st);
         setInfoRuta(null);
       });
       (marker as L.Marker & { estadoEstacion?: string }).estadoEstacion = estado;
-      (marker as L.Marker & { colorMarca?: string }).colorMarca = colorMarca;
       marcadoresRef.current.push(marker);
     });
   }, [estaciones, estadosEstaciones, filtro, filtroDepartamento, vehiculosUsuario, vehiculoFiltroId]);

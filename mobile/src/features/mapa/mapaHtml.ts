@@ -25,8 +25,6 @@ export interface MarcadorEstacion {
   lon: number;
   titulo: string;
   estado: string;
-  // RN-E10: color de marca de la empresa dueña; solo pinta el pin cuando está disponible.
-  colorMarca?: string;
 }
 
 export function crearHtmlMapa(oscuro: boolean): string {
@@ -162,8 +160,9 @@ export function crearHtmlMapa(oscuro: boolean): string {
   var capaRuta = null, capaRecorrido = null, marcadorUsuario = null;
 
   // animacion: 'entrada' al crear el marcador, 'salto' al seleccionarlo.
-  function icono(estado, sel, animacion, colorMarca) {
-    var color = estado === 'disponible' && colorMarca ? colorMarca : (COLORES[estado] || COLORES.disponible);
+  // El color siempre es el del estado (verde = disponible), nunca el de la marca de la empresa.
+  function icono(estado, sel, animacion) {
+    var color = COLORES[estado] || COLORES.disponible;
     var ic = ICONOS[estado] || 'fa-bolt';
     var tam = sel ? 42 : 34;
     var clase = animacion === 'salto' ? 'ev-salto' : animacion === 'entrada' ? 'ev-entrada' : '';
@@ -187,7 +186,7 @@ export function crearHtmlMapa(oscuro: boolean): string {
       marcadores = {}; datosMarcador = {};
       var puntos = [];
       m.lista.forEach(function (e) {
-        var mk = L.marker([e.lat, e.lon], { icon: icono(e.estado, e.id === seleccionado, yaMostrados[e.id] ? null : 'entrada', e.colorMarca) }).addTo(map);
+        var mk = L.marker([e.lat, e.lon], { icon: icono(e.estado, e.id === seleccionado, yaMostrados[e.id] ? null : 'entrada') }).addTo(map);
         yaMostrados[e.id] = true;
         mk.bindTooltip(e.titulo, { direction: 'top', offset: [0, -14] });
         mk.on('click', function () { acciones.seleccionar({ id: e.id }); enviar({ tipo: 'estacion', id: e.id }); });
@@ -197,10 +196,10 @@ export function crearHtmlMapa(oscuro: boolean): string {
       if (m.ajustar && puntos.length) encuadrar(L.latLngBounds(puntos), { padding: [40, 40], maxZoom: 14 });
     },
     seleccionar: function (m) {
-      if (seleccionado && marcadores[seleccionado]) marcadores[seleccionado].setIcon(icono(datosMarcador[seleccionado].estado, false, null, datosMarcador[seleccionado].colorMarca));
+      if (seleccionado && marcadores[seleccionado]) marcadores[seleccionado].setIcon(icono(datosMarcador[seleccionado].estado, false, null));
       seleccionado = m.id;
       if (m.id && marcadores[m.id]) {
-        marcadores[m.id].setIcon(icono(datosMarcador[m.id].estado, true, 'salto', datosMarcador[m.id].colorMarca));
+        marcadores[m.id].setIcon(icono(datosMarcador[m.id].estado, true, 'salto'));
         marcadores[m.id].setZIndexOffset(1000);
       }
     },
