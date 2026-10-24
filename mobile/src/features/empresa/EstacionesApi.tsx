@@ -1,12 +1,16 @@
 // Estaciones del mapa (OpenChargeMap) que el admin le asignó a la empresa con palabras clave.
-// La empresa no las crea ni las borra: solo ve cuáles son suyas y les cambia el estado.
+// La empresa no las crea ni las borra: solo ve cuáles son suyas, les cambia el estado y sube fotos.
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import {
   cambiarEstadoEstacionApiEmpresa,
+  eliminarFotoEstacionApi,
   listarEstacionesApiEmpresa,
+  subirFotoEstacionApi,
   type EstacionApiEmpresa,
+  type FotoEstacion,
 } from '../../api/empresa.api';
+import { EditorFotos } from '../../components/EditorFotos';
 import { Aviso, Insignia, Selector, Tarjeta, Titulo, Vacio, etiqueta, mensajeError, useColores, useEmpresa, useEstilos } from './componentes';
 
 const OPCIONES_ESTADO: Array<{ valor: EstacionApiEmpresa['estado']; texto: string }> = [
@@ -42,6 +46,9 @@ export const EstacionesApi: React.FC = () => {
     }
   };
 
+  const ponerFotos = (id: string, fotos: FotoEstacion[]) =>
+    setEstaciones((lista) => (lista || []).map((e) => (e.id === id ? { ...e, fotos } : e)));
+
   return (
     <View style={{ marginTop: 12 }}>
       <Titulo>Estaciones del mapa asignadas</Titulo>
@@ -66,6 +73,13 @@ export const EstacionesApi: React.FC = () => {
           <Text style={estilos.textoSuave}>Operador: {estacion.operador} · {estacion.conectores} conector(es)</Text>
           <Text style={estilos.campoEtiqueta}>Estado en el mapa</Text>
           <Selector opciones={OPCIONES_ESTADO} valor={estacion.estado} onChange={(estado) => void cambiar(estacion, estado)} />
+          <View style={estilos.separador} />
+          <EditorFotos
+            fotos={estacion.fotos || []}
+            puedeEditar={puedeOperar}
+            onSubir={async (foto) => ponerFotos(estacion.id, await subirFotoEstacionApi(estacion.id, foto))}
+            onQuitar={async (foto) => ponerFotos(estacion.id, await eliminarFotoEstacionApi(estacion.id, foto.id))}
+          />
         </Tarjeta>
       ))}
     </View>

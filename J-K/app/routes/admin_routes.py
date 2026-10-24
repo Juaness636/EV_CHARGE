@@ -1,10 +1,11 @@
 # Backend/routes/admin_routes.py
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.utils.jwt import require_admin
 from app.controllers import admin_controller as ctrl
+from app.controllers import empresa_fotos_controller as fotos
 from app.controllers.empresa_controller import (
     actualizar_palabras_empresa,
     cambiar_estado_empresa,
@@ -13,6 +14,7 @@ from app.controllers.empresa_controller import (
     obtener_empresa_admin,
 )
 from app.schemas.auth_schemas import UsuarioOut
+from app.schemas.estacion_empresa_schema import FotoEstacionOut
 from app.schemas.empresa_schema import EmpresaCrear, EmpresaEstadoUpdate, EmpresaOut, EmpresaPalabrasUpdate
 from app.schemas.admin_schema import (
     AdminEstadisticas,
@@ -86,6 +88,28 @@ def admin_actualizar_estacion(eid: str, data: EstacionPropiaUpdate, admin=Depend
 @router.patch("/estaciones/{eid}/estado")
 def admin_estado_estacion(eid: str, data: EstadoUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.cambiar_estado_estacion(eid, data, db, admin)
+
+
+# Fotos de cualquier estación: eid es el id de una estación propia o el ID de OpenChargeMap,
+# el mismo que trae la lista /admin/estaciones-ocm.
+@router.get("/estaciones/{eid}/fotos", response_model=list[FotoEstacionOut])
+def admin_fotos_listar(eid: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return fotos.listar_fotos_admin(eid, db)
+
+
+@router.post("/estaciones/{eid}/fotos", response_model=list[FotoEstacionOut])
+async def admin_fotos_subir(
+    eid: str,
+    archivo: UploadFile = File(description="Foto JPG, PNG o WebP de máximo 5 MB."),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return await fotos.subir_foto_admin(eid, archivo, admin, db)
+
+
+@router.delete("/estaciones/{eid}/fotos/{foto_id}", response_model=list[FotoEstacionOut])
+def admin_fotos_eliminar(eid: str, foto_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    return fotos.eliminar_foto_admin(eid, foto_id, admin, db)
 
 
 @router.patch("/estaciones-ocm/{eid}/estado")

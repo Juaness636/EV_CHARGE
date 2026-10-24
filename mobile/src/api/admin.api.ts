@@ -1,7 +1,7 @@
 // Corresponde a: app/controllers/admin_controller.py + app/routes/admin_routes.py
 // Todas requieren usuario admin (require_admin en el backend).
 import { api } from './httpClient';
-import type { EmpresaPerfil, EstadoEmpresa } from './empresa.api';
+import { formularioFoto, OPCIONES_SUBIDA, type EmpresaPerfil, type EstadoEmpresa, type FotoElegida, type FotoEstacion } from './empresa.api';
 
 export interface AdminEstadisticas {
   total_usuarios: number;
@@ -45,6 +45,7 @@ export interface AdminEstacionOcm {
   estado: 'activa' | 'mantenimiento' | 'inactiva';
   origen: string;
   operador: string;
+  fotos?: FotoEstacion[];
   conectores: Array<{
     tipo: string;
     potencia_kw?: number;
@@ -195,6 +196,17 @@ export async function cambiarEstadoEstacion(id: string, estado: 'activa' | 'mant
 
 export async function cambiarEstadoEstacionOcm(id: string, estado: 'activa' | 'mantenimiento' | 'inactiva'): Promise<unknown> {
   const { data } = await api.patch(`/admin/estaciones-ocm/${id}/estado`, { estado });
+  return data;
+}
+
+// Fotos de cualquier estación: id de una estación propia o el ID de OpenChargeMap.
+export async function subirFotoAdmin(estacionId: string, foto: FotoElegida): Promise<FotoEstacion[]> {
+  const { data } = await api.post<FotoEstacion[]>(`/admin/estaciones/${encodeURIComponent(estacionId)}/fotos`, await formularioFoto(foto), OPCIONES_SUBIDA);
+  return data;
+}
+
+export async function eliminarFotoAdmin(estacionId: string, fotoId: string): Promise<FotoEstacion[]> {
+  const { data } = await api.delete<FotoEstacion[]>(`/admin/estaciones/${encodeURIComponent(estacionId)}/fotos/${fotoId}`);
   return data;
 }
 

@@ -47,6 +47,7 @@ from app.schemas.estacion_empresa_schema import (
     EstacionEmpresaOut,
     EstacionEmpresaUpdate,
     EstacionEstadoUpdate,
+    FotoEstacionOut,
     HistorialPagina,
 )
 from app.schemas.incidente_schema import (
@@ -120,6 +121,21 @@ def estaciones_api_listar(ctx: dict = Depends(get_current_user_empresa), db: Ses
 @router.patch("/estaciones/api/{estacion_id}/estado")
 def estaciones_api_estado(estacion_id: str, data: AdminEstadoUpdate, ctx: dict = Depends(operar), db: Session = Depends(get_db)):
     return estaciones_api.cambiar_estado_estacion_api_empresa(estacion_id, data, ctx, db)
+
+
+@router.post("/estaciones/api/{estacion_id}/fotos", response_model=list[FotoEstacionOut])
+async def estaciones_api_fotos_subir(
+    estacion_id: str,
+    archivo: UploadFile = File(description="Foto JPG, PNG o WebP de máximo 5 MB."),
+    ctx: dict = Depends(operar),
+    db: Session = Depends(get_db),
+):
+    return await fotos.subir_foto_api(estacion_id, archivo, ctx, db)
+
+
+@router.delete("/estaciones/api/{estacion_id}/fotos/{foto_id}", response_model=list[FotoEstacionOut])
+def estaciones_api_fotos_eliminar(estacion_id: str, foto_id: str, ctx: dict = Depends(operar), db: Session = Depends(get_db)):
+    return fotos.eliminar_foto_api(estacion_id, foto_id, ctx, db)
 
 
 @router.post("/estaciones", response_model=EstacionEmpresaOut)

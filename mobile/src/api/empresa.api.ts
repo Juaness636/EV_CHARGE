@@ -385,7 +385,8 @@ export interface FotoElegida {
   file?: File;
 }
 
-export async function subirFotoEstacion(estacionId: string, foto: FotoElegida): Promise<EstacionEmpresa> {
+// FormData con la foto elegida. Lo usan también las rutas del admin (admin.api.ts).
+export async function formularioFoto(foto: FotoElegida): Promise<FormData> {
   const form = new FormData();
   if (Platform.OS === 'web') {
     const archivo = foto.file ?? (await (await fetch(foto.uri)).blob());
@@ -398,12 +399,15 @@ export async function subirFotoEstacion(estacionId: string, foto: FotoElegida): 
       type: foto.mimeType || 'image/jpeg',
     } as unknown as Blob);
   }
-  const { data } = await api.post<EstacionEmpresa>(`/empresa/estaciones/${estacionId}/fotos`, form, {
-    // Sin este encabezado axios convierte el FormData a JSON (la instancia usa JSON por defecto);
-    // en el navegador axios lo quita y deja que se ponga el boundary solo.
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000,
-  });
+  return form;
+}
+
+// Sin este encabezado axios convierte el FormData a JSON (la instancia usa JSON por defecto);
+// en el navegador axios lo quita y deja que se ponga el boundary solo.
+export const OPCIONES_SUBIDA = { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 };
+
+export async function subirFotoEstacion(estacionId: string, foto: FotoElegida): Promise<EstacionEmpresa> {
+  const { data } = await api.post<EstacionEmpresa>(`/empresa/estaciones/${estacionId}/fotos`, await formularioFoto(foto), OPCIONES_SUBIDA);
   return data;
 }
 
@@ -539,10 +543,22 @@ export interface EstacionApiEmpresa {
   lon: number;
   estado: 'activa' | 'mantenimiento' | 'inactiva';
   conectores: number;
+  fotos: FotoEstacion[];
 }
 
 export async function listarEstacionesApiEmpresa(): Promise<EstacionApiEmpresa[]> {
   const { data } = await api.get<EstacionApiEmpresa[]>('/empresa/estaciones/api', { timeout: 45000 });
+  return data;
+}
+
+// Fotos de las estaciones del mapa asignadas: el backend responde 404 si no son de la empresa.
+export async function subirFotoEstacionApi(estacionId: string, foto: FotoElegida): Promise<FotoEstacion[]> {
+  const { data } = await api.post<FotoEstacion[]>(`/empresa/estaciones/api/${estacionId}/fotos`, await formularioFoto(foto), OPCIONES_SUBIDA);
+  return data;
+}
+
+export async function eliminarFotoEstacionApi(estacionId: string, fotoId: string): Promise<FotoEstacion[]> {
+  const { data } = await api.delete<FotoEstacion[]>(`/empresa/estaciones/api/${estacionId}/fotos/${fotoId}`);
   return data;
 }
 
