@@ -53,13 +53,13 @@ const cifras = [
 ];
 
 // Diapositivas del hero: cambian cada pocos segundos con un fundido y sus propios datos flotantes.
+// Fotos del inicio: escenas reales de carga que van rotando, cada una con sus propios chips.
 const diapositivasHero = [
-  { producto: 'Wallbox Inteligente 22 kW', icono: 'house', dato: 'Carga en casa', barra: 0.8, estado: 'Programada', sub: 'Horas valle · 22 kW' },
-  { producto: 'Cargador Rápido DC 150 kW', icono: 'bolt', dato: '80 % en 18 min', barra: 0.8, estado: 'Estación libre', sub: 'CCS2 · a 1,2 km' },
-  { producto: 'Cargador Portátil 7,4 kW', icono: 'suitcase', dato: 'Carga donde estés', barra: 0.55, estado: 'Listo para viajar', sub: 'Toma doméstica · 7,4 kW' },
-  { producto: 'Cable Tipo 2 a Tipo 2 (5 m)', icono: 'plug', dato: 'Hasta 22 kW', barra: 0.65, estado: 'Compatible', sub: 'Tipo 2 · 5 m' },
-  { producto: 'Llanta Michelin Pilot Sport EV 20"', icono: 'gauge-high', dato: '−20 % de ruido', barra: 0.7, estado: 'Hecha para EV', sub: 'Torque instantáneo' },
-].map((d) => ({ ...d, img: catalogoProductos.find((p) => p.nombre === d.producto)?.img ?? catalogoProductos[0].img }));
+  { titulo: 'Estación de carga rápida', img: require('../../../assets/images/hero/estacion-rapida.jpg'), icono: 'bolt', dato: '80 % en 18 min', barra: 0.8, estado: 'Estación libre', sub: 'CCS2 · 150 kW' },
+  { titulo: 'Reserva desde la app', img: require('../../../assets/images/hero/app-mapa.jpg'), icono: 'map-location-dot', dato: 'Reserva en 3 pasos', barra: 0.66, estado: 'Turno confirmado', sub: 'Mapa en tiempo real' },
+  { titulo: 'Carga en casa con wallbox', img: require('../../../assets/images/hero/garaje-wallbox.jpg'), icono: 'house', dato: 'Carga en casa', barra: 0.9, estado: 'Programada', sub: 'Horas valle · 22 kW' },
+  { titulo: 'Cargador portátil de viaje', img: require('../../../assets/images/hero/viaje-portatil.jpg'), icono: 'suitcase', dato: 'Carga donde estés', barra: 0.55, estado: 'Listo para viajar', sub: 'Toma doméstica · 7,4 kW' },
+];
 const INTERVALO_HERO = 5000;
 
 const conectores = ['CCS2', 'Tipo 2', 'CHAdeMO', 'GB/T', 'Tesla NACS', 'Carga rápida DC', 'Wallbox residencial', 'Reservas en línea', 'Rutas inteligentes'];
@@ -527,14 +527,14 @@ function HeroCarrusel({ escritorio }: { escritorio: boolean }) {
   const d = diapositivasHero[actual];
   const entradaChip = { opacity: chips, transform: [{ translateY: chips.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] };
   return (
-    <Pressable onHoverIn={() => setPausa(true)} onHoverOut={() => setPausa(false)} accessibilityLabel={`Imagen ${actual + 1} de ${diapositivasHero.length}: ${d.producto}`}>
+    <Pressable onHoverIn={() => setPausa(true)} onHoverOut={() => setPausa(false)} accessibilityLabel={`Imagen ${actual + 1} de ${diapositivasHero.length}: ${d.titulo}`}>
       <Flotar distancia={10} duracion={5200}>
         <View style={s.heroMarco}>
           <LinearGradient colors={[colors.primaryLight, 'rgba(57,169,0,0.1)', colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 30 }]} />
           <View style={s.heroFoto}>
             {diapositivasHero.map((dia, i) => (
               <Animated.View
-                key={dia.producto}
+                key={dia.titulo}
                 pointerEvents="none"
                 style={[StyleSheet.absoluteFill, { opacity: opacidades[i], transform: [{ scale: i === actual ? zoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) : 1.08 }] }]}
               >
@@ -544,7 +544,7 @@ function HeroCarrusel({ escritorio }: { escritorio: boolean }) {
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={s.heroPuntos}>
               {diapositivasHero.map((dia, i) => (
-                <Pressable key={dia.producto} onPress={() => setActual(i)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Ver ${dia.producto}`}>
+                <Pressable key={dia.titulo} onPress={() => setActual(i)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Ver ${dia.titulo}`}>
                   <View style={[s.heroPunto, i === actual && s.heroPuntoActivo]} />
                 </Pressable>
               ))}
