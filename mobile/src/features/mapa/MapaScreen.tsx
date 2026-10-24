@@ -180,7 +180,6 @@ export function MapaScreen() {
       lon: st.AddressInfo!.Longitude,
       titulo: nombreEstacion(st),
       estado: info.estado === 'disponible' && todosReservados ? 'reservada' : info.estado,
-      colorMarca: st.Empresa?.estado === 'aprobada' ? st.Empresa.color_hex : undefined,
     };
   }), [visibles, estados, filtro, vehiculoActivo]);
 

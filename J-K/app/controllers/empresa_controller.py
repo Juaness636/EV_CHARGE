@@ -118,7 +118,7 @@ def _con_totales(db: Session, empresas: list[Empresa]) -> list[dict]:
 
 
 def marca_empresa(empresa: Empresa | None) -> dict | None:
-    """Nombre, color y logo de la empresa para pintar el marcador en el mapa (RN-E10)."""
+    """Nombre, color y logo de la empresa para mostrarla en el detalle de la estación (RN-E10)."""
     if not empresa:
         return None
     return {

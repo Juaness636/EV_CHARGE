@@ -488,7 +488,7 @@ def listar_estaciones_mapa(db: Session):
             "StateOrProvince": estacion.get("departamento", ""),
         },
         "OperatorInfo": {"Title": estacion["operador"]},
-        # RN-E10: nombre, color y logo de la empresa para pintar su marcador.
+        # RN-E10: nombre, color y logo de la empresa para el detalle; el pin siempre usa el color del estado.
         "Empresa": estacion.get("empresa"),
         # Fotos que subió la empresa dueña o el admin (rutas relativas al backend, /media/fotos/{id}).
         "Fotos": [foto["url"] for foto in estacion.get("fotos") or []],
