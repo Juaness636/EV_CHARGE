@@ -9,17 +9,23 @@ export function useCarga<T>(cargar: () => Promise<T>, inicial: T, deps: unknown[
   const [datos, setDatos] = useState<T>(inicial);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  // El error original, para que EstadoError muestre la causa (sin internet, servidor caído...).
+  const [fallo, setFallo] = useState<unknown>(null);
   const ultima = useRef(0);
 
   const recargar = useCallback(async () => {
     const id = ++ultima.current;
     setCargando(true);
     setError('');
+    setFallo(null);
     try {
       const resultado = await cargar();
       if (id === ultima.current) setDatos(resultado);
     } catch (e) {
-      if (id === ultima.current) setError(mensajeError(e, 'No se pudo cargar la información.'));
+      if (id === ultima.current) {
+        setError(mensajeError(e, 'No se pudo cargar la información.'));
+        setFallo(e);
+      }
     } finally {
       if (id === ultima.current) setCargando(false);
     }
@@ -29,7 +35,7 @@ export function useCarga<T>(cargar: () => Promise<T>, inicial: T, deps: unknown[
     void recargar();
   }, [recargar]);
 
-  return { datos, setDatos, cargando, error, recargar };
+  return { datos, setDatos, cargando, error, fallo, recargar };
 }
 
 // Lista nacional de estaciones (para los selectores de reservas, reportes y calificaciones).

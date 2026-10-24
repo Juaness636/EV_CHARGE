@@ -17,7 +17,7 @@ def obtener_estaciones(lat: float, lon: float):
 # Configuración e intermedios con prefijo app.
 from app.config.database import Base, SessionLocal, engine
 from sqlalchemy import text
-from app.middleware.error_handler import ErrorHandler
+from app.middleware.error_handler import ErrorHandler, registrar_manejadores
 import app.models
 
 # ==========================================
@@ -149,6 +149,11 @@ app = FastAPI(
 # ==========================================
 # CONFIGURACIÓN CORS Y MIDDLEWARE
 # ==========================================
+# Errores con formato JSON uniforme. ErrorHandler se registra antes que CORS para quedar
+# por dentro: así un error 500 también lleva los encabezados CORS y el navegador puede leerlo.
+registrar_manejadores(app)
+app.add_middleware(ErrorHandler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -166,7 +171,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(ErrorHandler)
 
 
 # ==========================================

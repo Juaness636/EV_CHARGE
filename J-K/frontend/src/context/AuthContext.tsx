@@ -2,6 +2,7 @@
 // Reemplaza las lecturas dispersas de localStorage que había en App.tsx.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { obtenerPerfil, login as loginApi, logout as logoutApi, type Usuario } from '../api/auth.api';
+import { EVENTO_SESION_VENCIDA } from '../api/httpClient';
 
 interface AuthContextValue {
   usuario: Usuario | null;
@@ -27,6 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((data) => setUsuario(data.usuario))
       .catch(() => setUsuario(null))
       .finally(() => setCargando(false));
+  }, []);
+
+  // Sesión vencida: las rutas protegidas llevan al inicio y se avisa por qué.
+  useEffect(() => {
+    const alVencer = () => {
+      setUsuario(null);
+      // Mismo evento que usa notificar() de GlobalNotifications (se evita importarlo: ese archivo importa este).
+      window.dispatchEvent(new CustomEvent('ev-charge:notificacion', {
+        detail: { tipo: 'warning', titulo: 'Tu sesión venció', mensaje: 'Inicia sesión de nuevo para continuar.' },
+      }));
+    };
+    window.addEventListener(EVENTO_SESION_VENCIDA, alVencer);
+    return () => window.removeEventListener(EVENTO_SESION_VENCIDA, alVencer);
   }, []);
 
   const login = async (email: string, password: string) => {

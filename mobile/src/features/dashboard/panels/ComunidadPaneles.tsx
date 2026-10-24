@@ -11,6 +11,7 @@ import type { EstacionOCM } from '../../mapa/types';
 import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, Boton, CampoSelect, CampoTexto, Cargando, Dato, Estrellas, Etiqueta, Insignia, ItemLista, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
 import type { PropsPanel } from '../tipos';
+import { EstadoError } from '../../../components/EstadoError';
 
 const TIPOS_REPORTE = [
   { valor: 'averia', etiqueta: 'Avería' },
@@ -37,7 +38,7 @@ function SelectorEstacion({ estaciones, valor, onChange, deshabilitado }: { esta
 const reporteVacio = { estacion_ocm_id: '', estacion_nombre: '', tipo: 'averia', descripcion: '' };
 
 export function ReportesPanel({ version }: PropsPanel) {
-  const { datos: reportes, cargando, error, recargar } = useCarga(misReportes, [] as Reporte[], [version]);
+  const { datos: reportes, cargando, error, recargar, fallo } = useCarga(misReportes, [] as Reporte[], [version]);
   const [mostrar, setMostrar] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [form, setForm] = useState(reporteVacio);
@@ -88,7 +89,7 @@ export function ReportesPanel({ version }: PropsPanel) {
           <Boton titulo={editando ? 'Guardar cambios' : 'Enviar reporte'} cargando={guardando} onPress={guardar} style={{ alignSelf: 'flex-start' }} />
         </Tarjeta>
       )}
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !reportes.length ? <Cargando /> : reportes.length === 0 ? <Vacio texto="No tienes reportes." icono="triangle-exclamation" /> : reportes.map((r) => (
         <ItemLista
           key={r.id}
@@ -111,7 +112,7 @@ export function ReportesPanel({ version }: PropsPanel) {
 const calificacionVacia = { estacion_ocm_id: '', estacion_nombre: '', puntaje: 5, comentario: '' };
 
 export function CalificacionesPanel({ version }: PropsPanel) {
-  const { datos: calificaciones, cargando, error, recargar } = useCarga(misCalificaciones, [] as Calificacion[], [version]);
+  const { datos: calificaciones, cargando, error, recargar, fallo } = useCarga(misCalificaciones, [] as Calificacion[], [version]);
   const [mostrar, setMostrar] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [form, setForm] = useState(calificacionVacia);
@@ -163,7 +164,7 @@ export function CalificacionesPanel({ version }: PropsPanel) {
           <Boton titulo={editando ? 'Guardar cambios' : 'Guardar calificación'} cargando={guardando} onPress={guardar} style={{ alignSelf: 'flex-start' }} />
         </Tarjeta>
       )}
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !calificaciones.length ? <Cargando /> : calificaciones.length === 0 ? <Vacio texto="No tienes calificaciones." icono="star-half-stroke" /> : calificaciones.map((c) => (
         <ItemLista
           key={c.id}

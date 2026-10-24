@@ -17,11 +17,12 @@ import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, Boton, CampoSelect, Cargando, Dato, Insignia, ItemLista, KPI, SelectorDuracion, SelectorFechaHora, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
 import type { PropsPanel } from '../tipos';
 import { AvisoVehiculo, totalReservasPagadas } from './PanelesResumen';
+import { EstadoError } from '../../../components/EstadoError';
 
 const etiquetaReserva = (estado?: string) => (estado === 'activa' ? 'Aceptada' : estado === 'realizada' ? 'Realizada' : estado || 'pendiente');
 
 export function ReservasPanel({ version, irA }: PropsPanel) {
-  const { datos, cargando, error, recargar } = useCarga(async () => {
+  const { datos, cargando, error, recargar, fallo } = useCarga(async () => {
     const [reservas, vehiculos] = await Promise.all([misReservas(), listarVehiculos()]);
     return { reservas, vehiculos };
   }, { reservas: [] as Reserva[], vehiculos: [] as Awaited<ReturnType<typeof listarVehiculos>> }, [version]);
@@ -227,7 +228,7 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
         </Tarjeta>
       )}
 
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !reservas.length ? <Cargando /> : reservas.length === 0 ? <Vacio texto="No tienes reservas." icono="calendar" /> : reservas.map((r) => (
         <ItemLista
           key={r.id}

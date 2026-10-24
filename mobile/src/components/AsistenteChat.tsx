@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { preguntarAsistente, type MensajeAsistente } from '../api/asistente.api';
-import { ApiError } from '../api/httpClient';
+import { ApiError, esFalloDeConexion } from '../api/httpClient';
 import { useTheme } from '../theme/ThemeContext';
 import { BREAKPOINT_ESCRITORIO, Radius } from '../theme/spacing';
 import { Icono } from './ui';
@@ -62,7 +62,7 @@ export function AsistenteChat({ elevado = false }: { elevado?: boolean }) {
     } catch (error) {
       const mensaje = error instanceof ApiError && error.status === 429
         ? 'Has realizado muchas consultas. Espera un momento y vuelve a intentarlo.'
-        : 'No pude conectarme al asistente. Revisa tu conexión a internet e inténtalo de nuevo.';
+        : esFalloDeConexion(error) ? (error as Error).message : 'No pude responder en este momento. Inténtalo de nuevo en unos segundos.';
       setMensajes((actual) => [...actual, { role: 'assistant', content: mensaje }]);
     } finally {
       setCargando(false);

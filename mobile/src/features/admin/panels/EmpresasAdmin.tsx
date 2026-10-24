@@ -11,6 +11,7 @@ import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, AppModal, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Insignia, ItemLista, Vacio } from '../../../components/ui';
 import { useTheme } from '../../../theme/ThemeContext';
 import { ejecutarAdmin, type PropsAdmin } from './comun';
+import { EstadoError } from '../../../components/EstadoError';
 
 const ETIQUETA_ESTADO: Record<EstadoEmpresa, string> = { pendiente: 'Pendiente', aprobada: 'Aprobada', suspendida: 'Suspendida' };
 const TONO_ESTADO = { pendiente: 'amarillo', aprobada: 'verde', suspendida: 'rojo' } as const;
@@ -21,7 +22,7 @@ type Filtro = 'todas' | EstadoEmpresa;
 
 export function EmpresasAdmin({ version }: PropsAdmin) {
   const { colors } = useTheme();
-  const { datos: empresas, cargando, error, recargar } = useCarga(() => listarEmpresasAdmin(), [] as EmpresaPerfil[], [version]);
+  const { datos: empresas, cargando, error, recargar, fallo } = useCarga(() => listarEmpresasAdmin(), [] as EmpresaPerfil[], [version]);
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [creando, setCreando] = useState(false);
   const [editandoPalabras, setEditandoPalabras] = useState<EmpresaPerfil | null>(null);
@@ -42,7 +43,7 @@ export function EmpresasAdmin({ version }: PropsAdmin) {
         { valor: 'todas', etiqueta: 'Todas' }, { valor: 'pendiente', etiqueta: 'Pendientes' },
         { valor: 'aprobada', etiqueta: 'Aprobadas' }, { valor: 'suspendida', etiqueta: 'Suspendidas' },
       ]} />
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !empresas.length ? <Cargando /> : filas.length === 0 ? <Vacio texto="No hay empresas para este filtro." icono="building" /> : filas.map((e) => (
         <ItemLista
           key={e.id}

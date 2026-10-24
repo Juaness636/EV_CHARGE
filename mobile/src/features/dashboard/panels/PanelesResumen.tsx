@@ -18,6 +18,7 @@ import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, AppModal, Boton, Cargando, Dato, Icono, Insignia, ItemLista, KPI, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
 import { ConversacionPedido } from '../../../components/ConversacionPedido';
 import type { PropsPanel } from '../tipos';
+import { EstadoError } from '../../../components/EstadoError';
 
 export const totalReservasPagadas = (reservas: Array<{ estado?: string; costo_pagado?: number }>) =>
   reservas.filter((r) => r.estado !== 'cancelada').reduce((t, r) => t + Number(r.costo_pagado || 0), 0);
@@ -35,13 +36,13 @@ export function AvisoVehiculo({ texto, onRegistrar }: { texto: string; onRegistr
 
 export function InicioPanel({ version, irA }: PropsPanel) {
   const { colors } = useTheme();
-  const { datos, cargando, error } = useCarga(async () => {
+  const { datos, cargando, error, fallo, recargar } = useCarga(async () => {
     const [vehiculos, reservas, pagos, compras, favoritos] = await Promise.all([listarVehiculos(), misReservas(), listarMetodosPago(), listarCompras(), listarFavoritos()]);
     return { vehiculos, reservas, pagos, compras, favoritos };
   }, null, [version]);
 
   if (cargando && !datos) return <Cargando />;
-  if (error) return <Alerta texto={error} />;
+  if (error) return <EstadoError error={fallo} onReintentar={recargar} compacto />;
   if (!datos) return null;
   const activas = datos.reservas.filter((r) => r.estado !== 'cancelada');
   const gastado = datos.compras.reduce((t, c) => t + Number(c.monto || 0), 0) + totalReservasPagadas(datos.reservas);
@@ -73,7 +74,7 @@ export function InicioPanel({ version, irA }: PropsPanel) {
 
 export function ComprasPanel({ version, irA }: PropsPanel) {
   const { colors } = useTheme();
-  const { datos, cargando, error, recargar } = useCarga(async () => {
+  const { datos, cargando, error, recargar, fallo } = useCarga(async () => {
     const [compras, vehiculos] = await Promise.all([listarCompras(), listarVehiculos()]);
     return { compras, vehiculos };
   }, null, [version]);
@@ -89,7 +90,7 @@ export function ComprasPanel({ version, irA }: PropsPanel) {
   };
 
   if (cargando && !datos) return <Cargando />;
-  if (error) return <Alerta texto={error} />;
+  if (error) return <EstadoError error={fallo} onReintentar={recargar} compacto />;
   if (!datos) return null;
   const total = datos.compras.reduce((t, c) => t + Number(c.monto || 0), 0);
   return (
@@ -146,12 +147,12 @@ export function ComprasPanel({ version, irA }: PropsPanel) {
 }
 
 export function CargasPanel({ version }: PropsPanel) {
-  const { datos, cargando, error } = useCarga(async () => {
+  const { datos, cargando, error, fallo, recargar } = useCarga(async () => {
     const [cargas, estadisticas] = await Promise.all([listarCargas(), estadisticasCargas()]);
     return { cargas, estadisticas };
   }, null, [version]);
   if (cargando && !datos) return <Cargando />;
-  if (error) return <Alerta texto={error} />;
+  if (error) return <EstadoError error={fallo} onReintentar={recargar} compacto />;
   if (!datos) return null;
   return (
     <>
@@ -175,7 +176,7 @@ export function CargasPanel({ version }: PropsPanel) {
 export function FavoritosPanel({ version }: PropsPanel) {
   const router = useRouter();
   const [estados, setEstados] = useState<Record<string, string>>({});
-  const { datos: favoritos, cargando, error, recargar } = useCarga(listarFavoritos, [] as Favorito[], [version]);
+  const { datos: favoritos, cargando, error, recargar, fallo } = useCarga(listarFavoritos, [] as Favorito[], [version]);
 
   useEffect(() => {
     let cancelado = false;
@@ -201,7 +202,7 @@ export function FavoritosPanel({ version }: PropsPanel) {
   };
 
   if (cargando && !favoritos.length) return <Cargando />;
-  if (error) return <Alerta texto={error} />;
+  if (error) return <EstadoError error={fallo} onReintentar={recargar} compacto />;
   return (
     <>
       {favoritos.length === 0 && <Vacio texto="No tienes estaciones favoritas. Guárdalas desde el mapa con el botón Favorito." icono="star" />}

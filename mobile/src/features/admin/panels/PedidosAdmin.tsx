@@ -13,6 +13,7 @@ import { confirmar, notificar } from '../../../components/Notificaciones';
 import { ConversacionPedido } from '../../../components/ConversacionPedido';
 import { Alerta, AppModal, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Insignia, ItemLista, KPI, tonoEstado, Vacio } from '../../../components/ui';
 import type { PropsAdmin } from './AdminPaneles';
+import { EstadoError } from '../../../components/EstadoError';
 
 type Filtro = 'todos' | EstadoPedido;
 
@@ -33,7 +34,7 @@ export function PedidosAdmin({ version }: PropsAdmin) {
   const { colors } = useTheme();
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [busqueda, setBusqueda] = useState('');
-  const { datos: pedidos, cargando, error, recargar } = useCarga(() => listarComprasAdmin(), [] as CompraAdmin[], [version]);
+  const { datos: pedidos, cargando, error, recargar, fallo } = useCarga(() => listarComprasAdmin(), [] as CompraAdmin[], [version]);
   const [detalle, setDetalle] = useState<CompraAdminDetalle | null>(null);
 
   const texto = busqueda.trim().toLowerCase();
@@ -78,7 +79,7 @@ export function PedidosAdmin({ version }: PropsAdmin) {
       </View>
       <CampoTexto icono="magnifying-glass" value={busqueda} onChangeText={setBusqueda} placeholder="Buscar por producto, comprador, ciudad o transacción" />
       <Chips valor={filtro} onChange={setFiltro} opciones={[{ valor: 'todos', etiqueta: 'Todos' }, ...ESTADOS_PEDIDO]} />
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !pedidos.length ? <Cargando /> : filas.length === 0 ? <Vacio texto="No hay pedidos para este filtro." icono="box-open" /> : filas.map((p) => (
         <ItemLista
           key={p.id}

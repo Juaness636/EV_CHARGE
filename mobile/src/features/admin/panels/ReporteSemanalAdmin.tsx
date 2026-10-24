@@ -10,6 +10,7 @@ import { pesos } from '../../../utils/formato';
 import { useCarga } from '../../../utils/useCarga';
 import { Alerta, Boton, Cargando, Chips, Icono, Insignia, Tarjeta } from '../../../components/ui';
 import type { PropsAdmin } from './AdminPaneles';
+import { EstadoError } from '../../../components/EstadoError';
 
 const SEMANAS_MAX_ATRAS = 52;
 
@@ -154,7 +155,7 @@ export function ReporteSemanalAdmin({ version }: PropsAdmin) {
   const s = useThemedStyles(crearEstilos);
   const { colors } = useTheme();
   const [semanasAtras, setSemanasAtras] = useState(0);
-  const { datos: reporte, cargando, error } = useCarga(() => obtenerReporteSemanal(semanasAtras), null, [version, semanasAtras]);
+  const { datos: reporte, cargando, error, fallo, recargar } = useCarga(() => obtenerReporteSemanal(semanasAtras), null, [version, semanasAtras]);
 
   const navegador = (
     <View style={s.navegador}>
@@ -167,7 +168,7 @@ export function ReporteSemanalAdmin({ version }: PropsAdmin) {
     </View>
   );
 
-  if (error) return <>{navegador}<Alerta texto={error} /></>;
+  if (error) return <>{navegador}<EstadoError error={fallo} onReintentar={recargar} compacto /></>;
   if (!reporte) return <>{navegador}<Cargando /></>;
 
   const principales = PRINCIPALES.map((c) => reporte.metricas.find((m) => m.clave === c)).filter(Boolean) as MetricaSemanal[];

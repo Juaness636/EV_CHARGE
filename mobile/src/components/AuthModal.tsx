@@ -6,7 +6,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { registro, ApiError } from '../api/auth.api';
-import { MENSAJE_SIN_CONEXION } from '../api/httpClient';
+import { MENSAJE_SIN_CONEXION, esFalloDeConexion } from '../api/httpClient';
 import { rutaPanel, useAuth } from '../context/AuthContext';
 import { useUI, type AuthTab } from '../context/UIContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -112,8 +112,8 @@ export function AuthModal() {
       } else if ([400, 401, 422].includes(status) || /credenciales|contraseña|incorrect/i.test(mensaje)) {
         setAlerta({ texto: 'El correo o la contraseña no son correctos. Revísalos e inténtalo de nuevo.', tipo: 'error' });
         if (captchaRequerido) setCaptchaResuelto(false);
-      } else if (status === 0) {
-        // Sin conexión o el servidor tardó demasiado: httpClient ya trae un mensaje claro.
+      } else if (esFalloDeConexion(error)) {
+        // Sin internet, servidor caído o tiempo agotado: httpClient ya trae un mensaje claro.
         setAlerta({ texto: mensaje || MENSAJE_SIN_CONEXION, tipo: 'error' });
       } else {
         setAlerta({ texto: 'No pudimos iniciar tu sesión en este momento. Inténtalo de nuevo en unos minutos.', tipo: 'error' });
@@ -144,7 +144,7 @@ export function AuthModal() {
       const status = error instanceof ApiError ? error.status : 0;
       if (status === 409 || /ya está registrado|ya existe/i.test(mensaje)) setAlerta({ texto: 'Este correo ya está registrado, intenta con otro.', tipo: 'error' });
       else if (status === 400 || status === 422) setAlerta({ texto: mensaje || 'Los datos del registro no son válidos.', tipo: 'error' });
-      else setAlerta({ texto: status === 0 ? mensaje || MENSAJE_SIN_CONEXION : 'No pudimos crear tu cuenta en este momento. Inténtalo de nuevo en unos minutos.', tipo: 'error' });
+      else setAlerta({ texto: esFalloDeConexion(error) ? mensaje || MENSAJE_SIN_CONEXION : 'No pudimos crear tu cuenta en este momento. Inténtalo de nuevo en unos minutos.', tipo: 'error' });
     } finally {
       setCargando(false);
     }

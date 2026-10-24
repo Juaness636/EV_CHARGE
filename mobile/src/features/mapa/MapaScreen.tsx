@@ -28,6 +28,7 @@ import { useNavegacion } from './useNavegacion';
 import { CargaRuta } from './CargaRuta';
 import { haptica } from '../../utils/haptica';
 import { Aparecer, LogoCargando } from '../../components/animacion';
+import { infoError } from '../../components/EstadoError';
 
 const CLAVE_CACHE = 'ev-charge:estaciones:nacional';
 type InfoEstado = { estado: string; cargadores_reservados?: string[] };
@@ -84,7 +85,8 @@ export function MapaScreen() {
       mostrar(await listarEstacionesMapa(), true);
     } catch (e) {
       setErrorEstaciones(true);
-      notificar({ tipo: 'error', titulo: 'Estaciones', mensaje: e instanceof Error ? e.message : 'No pudimos cargar las estaciones. Inténtalo de nuevo.' });
+      const info = infoError(e);
+      notificar({ tipo: 'error', titulo: info.titulo, mensaje: info.mensaje });
     } finally {
       setCargandoEstaciones(false);
     }

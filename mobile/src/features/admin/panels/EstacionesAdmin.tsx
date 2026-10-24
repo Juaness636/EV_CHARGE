@@ -17,6 +17,7 @@ import { useCarga } from '../../../utils/useCarga';
 import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, AppModal, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Insignia, ItemLista, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
 import { ejecutarAdmin, type PropsAdmin } from './AdminPaneles';
+import { EstadoError } from '../../../components/EstadoError';
 
 type EstadoEstacion = 'activa' | 'mantenimiento' | 'inactiva';
 type FilaEstacion = Omit<AdminEstacionOcm, 'conectores'> & { descripcion?: string; tipo_conector?: string; potencia_kw?: number; conectores?: Array<AdminEstacionOcm['conectores'][number] & { id?: string }> };
@@ -25,7 +26,7 @@ const formularioVacio = { id: '', nombre: '', direccion: '', lat: '', lon: '', t
 
 export function EstacionesAdmin({ version }: PropsAdmin) {
   const { colors } = useTheme();
-  const { datos, cargando, error, recargar } = useCarga(listarEstacionesOcmAdmin, [] as AdminEstacionOcm[], [version]);
+  const { datos, cargando, error, recargar, fallo } = useCarga(listarEstacionesOcmAdmin, [] as AdminEstacionOcm[], [version]);
   const estaciones = datos as FilaEstacion[];
   const [form, setForm] = useState(formularioVacio);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
       <Chips valor={filtro} onChange={setFiltro} opciones={[{ valor: 'todos', etiqueta: 'Todos' }, { valor: 'activa', etiqueta: 'Activas' }, { valor: 'mantenimiento', etiqueta: 'Mantenimiento' }, { valor: 'inactiva', etiqueta: 'Fuera de servicio' }]} />
       <Text style={{ color: colors.textDim, fontSize: 12.5 }}>{filtradas.length} estaciones</Text>
 
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !estaciones.length ? <Cargando /> : filtradas.length === 0 ? <Vacio texto="No hay estaciones para este filtro." icono="charging-station" /> : filtradas.slice(0, 200).map((e) => {
         const externa = e.origen === 'OpenChargeMap';
         return (

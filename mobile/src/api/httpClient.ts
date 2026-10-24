@@ -79,26 +79,59 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Causa del error, para mostrar un mensaje y una pantalla distintos en cada caso.
+export type TipoError =
+  | 'sin_internet' | 'servidor_caido' | 'tiempo_agotado' | 'sesion_vencida' | 'sin_permisos'
+  | 'no_encontrado' | 'validacion' | 'demasiados_intentos' | 'inesperado';
+
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  tipo: TipoError;
+  constructor(message: string, status: number, tipo: TipoError = 'inesperado') {
     super(message);
     Object.setPrototypeOf(this, ApiError.prototype);
     this.status = status;
+    this.tipo = tipo;
   }
 }
 
 // Mensajes pensados para el usuario final: sin URLs, códigos ni nombres técnicos.
-export const MENSAJE_SIN_CONEXION = 'No pudimos conectarnos con EV Charge. Revisa tu conexión a internet e inténtalo de nuevo.';
-const MENSAJE_TARDANZA = 'El servidor está tardando en responder. Inténtalo de nuevo en un momento.';
-const MENSAJE_SERVIDOR = 'Tuvimos un problema de nuestro lado. Inténtalo de nuevo en unos minutos.';
+export const MENSAJE_SIN_CONEXION = 'No tienes conexión a internet. Revisa tu Wi-Fi o tus datos móviles e inténtalo de nuevo.';
+const MENSAJE_SERVIDOR_CAIDO = 'No pudimos comunicarnos con el servidor de EV Charge. Puede estar apagado o en mantenimiento; inténtalo en unos minutos.';
+const MENSAJE_TARDANZA = 'El servidor tardó demasiado en responder. Revisa tu conexión e inténtalo de nuevo.';
+const MENSAJE_SERVIDOR = 'Ocurrió un error inesperado en el servidor. Inténtalo de nuevo en unos minutos.';
 const MENSAJE_DATOS = 'Revisa los datos que escribiste e inténtalo de nuevo.';
+const MENSAJE_SESION = 'Tu sesión venció. Inicia sesión de nuevo para continuar.';
+const MENSAJE_PERMISOS = 'No tienes permiso para realizar esta acción.';
+const MENSAJE_NO_ENCONTRADO = 'No encontramos lo que buscas. Puede que ya no exista.';
+const MENSAJE_INTENTOS = 'Hiciste demasiados intentos. Espera un momento e inténtalo de nuevo.';
 
-// FastAPI devuelve `detail` como texto o como lista de errores de validación.
+// Sin respuesta del backend: se distingue "no hay internet" de "el servidor no contesta"
+// probando una dirección pública muy liviana.
+async function hayInternet(): Promise<boolean> {
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  const control = new AbortController();
+  const espera = setTimeout(() => control.abort(), 3500);
+  try {
+    await fetch('https://clients3.google.com/generate_204', {
+      method: 'GET', cache: 'no-store', signal: control.signal,
+      ...(Platform.OS === 'web' ? { mode: 'no-cors' as RequestMode } : {}),
+    });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(espera);
+  }
+}
+
+// El backend responde {mensaje, detail}; `detail` puede ser texto o la lista de errores de validación.
 // De la lista solo se muestran los mensajes propios del backend ("Value error, ..."),
 // los de Pydantic vienen en inglés y no le dicen nada al usuario.
-function mensajeDetalle(detail: unknown): string | null {
-  if (typeof detail === 'string') return detail;
+function mensajeDetalle(datos?: { mensaje?: unknown; detail?: unknown }): string | null {
+  if (typeof datos?.mensaje === 'string' && datos.mensaje.trim()) return datos.mensaje;
+  const detail = datos?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
   if (Array.isArray(detail) && detail.length) {
     const primero = detail[0] as { msg?: string };
     if (primero?.msg && /^Value error, /i.test(primero.msg)) return primero.msg.replace(/^Value error, /i, '');
@@ -107,31 +140,56 @@ function mensajeDetalle(detail: unknown): string | null {
   return null;
 }
 
+// Textos genéricos en inglés que no deben llegar a la pantalla.
+const TEXTO_TECNICO = /internal server error|not found|method not allowed|not authenticated|forbidden|unauthorized/i;
+
+async function clasificar(error: AxiosError<{ mensaje?: unknown; detail?: unknown }>): Promise<{ tipo: TipoError; message: string }> {
+  if (!error.response) {
+    if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message)) return { tipo: 'tiempo_agotado', message: MENSAJE_TARDANZA };
+    return (await hayInternet())
+      ? { tipo: 'servidor_caido', message: MENSAJE_SERVIDOR_CAIDO }
+      : { tipo: 'sin_internet', message: MENSAJE_SIN_CONEXION };
+  }
+  const status = error.response.status;
+  const propio = mensajeDetalle(error.response.data);
+  const texto = (porDefecto: string) => (propio && !TEXTO_TECNICO.test(propio) ? propio : porDefecto);
+  const esLogin = error.config?.url?.includes('/auth/login');
+
+  if (status === 401) return esLogin ? { tipo: 'validacion', message: texto('Correo o contraseña incorrectos.') } : { tipo: 'sesion_vencida', message: MENSAJE_SESION };
+  if (status === 403) return { tipo: 'sin_permisos', message: texto(MENSAJE_PERMISOS) };
+  if (status === 404) return { tipo: 'no_encontrado', message: texto(MENSAJE_NO_ENCONTRADO) };
+  if (status === 429) return { tipo: 'demasiados_intentos', message: texto(MENSAJE_INTENTOS) };
+  if (status === 502 || status === 503 || status === 504) {
+    // Un 503 con texto propio ("No se pudo enviar el código...") sí se muestra.
+    return propio && !TEXTO_TECNICO.test(propio) ? { tipo: 'inesperado', message: propio } : { tipo: 'servidor_caido', message: MENSAJE_SERVIDOR_CAIDO };
+  }
+  if (status >= 500) return { tipo: 'inesperado', message: MENSAJE_SERVIDOR };
+  return { tipo: 'validacion', message: texto(status === 422 ? MENSAJE_DATOS : 'No se pudo completar la operación.') };
+}
+
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<{ detail?: unknown }>) => {
+  async (error: AxiosError<{ mensaje?: unknown; detail?: unknown }>) => {
     const status = error.response?.status ?? 0;
-    const sinConexion = !error.response;
-    if (sinConexion && __DEV__) {
+    if (!error.response && __DEV__) {
       // El detalle técnico queda en la consola de Expo para quien desarrolla, no en pantalla.
       console.warn(`[api] Sin respuesta de ${API_BASE_URL}${error.config?.url ?? ''}: ${error.code ?? ''} ${error.message}`);
     }
-    const message = sinConexion
-      ? (error.code === 'ECONNABORTED' || /timeout/i.test(error.message) ? MENSAJE_TARDANZA : MENSAJE_SIN_CONEXION)
-      : status >= 500
-        // Un 503 con texto propio ("No se pudo enviar el código...") sí se muestra; un error interno no.
-        ? (typeof error.response?.data?.detail === 'string' && !/internal server error/i.test(error.response.data.detail) ? error.response.data.detail : MENSAJE_SERVIDOR)
-        : mensajeDetalle(error.response?.data?.detail) || (status === 422 ? MENSAJE_DATOS : 'No se pudo completar la operación.');
+    const { tipo, message } = await clasificar(error);
 
-    const esLogin = error.config?.url?.includes('/auth/login');
-    if (status === 401 && !esLogin && tokenEnMemoria) {
+    if (tipo === 'sesion_vencida' && tokenEnMemoria) {
       await guardarToken(null);
       listenersSesionExpirada.forEach((listener) => listener());
     }
 
-    return Promise.reject(new ApiError(message, status));
+    return Promise.reject(new ApiError(message, status, tipo));
   },
 );
+
+// Verdadero cuando el problema es la conexión (no los datos): sin internet, servidor caído o tiempo agotado.
+export function esFalloDeConexion(error: unknown): boolean {
+  return error instanceof ApiError && ['sin_internet', 'servidor_caido', 'tiempo_agotado'].includes(error.tipo);
+}
 
 export function mensajeError(error: unknown, porDefecto = 'No se pudo completar la operación'): string {
   return error instanceof Error && error.message ? error.message : porDefecto;

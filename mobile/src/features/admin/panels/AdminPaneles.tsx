@@ -15,6 +15,7 @@ import { ejecutarAdmin, type PropsAdmin } from './comun';
 import { FormEmpresa } from './EmpresasAdmin';
 import { confirmar } from '../../../components/Notificaciones';
 import { Alerta, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Estrellas, Insignia, ItemLista, KPI, tonoEstado, Vacio } from '../../../components/ui';
+import { EstadoError } from '../../../components/EstadoError';
 
 // Se reexportan para no cambiar los imports de los demás paneles.
 export { ejecutarAdmin, type PropsAdmin } from './comun';
@@ -22,9 +23,9 @@ export { ejecutarAdmin, type PropsAdmin } from './comun';
 const nombreDe = (u?: { nombre?: string; apellido?: string } | null) => (u ? `${u.nombre ?? ''} ${u.apellido ?? ''}`.trim() : '');
 
 export function ResumenAdmin({ version }: PropsAdmin) {
-  const { datos: stats, cargando, error } = useCarga(obtenerEstadisticas, null, [version]);
+  const { datos: stats, cargando, error, fallo, recargar } = useCarga(obtenerEstadisticas, null, [version]);
   if (cargando && !stats) return <Cargando />;
-  if (error) return <Alerta texto={error} />;
+  if (error) return <EstadoError error={fallo} onReintentar={recargar} compacto />;
   if (!stats) return null;
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
@@ -40,7 +41,7 @@ export function ResumenAdmin({ version }: PropsAdmin) {
 }
 
 export function UsuariosAdmin({ version }: PropsAdmin) {
-  const { datos: usuarios, cargando, error, recargar } = useCarga(() => listarUsuarios(), [] as UserAdmin[], [version]);
+  const { datos: usuarios, cargando, error, recargar, fallo } = useCarga(() => listarUsuarios(), [] as UserAdmin[], [version]);
   const [busqueda, setBusqueda] = useState('');
   const filtrados = usuarios.filter((u) => `${u.nombre} ${u.apellido ?? ''} ${u.email}`.toLowerCase().includes(busqueda.toLowerCase()));
 
@@ -56,7 +57,7 @@ export function UsuariosAdmin({ version }: PropsAdmin) {
   return (
     <>
       <CampoTexto icono="magnifying-glass" value={busqueda} onChangeText={setBusqueda} placeholder="Buscar por nombre, apellido o correo" />
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !usuarios.length ? <Cargando /> : filtrados.length === 0 ? <Vacio texto="No hay usuarios que coincidan." icono="users" /> : filtrados.map((u) => (
         <ItemLista
           key={u.id}
@@ -85,7 +86,7 @@ export function UsuariosAdmin({ version }: PropsAdmin) {
 type FiltroReporte = 'todos' | 'abierto' | 'mantenimiento' | 'resuelto' | 'fuera_servicio';
 
 export function ReportesAdmin({ version }: PropsAdmin) {
-  const { datos: reportes, cargando, error, recargar } = useCarga(listarReportesAdmin, [] as ReporteAdmin[], [version]);
+  const { datos: reportes, cargando, error, recargar, fallo } = useCarga(listarReportesAdmin, [] as ReporteAdmin[], [version]);
   const [filtro, setFiltro] = useState<FiltroReporte>('todos');
   const filas = filtro === 'todos' ? reportes : reportes.filter((r) => r.estado === filtro);
   const cambiar = (id: string, estado: Exclude<FiltroReporte, 'todos'>) => ejecutarAdmin(() => cambiarEstadoReporte(id, estado), recargar);
@@ -96,7 +97,7 @@ export function ReportesAdmin({ version }: PropsAdmin) {
         { valor: 'todos', etiqueta: 'Todos' }, { valor: 'abierto', etiqueta: 'Abiertos' }, { valor: 'mantenimiento', etiqueta: 'Mantenimiento' },
         { valor: 'resuelto', etiqueta: 'Resueltos' }, { valor: 'fuera_servicio', etiqueta: 'Fuera de servicio' },
       ]} />
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !reportes.length ? <Cargando /> : filas.length === 0 ? <Vacio texto="No hay reportes para este filtro." icono="triangle-exclamation" /> : filas.map((r) => (
         <ItemLista
           key={r.id}
@@ -119,10 +120,10 @@ export function ReportesAdmin({ version }: PropsAdmin) {
 }
 
 export function ReservasAdmin({ version }: PropsAdmin) {
-  const { datos: reservas, cargando, error, recargar } = useCarga(listarReservasAdmin, [] as AdminReservaDetail[], [version]);
+  const { datos: reservas, cargando, error, recargar, fallo } = useCarga(listarReservasAdmin, [] as AdminReservaDetail[], [version]);
   return (
     <>
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !reservas.length ? <Cargando /> : reservas.length === 0 ? <Vacio texto="No hay reservas registradas." icono="calendar" /> : reservas.map((r) => (
         <ItemLista
           key={r.id}
@@ -148,7 +149,7 @@ export function ReservasAdmin({ version }: PropsAdmin) {
 type FiltroFecha = 'todos' | 'dia' | 'mes' | 'anio';
 
 export function NotificacionesAdmin({ version }: PropsAdmin) {
-  const { datos: notificaciones, cargando, error } = useCarga(listarNotificacionesAdmin, [] as AdminNotificacion[], [version]);
+  const { datos: notificaciones, cargando, error, fallo, recargar } = useCarga(listarNotificacionesAdmin, [] as AdminNotificacion[], [version]);
   const [filtro, setFiltro] = useState<FiltroFecha>('todos');
   const filas = useMemo(() => {
     const ahora = new Date();
@@ -166,7 +167,7 @@ export function NotificacionesAdmin({ version }: PropsAdmin) {
     <>
       <Chips valor={filtro} onChange={setFiltro} opciones={[{ valor: 'todos', etiqueta: 'Todas' }, { valor: 'dia', etiqueta: 'Hoy' }, { valor: 'mes', etiqueta: 'Este mes' }, { valor: 'anio', etiqueta: 'Este año' }]} />
       <Dato etiqueta="Total" valor={`${filas.length} notificación${filas.length === 1 ? '' : 'es'}`} />
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !notificaciones.length ? <Cargando /> : filas.length === 0 ? <Vacio texto="No hay notificaciones para este filtro." icono="bell-slash" /> : filas.map((n) => (
         <ItemLista key={n.id} titulo={n.titulo} insignia={<Insignia texto={n.tipo} tono="azul" />}>
           <Dato etiqueta="Usuario" valor={`${n.usuario_nombre || 'Usuario eliminado'} · ${n.usuario_email || n.usuario_id}`} />
@@ -179,10 +180,10 @@ export function NotificacionesAdmin({ version }: PropsAdmin) {
 }
 
 export function CalificacionesAdmin({ version }: PropsAdmin) {
-  const { datos: calificaciones, cargando, error } = useCarga(listarCalificacionesAdmin, [] as CalificacionAdmin[], [version]);
+  const { datos: calificaciones, cargando, error, fallo, recargar } = useCarga(listarCalificacionesAdmin, [] as CalificacionAdmin[], [version]);
   return (
     <>
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !calificaciones.length ? <Cargando /> : calificaciones.length === 0 ? <Vacio texto="No hay calificaciones registradas." icono="star" /> : calificaciones.map((c) => (
         <ItemLista key={c.id} titulo={c.estacion_nombre || c.estacion_ocm_id} insignia={<Estrellas valor={c.puntaje} tamano={13} />}>
           <Dato etiqueta="Usuario" valor={c.usuario_nombre || c.usuario_id} />
@@ -195,7 +196,7 @@ export function CalificacionesAdmin({ version }: PropsAdmin) {
 }
 
 export function ContactosAdmin({ version }: PropsAdmin) {
-  const { datos: contactos, cargando, error, recargar } = useCarga(listarContactosAdmin, [] as ContactoAdmin[], [version]);
+  const { datos: contactos, cargando, error, recargar, fallo } = useCarga(listarContactosAdmin, [] as ContactoAdmin[], [version]);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [respuesta, setRespuesta] = useState('');
 
@@ -208,7 +209,7 @@ export function ContactosAdmin({ version }: PropsAdmin) {
 
   return (
     <>
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !contactos.length ? <Cargando /> : contactos.length === 0 ? <Vacio texto="No hay mensajes de contacto." icono="envelope" /> : contactos.map((c) => {
         const respondido = Boolean(c.respuesta?.trim());
         return (

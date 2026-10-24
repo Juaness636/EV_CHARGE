@@ -11,11 +11,12 @@ import { MetodoPagoForm } from '../../../components/MetodoPagoForm';
 import { confirmar, notificar } from '../../../components/Notificaciones';
 import { Alerta, Boton, CampoSelect, CampoTexto, Cargando, Dato, Insignia, ItemLista, Tarjeta, Vacio } from '../../../components/ui';
 import type { PropsPanel } from '../tipos';
+import { EstadoError } from '../../../components/EstadoError';
 
 const formularioVacio = { marca: '', modelo: '', anio: '', autonomia_km: '', tipo_conector: 'CCS' };
 
 export function VehiculosPanel({ version }: PropsPanel) {
-  const { datos: vehiculos, cargando, error, recargar } = useCarga(listarVehiculos, [] as Vehiculo[], [version]);
+  const { datos: vehiculos, cargando, error, recargar, fallo } = useCarga(listarVehiculos, [] as Vehiculo[], [version]);
   const [mostrar, setMostrar] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [form, setForm] = useState(formularioVacio);
@@ -87,7 +88,7 @@ export function VehiculosPanel({ version }: PropsPanel) {
           </View>
         </Tarjeta>
       )}
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !vehiculos.length ? <Cargando /> : vehiculos.length === 0 ? <Vacio texto="No tienes vehículos registrados." icono="car" /> : vehiculos.map((v) => (
         <ItemLista
           key={v.id}
@@ -109,7 +110,7 @@ export function VehiculosPanel({ version }: PropsPanel) {
 }
 
 export function PagosPanel({ version }: PropsPanel) {
-  const { datos: pagos, cargando, error, recargar } = useCarga(listarMetodosPago, [] as MetodoPago[], [version]);
+  const { datos: pagos, cargando, error, recargar, fallo } = useCarga(listarMetodosPago, [] as MetodoPago[], [version]);
   const [mostrar, setMostrar] = useState(false);
   const [editando, setEditando] = useState<MetodoPago | null>(null);
 
@@ -150,7 +151,7 @@ export function PagosPanel({ version }: PropsPanel) {
           />
         </Tarjeta>
       )}
-      {error ? <Alerta texto={error} /> : null}
+      {error ? <EstadoError error={fallo} onReintentar={recargar} compacto /> : null}
       {cargando && !pagos.length ? <Cargando /> : pagos.length === 0 ? <Vacio texto="No tienes métodos de pago registrados." icono="credit-card" /> : pagos.map((p) => (
         <ItemLista
           key={p.id}
