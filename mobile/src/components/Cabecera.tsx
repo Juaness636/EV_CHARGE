@@ -16,7 +16,7 @@ export function Logo({ mostrarNombre = true, onPress }: { mostrarNombre?: boolea
   const router = useRouter();
   return (
     <Pressable onPress={onPress ?? (() => router.navigate('/'))} style={styles.logo} accessibilityRole="link" accessibilityLabel="Ir al inicio de EV Charge">
-      <Image source={require('../../assets/images/logo.png')} style={styles.logoImg} resizeMode="contain" />
+      <Image source={require('../../assets/images/logo.png')} style={[styles.logoImg, colors.modo === 'light' && { tintColor: colors.text }]} resizeMode="contain" />
       {mostrarNombre && <Text style={[styles.logoTexto, { color: colors.text }]}>EV CHARGE</Text>}
     </Pressable>
   );

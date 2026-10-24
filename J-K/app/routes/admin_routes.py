@@ -6,6 +6,7 @@ from app.config.database import get_db
 from app.utils.jwt import require_admin
 from app.controllers import admin_controller as ctrl
 from app.controllers import empresa_fotos_controller as fotos
+from app.controllers.admin_reporte_semanal_controller import obtener_reporte_semanal
 from app.controllers.empresa_controller import (
     actualizar_palabras_empresa,
     cambiar_estado_empresa,
@@ -48,6 +49,15 @@ def admin_actualizar_usuario(uid: str, data: dict, admin=Depends(require_admin),
 @router.get("/estadisticas", response_model=AdminEstadisticas)
 def admin_estadisticas(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.obtener_estadisticas(db)
+
+
+@router.get("/reporte-semanal")
+def admin_reporte_semanal(
+    semanas_atras: int = Query(default=0, ge=0, le=52, description="0 = semana en curso, 1 = la anterior, ..."),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return obtener_reporte_semanal(db, semanas_atras)
 
 
 @router.get("/reportes")

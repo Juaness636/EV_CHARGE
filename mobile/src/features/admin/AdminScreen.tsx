@@ -10,11 +10,13 @@ import {
 } from './panels/AdminPaneles';
 import { EstacionesAdmin } from './panels/EstacionesAdmin';
 import { EmpresasAdmin } from './panels/EmpresasAdmin';
+import { ReporteSemanalAdmin } from './panels/ReporteSemanalAdmin';
 
-type PanelAdmin = 'Resumen' | 'Usuarios' | 'Empresas' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
+type PanelAdmin = 'Resumen' | 'Reporte semanal' | 'Usuarios' | 'Empresas' | 'Reportes' | 'Estaciones' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
 
 const PANELES: ItemPanel<PanelAdmin>[] = [
   { clave: 'Resumen', icono: 'chart-simple' },
+  { clave: 'Reporte semanal', icono: 'chart-line' },
   { clave: 'Usuarios', icono: 'users' },
   { clave: 'Empresas', icono: 'building' },
   { clave: 'Reportes', icono: 'triangle-exclamation' },
@@ -51,6 +53,7 @@ export function AdminScreen() {
       onRefrescar={() => setVersion((v) => v + 1)}
     >
       {panel === 'Resumen' && <ResumenAdmin version={version} />}
+      {panel === 'Reporte semanal' && <ReporteSemanalAdmin version={version} />}
       {panel === 'Usuarios' && <UsuariosAdmin version={version} />}
       {panel === 'Empresas' && <EmpresasAdmin version={version} />}
       {panel === 'Reportes' && <ReportesAdmin version={version} />}

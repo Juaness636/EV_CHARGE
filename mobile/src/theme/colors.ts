@@ -58,21 +58,32 @@ export const darkPalette: Palette = {
   overlay: 'rgba(0, 0, 0, 0.7)',
 };
 
+// En modo claro los colores de la marca se oscurecen para cumplir WCAG AA (4.5:1)
+// como texto sobre fondos claros y con texto blanco encima; el verde #39a900 da 2.9:1.
 export const lightPalette: Palette = {
   ...base,
   modo: 'light',
-  primarySoft: 'rgba(57, 169, 0, 0.1)',
-  bg: '#f5f7f4',
-  bg2: '#eef1ec',
+  primary: '#2a7300',
+  primaryDim: '#215c00',
+  primarySoft: 'rgba(42, 115, 0, 0.12)',
+  primaryBorder: 'rgba(42, 115, 0, 0.45)',
+  error: '#c0392b',
+  errorSoft: 'rgba(192, 57, 43, 0.12)',
+  warning: '#875e00',
+  warningSoft: 'rgba(135, 94, 0, 0.12)',
+  info: '#1f6fb2',
+  infoSoft: 'rgba(31, 111, 178, 0.12)',
+  bg: '#eef1ec',
+  bg2: '#e6eae3',
   card: '#ffffff',
-  cardElevated: '#f8faf7',
+  cardElevated: '#f6f8f5',
   input: '#ffffff',
-  border: 'rgba(0, 0, 0, 0.08)',
-  borderStrong: 'rgba(0, 0, 0, 0.18)',
-  text: '#151a14',
-  textMuted: '#4b5548',
-  textDim: '#6b7368',
-  overlay: 'rgba(0, 0, 0, 0.45)',
+  border: 'rgba(0, 0, 0, 0.12)',
+  borderStrong: 'rgba(0, 0, 0, 0.26)',
+  text: '#121711',
+  textMuted: '#434b40',
+  textDim: '#5a6357',
+  overlay: 'rgba(0, 0, 0, 0.5)',
 };
 
 // Colores de estado de estaciones (iguales al mapa web).

@@ -16,14 +16,15 @@ import {
   type UserAdmin, type AdminNotificacion,
   listarEmpresasAdmin, crearEmpresaAdmin, cambiarEstadoEmpresaAdmin, cambiarPalabrasEmpresaAdmin, type EmpresaCrear, type MarcaEmpresa,
 } from '../../api/admin.api';
+import { ReporteSemanal } from './ReporteSemanal';
 import { LONGITUD_MINIMA_MOTIVO, type EmpresaPerfil, type EstadoEmpresa } from '../../api/empresa.api';
 
 type ThemeMode = 'dark' | 'light' | 'system';
 
-type Panel = 'Resumen' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Empresas' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
+type Panel = 'Resumen' | 'Reporte semanal' | 'Usuarios' | 'Reportes' | 'Estaciones' | 'Empresas' | 'Reservas' | 'Notificaciones' | 'Calificaciones' | 'Contactos' | 'Perfil';
 type Row = Record<string, unknown>;
 const TIPOS_CARGADOR = ['CCS', 'Type 2', 'CHAdeMO', 'GB/T', 'J1772'] as const;
-const panels: Panel[] = ['Resumen', 'Usuarios', 'Reportes', 'Estaciones', 'Empresas', 'Reservas', 'Notificaciones', 'Calificaciones', 'Contactos', 'Perfil'];
+const panels: Panel[] = ['Resumen', 'Reporte semanal', 'Usuarios', 'Reportes', 'Estaciones', 'Empresas', 'Reservas', 'Notificaciones', 'Calificaciones', 'Contactos', 'Perfil'];
 const date = (value?: string) => value ? new Date(value).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sin fecha';
 const getStatusClass = (status?: string) => {
   const value = (status || '').toLowerCase();
@@ -90,6 +91,11 @@ export function AdminPage() {
         setRows([]);
         return;
       }
+      // El reporte semanal carga sus propios datos (cambia de semana sin recargar el panel).
+      if (panel === 'Reporte semanal') {
+        setRows([]);
+        return;
+      }
 
       const data = panel === 'Usuarios'
         ? await listarUsuarios()
@@ -149,7 +155,7 @@ export function AdminPage() {
         <header id="admin-header"><div><h1>{panel}</h1><p>Panel de administracion EV Charge</p></div></header>
         <section className="panel active">
           {error && <div className="alert alert-error">{error}</div>}
-          {loading ? <p className="empty">Cargando...</p> : panel === 'Resumen' ? <Summary stats={stats} /> : panel === 'Usuarios' ? <Users rows={rows} /> : panel === 'Reportes' ? <Reports rows={rows as unknown as ReporteAdmin[]} run={run} /> : panel === 'Estaciones' ? <StationsAdmin rows={rows} run={run} /> : panel === 'Empresas' ? <EmpresasAdmin rows={rows as unknown as EmpresaPerfil[]} run={run} /> : panel === 'Reservas' ? <Reservations rows={rows as unknown as AdminReservaDetail[]} run={run} /> : panel === 'Notificaciones' ? <Notifications rows={rows as unknown as AdminNotificacion[]} /> : panel === 'Calificaciones' ? <Ratings rows={rows as unknown as CalificacionAdmin[]} /> : panel === 'Contactos' ? <Contacts rows={rows as unknown as ContactoAdmin[]} run={run} /> : <ProfilePanel usuario={usuario} />}
+          {loading ? <p className="empty">Cargando...</p> : panel === 'Resumen' ? <Summary stats={stats} /> : panel === 'Reporte semanal' ? <ReporteSemanal /> : panel === 'Usuarios' ? <Users rows={rows} /> : panel === 'Reportes' ? <Reports rows={rows as unknown as ReporteAdmin[]} run={run} /> : panel === 'Estaciones' ? <StationsAdmin rows={rows} run={run} /> : panel === 'Empresas' ? <EmpresasAdmin rows={rows as unknown as EmpresaPerfil[]} run={run} /> : panel === 'Reservas' ? <Reservations rows={rows as unknown as AdminReservaDetail[]} run={run} /> : panel === 'Notificaciones' ? <Notifications rows={rows as unknown as AdminNotificacion[]} /> : panel === 'Calificaciones' ? <Ratings rows={rows as unknown as CalificacionAdmin[]} /> : panel === 'Contactos' ? <Contacts rows={rows as unknown as ContactoAdmin[]} run={run} /> : <ProfilePanel usuario={usuario} />}
         </section>
       </main>
       <div className="theme-floating-widget">
