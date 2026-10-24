@@ -1,5 +1,5 @@
 # Backend/schemas/reservas_schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -28,8 +28,12 @@ class ReservaUpdate(BaseModel):
 
 
 class ReservaCotizacion(BaseModel):
+    # Con estacion_ocm_id el precio se calcula con los datos del servidor (es el que se cobra).
+    # Sin él, los demás campos solo sirven para una estimación orientativa.
+    estacion_ocm_id: Optional[str] = None
+    cargador_id: Optional[str] = None
     estacion_nombre: str = ""
     operador: str = ""
     tipo_cargador: str = ""
     potencia_kw: Optional[float] = None
-    duracion_horas: float
+    duracion_horas: float = Field(..., gt=0, le=24)

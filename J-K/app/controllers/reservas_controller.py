@@ -1,5 +1,6 @@
 # Backend/controllers/reservas_controller.py
 from datetime import timezone
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -42,12 +43,17 @@ def listar_mis_reservas(db: Session, usuario_id: str):
     )
 
 
-def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str = "pendiente", pago: PagosReserva | None = None):
-    if estado not in {"pendiente", "activa"}:
-        raise HTTPException(status_code=400, detail="Estado de reserva no válido")
-    # Una reserva solo queda activa si viene respaldada por un pago verificado.
-    if estado == "activa" and pago is None:
-        raise HTTPException(status_code=402, detail="La reserva requiere un pago aprobado")
+def utc_sin_zona(dt):
+    """Fecha en UTC sin zona horaria, como se guardan en las columnas DateTime."""
+    return _aware(dt).astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def validar_reserva(db: Session, usuario_id: str, data: ReservaCreate) -> str:
+    """Comprueba que la reserva se puede hacer y devuelve el cargador_id normalizado.
+
+    Se llama antes de cobrar (para no aprobar pagos de reservas imposibles) y otra vez
+    al crear la reserva, porque entre ambos pasos otro usuario pudo ocupar el cargador.
+    """
     if _aware(data.fecha_hora_inicio) >= _aware(data.fecha_hora_fin):
         raise HTTPException(status_code=400, detail="Inicio debe ser anterior a Fin")
     if _aware(data.fecha_hora_inicio) < ahora_utc():
@@ -86,11 +92,32 @@ def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str
         Reservas.usuario_id != usuario_id,
     ).first()
     if solapada:
-        nombre = _nombre_completo(solapada.usuario)
+        # Respeta la preferencia de privacidad del otro usuario (compartir_nombre_reserva).
+        nombre = solapada.reservante_nombre or "otro usuario"
         raise HTTPException(
             status_code=400,
             detail=f"Cargador ya reservado por {nombre} de {solapada.fecha_hora_inicio.strftime('%H:%M')} a {solapada.fecha_hora_fin.strftime('%H:%M')}",
         )
+    return cargador_id
+
+
+def _bloquear_cargador(db: Session, data: ReservaCreate) -> None:
+    """Serializa las reservas del mismo cargador hasta el commit (evita la doble reserva
+    cuando dos personas confirman al mismo tiempo). Solo aplica en PostgreSQL."""
+    if db.get_bind().dialect.name != "postgresql":
+        return
+    clave = f"reserva:{data.estacion_ocm_id}:{data.cargador_id or 'general'}"
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:clave))"), {"clave": clave})
+
+
+def crear_reserva(db: Session, usuario_id: str, data: ReservaCreate, estado: str = "pendiente", pago: PagosReserva | None = None):
+    if estado not in {"pendiente", "activa"}:
+        raise HTTPException(status_code=400, detail="Estado de reserva no válido")
+    # Una reserva solo queda activa si viene respaldada por un pago verificado.
+    if estado == "activa" and pago is None:
+        raise HTTPException(status_code=402, detail="La reserva requiere un pago aprobado")
+    _bloquear_cargador(db, data)
+    cargador_id = validar_reserva(db, usuario_id, data)
 
     datos = data.model_dump(include=set(ReservaCreate.model_fields))
     datos["cargador_id"] = cargador_id
@@ -139,7 +166,24 @@ def crear_reserva_confirmada(db: Session, usuario_id: str, data: ReservaConfirma
         raise HTTPException(status_code=402, detail="No encontramos un pago aprobado para esta reserva")
     if pago.estado != "aprobado" or pago.reserva_id:
         raise HTTPException(status_code=409, detail="Este pago ya se usó para otra reserva")
+    # El pago cubre exactamente la estación, el cargador y el horario que se cotizaron:
+    # no sirve para reservar más horas ni un cargador más caro.
+    cargador_id = data.cargador_id or f"{data.estacion_ocm_id}-general"
+    if (
+        not pago.estacion_ocm_id
+        or pago.estacion_ocm_id != data.estacion_ocm_id
+        or pago.cargador_id != cargador_id
+        or not _mismo_instante(pago.fecha_hora_inicio, data.fecha_hora_inicio)
+        or not _mismo_instante(pago.fecha_hora_fin, data.fecha_hora_fin)
+    ):
+        raise HTTPException(status_code=409, detail="Los datos de la reserva no coinciden con el pago realizado")
     return crear_reserva(db, usuario_id, data, estado="activa", pago=pago)
+
+
+def _mismo_instante(guardado, recibido) -> bool:
+    if guardado is None:
+        return False
+    return abs((utc_sin_zona(guardado) - utc_sin_zona(recibido)).total_seconds()) < 1
 
 
 def actualizar_reserva(db: Session, usuario_id: str, rid: str, data: ReservaUpdate):
@@ -182,7 +226,8 @@ def actualizar_reserva(db: Session, usuario_id: str, rid: str, data: ReservaUpda
         .first()
     )
     if solapada:
-        nombre = _nombre_completo(solapada.usuario)
+        # Respeta la preferencia de privacidad del otro usuario (compartir_nombre_reserva).
+        nombre = solapada.reservante_nombre or "otro usuario"
         raise HTTPException(
             status_code=400,
             detail=f"Cargador ya reservado por {nombre} de {solapada.fecha_hora_inicio.strftime('%H:%M')} a {solapada.fecha_hora_fin.strftime('%H:%M')}",

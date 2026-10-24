@@ -140,12 +140,12 @@ export function EstacionDetalle({
     const cargador = conexiones[Number(cargadorSeleccionado.split('-').pop()) - 1];
     let cancelado = false;
     setCargandoPrecio(true);
-    cotizarReserva({ estacion_nombre: nombre, operador, tipo_cargador: cargador?.ConnectionType?.Title || '', potencia_kw: cargador?.PowerKW, duracion_horas: duracion })
+    cotizarReserva({ estacion_ocm_id: ocmId, cargador_id: cargadorSeleccionado, estacion_nombre: nombre, operador, tipo_cargador: cargador?.ConnectionType?.Title || '', potencia_kw: cargador?.PowerKW, duracion_horas: duracion })
       .then((c) => !cancelado && setPrecioEstimado(c.total))
       .catch(() => !cancelado && setPrecioEstimado(null))
       .finally(() => !cancelado && setCargandoPrecio(false));
     return () => { cancelado = true; };
-  }, [cargadorSeleccionado, duracion, nombre, operador]);
+  }, [cargadorSeleccionado, duracion, nombre, operador, ocmId]);
 
   const encabezado = (
     <View style={{ gap: 6 }}>
@@ -248,7 +248,7 @@ export function EstacionDetalle({
         return notificar({ tipo: 'warning', titulo: 'Cargador no disponible', mensaje: 'Este cargador acaba de ser reservado. Selecciona otro.' });
       }
       const cargador = conexiones[Number(cargadorSeleccionado.split('-').pop()) - 1];
-      const cotizacion = await cotizarReserva({ estacion_nombre: nombre, operador, tipo_cargador: cargador?.ConnectionType?.Title || '', potencia_kw: cargador?.PowerKW, duracion_horas: duracion });
+      const cotizacion = await cotizarReserva({ estacion_ocm_id: ocmId, cargador_id: cargadorSeleccionado, estacion_nombre: nombre, operador, tipo_cargador: cargador?.ConnectionType?.Title || '', potencia_kw: cargador?.PowerKW, duracion_horas: duracion });
       setReservaPendiente({
         estacion_ocm_id: ocmId,
         cargador_id: cargadorSeleccionado,
@@ -452,6 +452,7 @@ export function EstacionDetalle({
         tituloItem={nombre}
         monto={pagoReserva?.monto ?? 0}
         idReferencia={pagoReserva?.id}
+        reserva={reservaPendiente ?? undefined}
         metodosGuardados={metodosPago}
         onCerrar={() => { setPagoReserva(null); setReservaPendiente(null); }}
         onExito={alPagar}

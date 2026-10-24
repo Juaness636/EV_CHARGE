@@ -23,12 +23,17 @@ from app.schemas.admin_schema import (
     AdminReporteEstado,
     AdminEstacionOcmUpdate,
     AdminCargaUpdate,
+    AdminReporteOut,
 )
+from app.schemas.auth_schemas import UsuarioOut
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
+# Las rutas que devuelven usuarios usan response_model: así nunca salen
+# password_hash, el PIN de recuperación ni otros campos internos.
 
-@router.get("/usuarios")
+
+@router.get("/usuarios", response_model=list[UsuarioOut])
 def admin_usuarios(
     busqueda: str | None = Query(default=None),
     admin=Depends(require_admin),
@@ -37,7 +42,7 @@ def admin_usuarios(
     return ctrl.listar_usuarios(db, busqueda)
 
 
-@router.put("/usuarios/{uid}")
+@router.put("/usuarios/{uid}", response_model=UsuarioOut)
 def admin_actualizar_usuario(uid: str, data: dict, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.actualizar_usuario(uid, data, db)
 
@@ -56,17 +61,17 @@ def admin_reporte_semanal(
     return obtener_reporte_semanal(db, semanas_atras)
 
 
-@router.get("/reportes")
+@router.get("/reportes", response_model=list[AdminReporteOut])
 def admin_reportes(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.listar_reportes(db)
 
 
-@router.patch("/reportes/{rid}/resolver")
+@router.patch("/reportes/{rid}/resolver", response_model=AdminReporteOut)
 def admin_resolver_reporte(rid: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.resolver_reporte(rid, db)
 
 
-@router.patch("/reportes/{rid}/estado")
+@router.patch("/reportes/{rid}/estado", response_model=AdminReporteOut)
 def admin_estado_reporte(rid: str, data: AdminReporteEstado, admin=Depends(require_admin), db: Session = Depends(get_db)):
     return ctrl.cambiar_estado_reporte(rid, data.estado, db)
 

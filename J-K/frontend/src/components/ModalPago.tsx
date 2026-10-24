@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { crearMetodoPago, type MetodoPago } from '../api/metodosPago.api';
 import { API_BASE_URL } from '../api/httpClient';
+import type { ReservaCreate } from '../api/reservas.api';
 
 interface ModalPagoProps {
   tipo: 'producto' | 'reserva';
   tituloItem: string;
   monto: number;
   idReferencia?: string; // ID de reserva o ID de producto
+  // Obligatoria en pagos de reserva: el backend calcula el precio y ata el pago a esta reserva.
+  reserva?: ReservaCreate;
   onCerrar: () => void;
   onExito: (pago: { transaccion_id: string }) => void | Promise<void>;
   metodosGuardados?: MetodoPago[];
@@ -18,6 +21,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
   tituloItem,
   monto,
   idReferencia,
+  reserva,
   onCerrar,
   onExito,
   metodosGuardados = [],
@@ -79,6 +83,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
           metodo: metodoGuardado?.tipo || metodoPago,
           metodo_id: metodoGuardado?.id || metodoNuevoId,
           referencia_id: idReferencia || 'PAGO-' + Date.now(),
+          reserva,
         },
         {
           headers: { Authorization: `Bearer ${token}` },

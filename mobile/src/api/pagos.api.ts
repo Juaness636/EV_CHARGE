@@ -1,6 +1,7 @@
 // Corresponde a: app/routes/pagos.py (POST /api/pagos/procesar).
 // Procesa el pago simulado de productos o reservas.
 import { api } from './httpClient';
+import type { ReservaCreate } from './reservas.api';
 
 export interface PagoCreate {
   tipo_pago: 'producto' | 'reserva';
@@ -9,6 +10,8 @@ export interface PagoCreate {
   metodo: string;
   metodo_id?: string;
   referencia_id: string;
+  // Obligatoria en pagos de reserva: el backend calcula el precio y ata el pago a esta reserva.
+  reserva?: ReservaCreate;
 }
 
 // En pagos de reserva, transaccion_id es lo que /reservar-confirmada exige como prueba de pago.

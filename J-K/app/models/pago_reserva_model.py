@@ -17,5 +17,10 @@ class PagosReserva(Base):
     metodo_id = Column(String, nullable=True)
     # aprobado (sin usar) | usado (ya confirmó una reserva) | reembolsado
     estado = Column(String(20), nullable=False, default="aprobado")
+    # Lo que se cotizó y pagó: /reservar-confirmada solo acepta exactamente esta reserva.
+    estacion_ocm_id = Column(String, nullable=True)
+    cargador_id = Column(String, nullable=True)
+    fecha_hora_inicio = Column(DateTime, nullable=True)
+    fecha_hora_fin = Column(DateTime, nullable=True)
     reserva_id = Column(String, ForeignKey("reservas.id", ondelete="SET NULL"), nullable=True, unique=True)
     created_at = Column(DateTime, default=ahora_utc, nullable=False)

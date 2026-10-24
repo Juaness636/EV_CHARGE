@@ -3,6 +3,11 @@ import requests
 from fastapi import HTTPException
 
 
+AUTONOMIA_MIN_KM = 50
+AUTONOMIA_MAX_KM = 1000
+MAX_PARADAS = 10
+
+
 class MapaController:
     """Clase orientada a objetos para consumir APIs externas de mapas (OSRM y OCM)."""
 
@@ -26,11 +31,17 @@ class MapaController:
 
     def planificar_viaje(self, origen_lat: float, origen_lon: float, destino_lat: float, destino_lon: float, autonomia_km: float = 300) -> dict:
         """Calcula la ruta y busca estaciones en la API de OpenChargeMap para sugerir paradas."""
+        # Cada parada es una consulta a OCM: sin estos límites, una autonomía de 0.001 km
+        # dispararía miles de llamadas externas en una sola petición.
+        for lat, lon in ((origen_lat, origen_lon), (destino_lat, destino_lon)):
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                raise HTTPException(400, "Coordenadas no válidas")
+        autonomia_km = min(max(float(autonomia_km), AUTONOMIA_MIN_KM), AUTONOMIA_MAX_KM)
         url = f"{self.osrm_url}/{origen_lon},{origen_lat};{destino_lon},{destino_lat}?overview=full&geometries=geojson&steps=true"
         try:
             ruta = requests.get(url, timeout=10).json()["routes"][0]
             distancia_total_km = ruta["distance"] / 1000
-            paradas_necesarias = max(1, int(distancia_total_km / (autonomia_km * 0.8)))
+            paradas_necesarias = min(MAX_PARADAS, max(1, int(distancia_total_km / (autonomia_km * 0.8))))
             coords = ruta["geometry"]["coordinates"]
             sugerencias = []
 
@@ -75,8 +86,10 @@ class MapaController:
                 ],
                 "estaciones_en_ruta": sugerencias
             } 
+        except HTTPException:
+            raise
         except Exception as e:
-            print(f"[MAPA DEBUG - RUTAS] {type(e).__name__}: {e}")
+            print(f"[MAPA DEBUG - RUTAS] {type(e).__name__}")
             raise HTTPException(503, "Error conectando con OSRM u OCM")
 
     def obtener_estaciones_cercanas(self, lat: float, lon: float, distancia_km: float = 20) -> list:

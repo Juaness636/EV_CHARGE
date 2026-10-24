@@ -14,6 +14,7 @@ import { listarCompras, type Compra } from '../../api/compras.api';
 import { actualizarPerfil, cambiarPassword } from '../../api/auth.api';
 import { listarEstacionesMapa } from '../../api/mapa.api';
 import { obtenerEstadoEstacion } from '../../api/estado.api';
+import { cotizarReserva } from '../../api/tarifas.api';
 import type { EstacionOCM } from '../mapa/types';
 import { contieneLenguajeOfensivo, mensajeContenidoOfensivo } from '../../utils/contentFilter';
 import { ModalPago } from '../../components/ModalPago';
@@ -331,7 +332,15 @@ export function DashboardPage() {
       } else {
         if (!pagos.length) setPagos(await listarMetodosPago());
         setReservaPendientePago(payload);
-        setPagoReserva({ id: `RESERVA-${Date.now()}`, monto: Math.max(1, Math.round((fin.getTime() - inicio.getTime()) / 3600000)) * 5000 });
+        // El valor lo calcula el backend con los datos reales del cargador (es el que se cobra).
+        const cotizacion = await cotizarReserva({
+          estacion_ocm_id: payload.estacion_ocm_id,
+          cargador_id: payload.cargador_id || undefined,
+          estacion_nombre: payload.estacion_nombre,
+          tipo_cargador: '',
+          duracion_horas: Math.max(1, Math.round((fin.getTime() - inicio.getTime()) / 3600000)),
+        });
+        setPagoReserva({ id: `RESERVA-${Date.now()}`, monto: cotizacion.total });
         return;
       }
 
@@ -526,7 +535,7 @@ export function DashboardPage() {
         <i className="fa-solid fa-circle-half-stroke"></i>
       </button>
     </div>
-    {pagoReserva && <ModalPago tipo="reserva" tituloItem={reservaPendientePago?.estacion_nombre || 'Estación EV Charge'} monto={pagoReserva.monto} idReferencia={pagoReserva.id} metodosGuardados={pagos} onCerrar={() => { setPagoReserva(null); setReservaPendientePago(null); }} onExito={async ({ transaccion_id }) => { if (!reservaPendientePago) return; try { await crearReservaConfirmada({ ...reservaPendientePago, transaccion_id }); setAlertaAccion({ tipo: 'success', texto: 'Pago aprobado y reserva aceptada correctamente.' }); window.localStorage.setItem('ev-charge:estaciones-actualizadas', String(Date.now())); window.dispatchEvent(new Event('ev-charge:estaciones-actualizadas')); setReservaForm({ estacion_ocm_id: '', estacion_nombre: '', cargador_id: '', inicio: '', fin: '' }); setMostrarReserva(false); await cargarDatos(); } catch (e) { setAlertaAccion({ tipo: 'error', texto: errorMessage(e) }); } finally { setPagoReserva(null); setReservaPendientePago(null); } }} />}
+    {pagoReserva && <ModalPago tipo="reserva" tituloItem={reservaPendientePago?.estacion_nombre || 'Estación EV Charge'} monto={pagoReserva.monto} idReferencia={pagoReserva.id} reserva={reservaPendientePago ?? undefined} metodosGuardados={pagos} onCerrar={() => { setPagoReserva(null); setReservaPendientePago(null); }} onExito={async ({ transaccion_id }) => { if (!reservaPendientePago) return; try { await crearReservaConfirmada({ ...reservaPendientePago, transaccion_id }); setAlertaAccion({ tipo: 'success', texto: 'Pago aprobado y reserva aceptada correctamente.' }); window.localStorage.setItem('ev-charge:estaciones-actualizadas', String(Date.now())); window.dispatchEvent(new Event('ev-charge:estaciones-actualizadas')); setReservaForm({ estacion_ocm_id: '', estacion_nombre: '', cargador_id: '', inicio: '', fin: '' }); setMostrarReserva(false); await cargarDatos(); } catch (e) { setAlertaAccion({ tipo: 'error', texto: errorMessage(e) }); } finally { setPagoReserva(null); setReservaPendientePago(null); } }} />}
     <DashboardFooter />
   </div>;
 }
