@@ -39,6 +39,30 @@ class TokenOut(BaseModel):
     usuario: UsuarioOut
 
 
+class VehiculoActivoOut(BaseModel):
+    id: str
+    usuario_id: str
+    marca: str
+    modelo: str
+    anio: Optional[int] = None
+    autonomia_km: Optional[float] = None
+    tipo_conector: str
+    activo: bool = True
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PerfilOut(BaseModel):
+    usuario: UsuarioOut
+    vehiculo_activo: Optional[VehiculoActivoOut] = None
+
+
+class PerfilActualizadoOut(BaseModel):
+    usuario: UsuarioOut
+
+
 class PerfilUpdate(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None

@@ -1,10 +1,10 @@
 import os
 import re
 import hashlib
-from collections import defaultdict, deque
-from time import monotonic
 
 import requests
+
+from app.utils.rate_limit import LimiteIntentos
 
 
 SYSTEM_CONTEXT = """Eres el asistente oficial de EV Charge. Mantén una conversación natural en español, entiende preguntas escritas de cualquier manera y responde con claridad, contexto y sin inventar funciones.
@@ -18,7 +18,9 @@ Puedes responder dudas generales sobre vehículos eléctricos, conectores, auton
 Usa el historial para entender expresiones como “eso”, “también”, “¿y después?” o “no me funciona”. Si falta información, haz una sola pregunta de aclaración antes de dar instrucciones.
 Si no conoces algo, dilo y recomienda Contacto/soporte. No inventes botones, rutas, precios ni políticas."""
 
-_requests: dict[str, deque[float]] = defaultdict(deque)
+# Límite por cliente y otro global: el endpoint es público y cada consulta cuesta dinero en la API de IA.
+_limite_cliente = LimiteIntentos(maximo=int(os.getenv("AI_RATE_LIMIT_PER_MINUTE", "20")), ventana_segundos=60)
+_limite_global = LimiteIntentos(maximo=int(os.getenv("AI_GLOBAL_RATE_LIMIT_PER_MINUTE", "120")), ventana_segundos=60)
 
 
 def _limpiar_texto(texto: str) -> str:
@@ -27,14 +29,7 @@ def _limpiar_texto(texto: str) -> str:
 
 
 def _permitir(clave: str) -> bool:
-    ahora = monotonic()
-    ventana = _requests[clave]
-    while ventana and ahora - ventana[0] > 60:
-        ventana.popleft()
-    if len(ventana) >= int(os.getenv("AI_RATE_LIMIT_PER_MINUTE", "20")):
-        return False
-    ventana.append(ahora)
-    return True
+    return _limite_cliente.consumir(clave) and _limite_global.consumir("global")
 
 
 def _respaldo(pregunta: str) -> tuple[str, list[str]]:

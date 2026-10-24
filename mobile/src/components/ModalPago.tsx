@@ -6,6 +6,7 @@ import { crearMetodoPago, type MetodoPago } from '../api/metodosPago.api';
 import { procesarPago } from '../api/pagos.api';
 import type { EnvioCompra } from '../api/compras.api';
 import { nombreCompleto, useAuth } from '../context/AuthContext';
+import type { ReservaCreate } from '../api/reservas.api';
 import { mensajeError } from '../api/httpClient';
 import { useTheme } from '../theme/ThemeContext';
 import { Radius } from '../theme/spacing';
@@ -23,12 +24,13 @@ interface Props {
   // En productos es el precio unitario; el total se multiplica por la cantidad elegida.
   monto: number;
   idReferencia?: string;
+  reserva?: ReservaCreate;
   metodosGuardados?: MetodoPago[];
   onCerrar: () => void;
   onExito: (pago: { transaccion_id: string }) => void | Promise<void>;
 }
 
-export function ModalPago({ visible, tipo, tituloItem, monto, idReferencia, metodosGuardados = [], onCerrar, onExito }: Props) {
+export function ModalPago({ visible, tipo, tituloItem, monto, idReferencia, reserva, metodosGuardados = [], onCerrar, onExito }: Props) {
   const { colors } = useTheme();
   const { usuario } = useAuth();
   const esProducto = tipo === 'producto';
@@ -101,6 +103,7 @@ export function ModalPago({ visible, tipo, tituloItem, monto, idReferencia, meto
         metodo_id: guardado?.id || metodoNuevoId,
         referencia_id: idReferencia || `PAGO-${Date.now()}`,
         ...(esProducto ? { cantidad, envio: { ...envio, notas_cliente: envio.notas_cliente?.trim() || undefined } } : {}),
+        reserva,
       });
       setExito(true);
       haptica.exito();

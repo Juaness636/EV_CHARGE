@@ -13,14 +13,16 @@ from app.controllers.reservas_controller import (
     eliminar_reserva,
 )
 from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate, ReservaUpdate, ReservaCotizacion
-from app.services.tarifas_service import calcular_precio_reserva
+from app.services.tarifas_service import calcular_precio_reserva, cotizar_reserva_servidor
 
 # Sin prefix único: el contrato del frontend mezcla /mis-reservas, /reservar y /reservas/{rid}
 router = APIRouter(tags=["Reservas"])
 
 
 @router.post("/reservas/cotizar")
-def cotizar_reserva(data: ReservaCotizacion, current_user=Depends(get_current_user)):
+def cotizar_reserva(data: ReservaCotizacion, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if data.estacion_ocm_id:
+        return cotizar_reserva_servidor(db, data.estacion_ocm_id, data.cargador_id, data.duracion_horas)
     return calcular_precio_reserva(
         data.estacion_nombre,
         data.operador,

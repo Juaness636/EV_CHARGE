@@ -3,6 +3,7 @@ import axios from 'axios';
 import { crearMetodoPago, type MetodoPago } from '../api/metodosPago.api';
 import { API_BASE_URL } from '../api/httpClient';
 import { useAuth } from '../context/AuthContext';
+import type { ReservaCreate } from '../api/reservas.api';
 
 interface ModalPagoProps {
   tipo: 'producto' | 'reserva';
@@ -10,6 +11,8 @@ interface ModalPagoProps {
   // En productos es el precio unitario; el total se multiplica por la cantidad elegida.
   monto: number;
   idReferencia?: string; // ID de reserva o ID de producto
+  // Obligatoria en pagos de reserva: el backend calcula el precio y ata el pago a esta reserva.
+  reserva?: ReservaCreate;
   onCerrar: () => void;
   onExito: (pago: { transaccion_id: string }) => void | Promise<void>;
   metodosGuardados?: MetodoPago[];
@@ -20,6 +23,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
   tituloItem,
   monto,
   idReferencia,
+  reserva,
   onCerrar,
   onExito,
   metodosGuardados = [],
@@ -100,6 +104,7 @@ export const ModalPago: React.FC<ModalPagoProps> = ({
           metodo_id: metodoGuardado?.id || metodoNuevoId,
           referencia_id: idReferencia || 'PAGO-' + Date.now(),
           ...(esProducto ? { cantidad, envio: { ...envio, notas_cliente: envio.notas_cliente.trim() || undefined } } : {}),
+          reserva,
         },
         {
           headers: { Authorization: `Bearer ${token}` },

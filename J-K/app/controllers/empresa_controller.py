@@ -13,6 +13,7 @@ from app.utils.constantes import EMPRESA_APROBADA, ESTADOS_EMPRESA, ROL_ADMIN, R
 from app.utils.jwt import get_current_user, require_empresa
 from app.utils.estaciones_empresa import lista_palabras
 from app.utils.security import hash_password, verify_password
+from app.utils.jwt import create_access_token
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +332,8 @@ def cambiar_password_por_empresa(*, old_password: str, new_password: str, empres
         raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta.")
     validar_password_fuerte(new_password)
     usuario.password_hash = hash_password(new_password)
+    # Cierra las demás sesiones; esta continúa con el token nuevo que se devuelve.
+    usuario.token_version = (usuario.token_version or 0) + 1
     crear_notificacion(
         db,
         usuario.id,
@@ -339,4 +342,4 @@ def cambiar_password_por_empresa(*, old_password: str, new_password: str, empres
         "sistema",
     )
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "access_token": create_access_token({"sub": usuario.id}, usuario.token_version)}

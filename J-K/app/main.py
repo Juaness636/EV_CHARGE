@@ -115,6 +115,19 @@ with engine.begin() as connection:
     connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS ciudad VARCHAR"))
     connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS notas_cliente TEXT"))
     connection.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
+    # Seguridad de la recuperación de contraseña y revocación de sesiones.
+    connection.execute(text("ALTER TABLE usuarios ALTER COLUMN reset_pin TYPE VARCHAR(64)"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_pin_intentos INTEGER NOT NULL DEFAULT 0"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_pin_enviado TIMESTAMPTZ"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0"))
+    connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_login_huella VARCHAR(64)"))
+    # Los PIN anteriores se guardaban en texto plano: se descartan (el usuario pide uno nuevo).
+    connection.execute(text("UPDATE usuarios SET reset_pin = NULL, reset_pin_expires = NULL WHERE reset_pin IS NOT NULL AND length(reset_pin) < 64"))
+    # El pago de una reserva queda atado a la estación, el cargador y el horario cotizados.
+    connection.execute(text("ALTER TABLE pagos_reserva ADD COLUMN IF NOT EXISTS estacion_ocm_id VARCHAR"))
+    connection.execute(text("ALTER TABLE pagos_reserva ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
+    connection.execute(text("ALTER TABLE pagos_reserva ADD COLUMN IF NOT EXISTS fecha_hora_inicio TIMESTAMP"))
+    connection.execute(text("ALTER TABLE pagos_reserva ADD COLUMN IF NOT EXISTS fecha_hora_fin TIMESTAMP"))
     # Los métodos existentes se conservan como identificadores enmascarados;
     # nunca se necesita guardar el número completo de una tarjeta.
     connection.execute(text("UPDATE metodos_pago SET numero = CONCAT('**** ', RIGHT(regexp_replace(numero, '[^0-9]', '', 'g'), 4)) WHERE numero IS NOT NULL AND numero !~ '\\*' AND length(regexp_replace(numero, '[^0-9]', '', 'g')) >= 4"))

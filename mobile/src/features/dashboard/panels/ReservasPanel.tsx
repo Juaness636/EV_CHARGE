@@ -110,6 +110,8 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
       }
       const cargador = estacion?.Connections?.[Number(cargadorId.split('-').pop()) - 1];
       const monto = await cotizarReserva({
+        estacion_ocm_id: payload.estacion_ocm_id,
+        cargador_id: payload.cargador_id || undefined,
         estacion_nombre: payload.estacion_nombre || '',
         operador: estacion?.OperatorInfo?.Title,
         tipo_cargador: cargador?.ConnectionType?.Title || '',
@@ -250,6 +252,7 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
         tituloItem={pago?.reserva.estacion_nombre || 'Estación EV Charge'}
         monto={pago?.monto ?? 0}
         idReferencia={pago?.id}
+        reserva={pago?.reserva}
         metodosGuardados={metodos}
         onCerrar={() => setPago(null)}
         onExito={alPagar}

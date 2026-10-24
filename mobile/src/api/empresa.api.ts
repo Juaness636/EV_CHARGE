@@ -3,7 +3,7 @@
 // Todas las rutas cuelgan de /empresa y el backend deduce la empresa del token:
 // ningún método manda empresa_id, y un 404 aquí significa "eso no es tuyo".
 import { Platform } from 'react-native';
-import { api, API_BASE_URL } from './httpClient';
+import { api, API_BASE_URL, guardarToken } from './httpClient';
 
 export type EstadoEmpresa = 'pendiente' | 'aprobada' | 'suspendida';
 export type EstadoEstacion = 'activa' | 'mantenimiento' | 'inactiva';
@@ -304,10 +304,12 @@ export async function actualizarPerfilEmpresa(
 }
 
 export async function cambiarPasswordEmpresa(oldPassword: string, newPassword: string): Promise<{ ok: boolean }> {
-  const { data } = await api.post<{ ok: boolean }>('/empresa/perfil/password', {
+  const { data } = await api.post<{ ok: boolean; access_token?: string }>('/empresa/perfil/password', {
     old_password: oldPassword,
     new_password: newPassword,
   });
+  // Cambiar la contraseña cierra las demás sesiones; esta sigue con el token nuevo.
+  if (data.access_token) await guardarToken(data.access_token);
   return data;
 }
 

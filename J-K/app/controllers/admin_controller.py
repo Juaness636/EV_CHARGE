@@ -26,6 +26,7 @@ import os
 import requests
 import time
 import math
+import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -56,6 +57,7 @@ DEPARTAMENTO_POR_CIUDAD = {
 }
 _ESTACIONES_OCM_CACHE: tuple[float, list[tuple[dict, str]]] | None = None
 _ESTACIONES_OCM_CACHE_TTL = 300
+_ESTACIONES_OCM_LOCK = threading.Lock()
 
 
 def operador_visible(valor, contexto: str = "") -> str:
@@ -309,18 +311,33 @@ def cambiar_estado_estacion_ocm(eid: str, data: EstadoUpdate, db: Session):
     return {"estacion_ocm_id": estado.estacion_ocm_id, "estado": estado.estado}
 
 
-def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado: str | None = None):
-    if estado and estado not in {"activa", "mantenimiento", "inactiva"}:
-        raise HTTPException(status_code=400, detail="Estado de estacion no valido.")
-    url = "https://api.openchargemap.io/v3/poi/"
+_OCM_URL = "https://api.openchargemap.io/v3/poi/"
+
+
+def _ocm_api_key() -> str:
     api_key = os.getenv("OCM_API_KEY", "").strip()
     if api_key.startswith("OCM_API_KEY="):
         api_key = api_key.split("=", 1)[1].strip()
+    return api_key
+
+
+def _estaciones_ocm_externas() -> list[tuple[dict, str]]:
+    """Catálogo de OpenChargeMap con caché de 5 minutos.
+
+    El candado evita el efecto estampida: con la caché vencida, solo una petición
+    consulta OCM y las demás esperan y reutilizan ese resultado.
+    """
     global _ESTACIONES_OCM_CACHE
-    ahora = time.monotonic()
-    if _ESTACIONES_OCM_CACHE and ahora - _ESTACIONES_OCM_CACHE[0] < _ESTACIONES_OCM_CACHE_TTL:
-        externas = _ESTACIONES_OCM_CACHE[1]
-    else:
+    cache = _ESTACIONES_OCM_CACHE
+    if cache and time.monotonic() - cache[0] < _ESTACIONES_OCM_CACHE_TTL:
+        return cache[1]
+    with _ESTACIONES_OCM_LOCK:
+        cache = _ESTACIONES_OCM_CACHE
+        if cache and time.monotonic() - cache[0] < _ESTACIONES_OCM_CACHE_TTL:
+            return cache[1]
+        url = _OCM_URL
+        api_key = _ocm_api_key()
+
         def consultar_centro(centro):
             ciudad, latitud, longitud = centro
             try:
@@ -347,7 +364,41 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             tareas = [executor.submit(consultar_centro, centro) for centro in CENTROS_COLOMBIA]
             for tarea in as_completed(tareas):
                 externas.extend(tarea.result())
-        _ESTACIONES_OCM_CACHE = (ahora, externas)
+        _ESTACIONES_OCM_CACHE = (time.monotonic(), externas)
+        return externas
+
+
+def buscar_estacion_ocm(eid: str) -> dict | None:
+    """Datos crudos de una estación de OpenChargeMap por su ID (caché primero).
+
+    Lanza 503 si OCM no responde, para no confundir "no existe" con "no se pudo consultar".
+    """
+    for estacion, _ciudad in _estaciones_ocm_externas():
+        if str(estacion.get("ID", "")) == str(eid):
+            return estacion
+    if not str(eid).isdigit():
+        return None
+    try:
+        respuesta = requests.get(
+            _OCM_URL,
+            params={"output": "json", "chargepointid": eid, "compact": "false", "verbose": "false", "key": _ocm_api_key()},
+            timeout=10,
+        )
+        respuesta.raise_for_status()
+        datos = respuesta.json()
+    except (requests.RequestException, ValueError) as error:
+        raise HTTPException(status_code=503, detail="No se pudo consultar la estación. Intenta de nuevo en un momento.") from error
+    if isinstance(datos, list):
+        for estacion in datos:
+            if str(estacion.get("ID", "")) == str(eid):
+                return estacion
+    return None
+
+
+def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado: str | None = None):
+    if estado and estado not in {"activa", "mantenimiento", "inactiva"}:
+        raise HTTPException(status_code=400, detail="Estado de estacion no valido.")
+    externas = _estaciones_ocm_externas()
     overrides = {item.estacion_ocm_id: item for item in db.query(EstadoEstacion).all()}
     fotos_propias, fotos_ocm = fotos_por_estacion(db)
     # Estaciones de la API que pasan a una empresa por sus palabras clave ("enel x", "terpel").
@@ -406,6 +457,15 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
     centros_ciudad = {nombre: (latitud, longitud) for nombre, latitud, longitud in CENTROS_COLOMBIA}
     empresas = {empresa.id: empresa for empresa in db.query(Empresa).all()}
     propias = db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False)).all()
+    # Una sola consulta para todos los cargadores (antes era una por estación).
+    cargadores_por_estacion: dict[str, list[EstacionCargador]] = {}
+    for cargador in (
+        db.query(EstacionCargador)
+        .filter(EstacionCargador.estacion_id.in_([estacion.id for estacion in propias]))
+        .order_by(EstacionCargador.numero.asc().nullslast(), EstacionCargador.id.asc())
+        .all()
+    ):
+        cargadores_por_estacion.setdefault(cargador.estacion_id, []).append(cargador)
     for estacion in propias:
         if estacion.id in ids_externos:
             continue
@@ -416,12 +476,7 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
                 + (estacion.lon - centros_ciudad[nombre][1]) ** 2
             ),
         )
-        cargadores = (
-            db.query(EstacionCargador)
-            .filter(EstacionCargador.estacion_id == estacion.id)
-            .order_by(EstacionCargador.numero.asc().nullslast(), EstacionCargador.id.asc())
-            .all()
-        )
+        cargadores = cargadores_por_estacion.get(estacion.id, [])
         conectores = [{
             "id": cargador.id,
             "numero": cargador.numero,

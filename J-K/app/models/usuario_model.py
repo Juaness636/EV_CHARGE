@@ -19,9 +19,15 @@ class usuarios(Base):
     compartir_nombre_reserva = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=ahora_utc)
 
-    # Código temporal para recuperar la contraseña dentro de la aplicación.
-    reset_pin = Column(String(6), nullable=True)
+    # Código temporal para recuperar la contraseña. Se guarda solo su HMAC, nunca el PIN.
+    reset_pin = Column(String(64), nullable=True)
     reset_pin_expires = Column(DateTime(timezone=True), nullable=True)
+    reset_pin_intentos = Column(Integer, nullable=False, default=0)
+    reset_pin_enviado = Column(DateTime(timezone=True), nullable=True)
+    # Se incrementa al cambiar la contraseña para revocar los tokens ya emitidos.
+    token_version = Column(Integer, nullable=False, default=0)
+    # Huella del último dispositivo que inició sesión (para avisar de inicios nuevos).
+    ultimo_login_huella = Column(String(64), nullable=True)
 
     # Ya no es columna: se deriva de `rol` para que las respuestas y los frontends
     # que leen `is_admin` sigan funcionando sin poder desincronizarse.

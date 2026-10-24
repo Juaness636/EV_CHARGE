@@ -1,6 +1,9 @@
 import { api } from './httpClient';
 
 export interface ReservaCotizacion {
+  // Con estacion_ocm_id el backend calcula el precio con sus propios datos: es el valor que se cobra.
+  estacion_ocm_id?: string;
+  cargador_id?: string;
   estacion_nombre: string;
   operador?: string;
   tipo_cargador: string;

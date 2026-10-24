@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.schemas.compras_schema import EnvioCompra
+from app.schemas.reservas_schemas import ReservaCreate
 
 class PagoCreateSchema(BaseModel):
     tipo_pago: str = Field(..., description="'producto' o 'reserva'")
@@ -12,6 +13,7 @@ class PagoCreateSchema(BaseModel):
     referencia_id: Optional[str] = Field(None, description="ID de la reserva o código de referencia")
     cantidad: int = Field(1, ge=1, le=10, description="Unidades del producto (solo compras)")
     envio: Optional[EnvioCompra] = Field(None, description="Datos de contacto y envío (obligatorio en compras)")
+    reserva: Optional[ReservaCreate] = Field(None, description="Reserva que se paga (obligatoria si tipo_pago='reserva')")
 
 class PagoResponseSchema(BaseModel):
     id: int

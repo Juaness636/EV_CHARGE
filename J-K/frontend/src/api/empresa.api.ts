@@ -315,10 +315,12 @@ export async function actualizarPerfilEmpresa(
 }
 
 export async function cambiarPasswordEmpresa(oldPassword: string, newPassword: string): Promise<{ ok: boolean }> {
-  const { data } = await api.post<{ ok: boolean }>('/empresa/perfil/password', {
+  const { data } = await api.post<{ ok: boolean; access_token?: string }>('/empresa/perfil/password', {
     old_password: oldPassword,
     new_password: newPassword,
   });
+  // Cambiar la contraseña cierra las demás sesiones; esta sigue con el token nuevo.
+  if (data.access_token) localStorage.setItem('ev_token', data.access_token);
   return data;
 }
 

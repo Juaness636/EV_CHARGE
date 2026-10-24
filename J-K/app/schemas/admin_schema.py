@@ -114,3 +114,18 @@ class AdminReservaDetail(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminReporteOut(BaseModel):
+    id: str
+    usuario_id: str
+    estacion_ocm_id: str
+    estacion_nombre: Optional[str] = ""
+    tipo: str
+    descripcion: Optional[str] = ""
+    estado: Optional[str] = "abierto"
+    fecha: Optional[datetime] = None
+    usuario: Optional[UsuarioInfo] = None
+
+    class Config:
+        from_attributes = True

@@ -11,6 +11,6 @@ class ReporteCreate(BaseModel):
 
 
 class ReporteUpdate(BaseModel):
+    # El estado del reporte solo lo cambia el administrador o la empresa.
     tipo: Optional[str] = None
     descripcion: Optional[str] = None
-    estado: Optional[str] = None
