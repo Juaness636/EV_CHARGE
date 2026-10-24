@@ -166,7 +166,7 @@ def cargadores_efectivos(db: Session, estacion: EstacionPropia) -> list[dict]:
 
 def serializar_estacion(db: Session, estacion: EstacionPropia) -> dict:
     # Import local: empresa_fotos_controller importa este módulo.
-    from app.controllers.empresa_fotos_controller import fotos_de, url_foto
+    from app.controllers.empresa_fotos_controller import foto_out, fotos_de
 
     cargadores = cargadores_efectivos(db, estacion)
     disponibles = sum(1 for c in cargadores if c["estado"] == CARGADOR_ESTADO_DISPONIBLE)
@@ -193,7 +193,7 @@ def serializar_estacion(db: Session, estacion: EstacionPropia) -> dict:
         "total_cargadores": len(cargadores),
         "cargadores_disponibles": disponibles,
         "incidentes_abiertos": incidentes_abiertos,
-        "fotos": [{"id": foto.id, "url": url_foto(foto)} for foto in fotos_de(db, estacion.id)],
+        "fotos": [foto_out(foto) for foto in fotos_de(db, estacion.id)],
     }
 
 

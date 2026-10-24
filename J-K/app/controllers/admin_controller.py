@@ -19,7 +19,7 @@ from app.schemas.admin_schema import EstacionPropiaCreate, EstacionPropiaUpdate,
 from app.models.utils import ahora_utc
 from app.controllers.notificaciones_controller import crear_notificacion
 from app.controllers.empresa_controller import marca_empresa
-from app.controllers.empresa_fotos_controller import urls_fotos_por_estacion
+from app.controllers.empresa_fotos_controller import fotos_por_estacion
 from app.utils.constantes import EMPRESA_APROBADA, EMPRESA_PENDIENTE, ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
 from app.utils.estaciones_empresa import empresa_por_texto, lista_palabras
 import os
@@ -213,6 +213,7 @@ def crear_estacion(data: EstacionPropiaCreate, db: Session):
         datos_cargador["numero"] = datos_cargador.get("numero") or numero
         db.add(EstacionCargador(estacion_id=nueva.id, **datos_cargador))
     db.commit()
+    db.refresh(nueva)
     return nueva
 
 
@@ -348,6 +349,7 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
                 externas.extend(tarea.result())
         _ESTACIONES_OCM_CACHE = (ahora, externas)
     overrides = {item.estacion_ocm_id: item for item in db.query(EstadoEstacion).all()}
+    fotos_propias, fotos_ocm = fotos_por_estacion(db)
     # Estaciones de la API que pasan a una empresa por sus palabras clave ("enel x", "terpel").
     empresas_con_palabras = [
         (empresa, lista_palabras(empresa.palabras_clave))
@@ -389,6 +391,7 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             "departamento": info.get("StateOrProvince", ""),
             "origen": "OpenChargeMap",
             "empresa": marca_empresa(duena),
+            "fotos": fotos_ocm.get(eid, []),
             "conectores": [
                 {
                     "tipo": (conector.get("ConnectionType") or {}).get("Title", "No especificado"),
@@ -403,7 +406,6 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
     centros_ciudad = {nombre: (latitud, longitud) for nombre, latitud, longitud in CENTROS_COLOMBIA}
     empresas = {empresa.id: empresa for empresa in db.query(Empresa).all()}
     propias = db.query(EstacionPropia).filter(EstacionPropia.eliminada.is_(False)).all()
-    fotos_por_estacion = urls_fotos_por_estacion(db, [estacion.id for estacion in propias])
     for estacion in propias:
         if estacion.id in ids_externos:
             continue
@@ -448,7 +450,7 @@ def listar_estaciones_ocm_admin(db: Session, busqueda: str | None = None, estado
             "departamento": DEPARTAMENTO_POR_CIUDAD.get(ciudad_propia, ""),
             "origen": "Empresa" if estacion.empresa_id else "EV Charge",
             "empresa": marca_empresa(empresas.get(estacion.empresa_id)),
-            "fotos": fotos_por_estacion.get(estacion.id, []),
+            "fotos": fotos_propias.get(estacion.id, []),
             "conectores": conectores,
         })
     if busqueda:
@@ -488,8 +490,8 @@ def listar_estaciones_mapa(db: Session):
         "OperatorInfo": {"Title": estacion["operador"]},
         # RN-E10: nombre, color y logo de la empresa para pintar su marcador.
         "Empresa": estacion.get("empresa"),
-        # Fotos que subió la empresa dueña (rutas relativas al backend, servidas en /media).
-        "Fotos": estacion.get("fotos") or [],
+        # Fotos que subió la empresa dueña o el admin (rutas relativas al backend, /media/fotos/{id}).
+        "Fotos": [foto["url"] for foto in estacion.get("fotos") or []],
         "City": estacion.get("ciudad", ""),
         "StateOrProvince": estacion.get("departamento", ""),
         "Connections": [{

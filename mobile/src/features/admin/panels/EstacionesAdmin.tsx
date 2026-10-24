@@ -1,17 +1,21 @@
 // Gestión de estaciones del administrador: crear/editar estaciones propias con sus
-// cargadores, editar datos de estaciones de OpenChargeMap, activar/desactivar y eliminar.
+// cargadores, editar datos de estaciones de OpenChargeMap, activar/desactivar, eliminar y subir
+// fotos a cualquier estación (propia o de OpenChargeMap).
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   actualizarEstacion, actualizarEstacionOcm, cambiarEstadoEstacion, cambiarEstadoEstacionOcm, crearEstacion,
-  eliminarEstacionAdmin, eliminarEstacionOcmAdmin, listarEstacionesOcmAdmin, type AdminEstacionOcm, type EstacionCargadorData,
+  eliminarEstacionAdmin, eliminarEstacionOcmAdmin, eliminarFotoAdmin, listarEstacionesOcmAdmin, subirFotoAdmin,
+  type AdminEstacionOcm, type EstacionCargadorData,
 } from '../../../api/admin.api';
+import type { FotoEstacion } from '../../../api/empresa.api';
+import { EditorFotos } from '../../../components/EditorFotos';
 import { useTheme } from '../../../theme/ThemeContext';
 import { Radius } from '../../../theme/spacing';
 import { etiquetaEstado, TIPOS_CONECTOR } from '../../../utils/estaciones';
 import { useCarga } from '../../../utils/useCarga';
 import { confirmar, notificar } from '../../../components/Notificaciones';
-import { Alerta, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Insignia, ItemLista, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
+import { Alerta, AppModal, Boton, CampoSelect, CampoTexto, Cargando, Chips, Dato, Insignia, ItemLista, Tarjeta, tonoEstado, Vacio } from '../../../components/ui';
 import { ejecutarAdmin, type PropsAdmin } from './AdminPaneles';
 
 type EstadoEstacion = 'activa' | 'mantenimiento' | 'inactiva';
@@ -31,6 +35,7 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<'todos' | EstadoEstacion>('todos');
   const [guardando, setGuardando] = useState(false);
+  const [fotosDe, setFotosDe] = useState<{ estacion: FilaEstacion; fotos: FotoEstacion[] } | null>(null);
 
   const filtradas = estaciones.filter((e) => {
     const texto = `${e.id} ${e.nombre} ${e.operador}`.toLowerCase();
@@ -107,6 +112,12 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
     return ejecutarAdmin(() => (e.origen === 'OpenChargeMap' ? cambiarEstadoEstacionOcm(String(e.id), nuevo) : cambiarEstadoEstacion(String(e.id), nuevo)), recargar);
   };
 
+  // La lista se recarga para que el contador de fotos de cada estación quede al día.
+  const cambiarFotos = (fotos: FotoEstacion[]) => {
+    setFotosDe((actual) => (actual ? { ...actual, fotos } : actual));
+    void recargar();
+  };
+
   return (
     <>
       <Boton titulo={mostrarForm ? 'Cerrar formulario' : '+ Crear estación'} variante="soft" onPress={() => (mostrarForm ? reiniciar() : setMostrarForm(true))} style={{ alignSelf: 'flex-start' }} />
@@ -165,6 +176,7 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
             insignia={<Insignia texto={etiquetaEstado(e.estado)} tono={tonoEstado(e.estado)} />}
             acciones={<>
               <Boton titulo="Editar" pequeno variante="outline" onPress={() => editar(e)} />
+              <Boton titulo={`Fotos (${e.fotos?.length ?? 0})`} icono="camera" pequeno variante="outline" onPress={() => setFotosDe({ estacion: e, fotos: e.fotos || [] })} />
               <Boton titulo={e.estado === 'activa' ? 'Fuera de servicio' : 'Activar'} pequeno variante={e.estado === 'activa' ? 'outline' : 'soft'} onPress={() => void alternarEstado(e)} />
               <Boton titulo="Eliminar" pequeno variante="danger" onPress={() => void eliminar(e)} />
             </>}
@@ -178,6 +190,16 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
         );
       })}
       {filtradas.length > 200 && <Text style={{ color: colors.textDim, textAlign: 'center' }}>Mostrando 200 de {filtradas.length}. Usa la búsqueda para encontrar otras estaciones.</Text>}
+      <AppModal visible={!!fotosDe} onClose={() => setFotosDe(null)} titulo={fotosDe ? `Fotos · ${fotosDe.estacion.nombre}` : 'Fotos'} anchoMaximo={520}>
+        {fotosDe ? (
+          <EditorFotos
+            fotos={fotosDe.fotos}
+            puedeEditar
+            onSubir={async (foto) => cambiarFotos(await subirFotoAdmin(String(fotosDe.estacion.id), foto))}
+            onQuitar={async (foto) => cambiarFotos(await eliminarFotoAdmin(String(fotosDe.estacion.id), foto.id))}
+          />
+        ) : null}
+      </AppModal>
     </>
   );
 }

@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from fastapi import APIRouter
 from app.controllers.mapa_controller import MapaController
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 router = APIRouter()
 mapa_ctrl = MapaController()
@@ -16,7 +15,7 @@ def obtener_estaciones(lat: float, lon: float):
     return mapa_ctrl.obtener_estaciones_cercanas(lat, lon)
 
 # Configuración e intermedios con prefijo app.
-from app.config.database import Base, engine
+from app.config.database import Base, SessionLocal, engine
 from sqlalchemy import text
 from app.middleware.error_handler import ErrorHandler
 import app.models
@@ -43,7 +42,8 @@ from app.routes.compras_routes import router as compras_router
 from app.routes.admin_compras_routes import router as admin_compras_router
 from app.routes import asistente_routes
 from app.routes.empresa_routes import router as empresa_router
-from app.controllers.empresa_fotos_controller import DIRECTORIO_MEDIA, PREFIJO_URL_MEDIA
+from app.routes.media_routes import router as media_router
+from app.controllers.empresa_fotos_controller import migrar_fotos_de_disco
 
 # ==========================================
 # CREACIÓN AUTOMÁTICA DE TABLAS
@@ -82,6 +82,18 @@ with engine.begin() as connection:
     ))
     connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS empresa_id VARCHAR REFERENCES empresas(id) ON DELETE CASCADE"))
     connection.execute(text("ALTER TABLE empresas ADD COLUMN IF NOT EXISTS palabras_clave VARCHAR"))
+    # Fotos: ahora en la base (contenido) y también para estaciones de la API (estacion_ocm_id).
+    connection.execute(text("ALTER TABLE fotos_estacion ADD COLUMN IF NOT EXISTS estacion_ocm_id VARCHAR"))
+    connection.execute(text("ALTER TABLE fotos_estacion ADD COLUMN IF NOT EXISTS contenido BYTEA"))
+    connection.execute(text("ALTER TABLE fotos_estacion ALTER COLUMN estacion_id DROP NOT NULL"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_fotos_estacion_estacion_ocm_id ON fotos_estacion (estacion_ocm_id)"))
+    connection.execute(text(
+        "DO $$ BEGIN "
+        "IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_fotos_estacion_una_estacion') THEN "
+        "ALTER TABLE fotos_estacion ADD CONSTRAINT ck_fotos_estacion_una_estacion "
+        "CHECK ((estacion_id IS NULL) <> (estacion_ocm_id IS NULL)); "
+        "END IF; END $$"
+    ))
     connection.execute(text("ALTER TABLE estaciones_propias ADD COLUMN IF NOT EXISTS eliminada BOOLEAN NOT NULL DEFAULT FALSE"))
     connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN tipo_conector DROP NOT NULL"))
     connection.execute(text("ALTER TABLE estaciones_propias ALTER COLUMN potencia_kw DROP NOT NULL"))
@@ -107,6 +119,10 @@ with engine.begin() as connection:
     # nunca se necesita guardar el número completo de una tarjeta.
     connection.execute(text("UPDATE metodos_pago SET numero = CONCAT('**** ', RIGHT(regexp_replace(numero, '[^0-9]', '', 'g'), 4)) WHERE numero IS NOT NULL AND numero !~ '\\*' AND length(regexp_replace(numero, '[^0-9]', '', 'g')) >= 4"))
 
+
+# Las fotos que quedaron en disco (versión anterior) pasan a la base de datos.
+with SessionLocal() as sesion_migracion:
+    migrar_fotos_de_disco(sesion_migracion)
 
 # ==========================================
 # INSTANCIA FASTAPI
@@ -163,9 +179,8 @@ app.include_router(admin_compras_router)
 app.include_router(asistente_routes.router)
 app.include_router(empresa_router)
 
-# Fotos de estaciones subidas por las empresas (ver empresa_fotos_controller).
-DIRECTORIO_MEDIA.mkdir(parents=True, exist_ok=True)
-app.mount(PREFIJO_URL_MEDIA, StaticFiles(directory=DIRECTORIO_MEDIA), name="media")
+# Fotos de estaciones guardadas en la base de datos (ver empresa_fotos_controller).
+app.include_router(media_router)
 
 # ==========================================
 # RUTA RAÍZ

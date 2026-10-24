@@ -28,6 +28,7 @@ def listar_estaciones_api_empresa(ctx: dict, db: Session) -> list[dict]:
             "lon": estacion["lon"],
             "estado": estacion["estado"],
             "conectores": len(estacion.get("conectores") or []),
+            "fotos": estacion.get("fotos") or [],
         }
         for estacion in listar_estaciones_ocm_admin(db)
         if estacion.get("origen") == "OpenChargeMap"
