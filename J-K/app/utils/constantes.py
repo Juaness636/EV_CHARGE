@@ -53,6 +53,16 @@ PRIORIDADES_INCIDENTE = ("baja", "media", "alta")
 ESTADOS_RESERVA_VIGENTES = ("pendiente", "activa")
 ESTADO_RESERVA_ACTIVA = "activa"
 ESTADO_RESERVA_CANCELADA = "cancelada"
+# El usuario escaneó el QR del cargador: la carga empezó y el cargador está en uso.
+ESTADO_RESERVA_EN_CURSO = "en_curso"
+ESTADO_RESERVA_REALIZADA = "realizada"
+# Estados que ocupan el cargador en su horario (nadie más puede reservarlo).
+ESTADOS_RESERVA_OCUPAN = (ESTADO_RESERVA_ACTIVA, ESTADO_RESERVA_EN_CURSO)
+# Ventana para escanear el QR: desde 15 min antes del inicio hasta 30 min después.
+# Si no escanea en esos 30 min, la reserva se cancela sola (sin reembolso) y el cargador se libera.
+MINUTOS_ANTICIPACION_QR = 15
+MINUTOS_TOLERANCIA_LLEGADA = 30
+MOTIVO_CANCELACION_NO_LLEGO = "no_llego"
 
 ESTADO_REPORTE_ABIERTO = "abierto"
 # La empresa atiende un reporte resolviéndolo o descartándolo. Poner la estación en

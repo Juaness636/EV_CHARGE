@@ -11,7 +11,8 @@ import {
   type FotoEstacion,
 } from '../../api/empresa.api';
 import { EditorFotos } from '../../components/EditorFotos';
-import { Aviso, Insignia, Selector, Tarjeta, Titulo, Vacio, etiqueta, mensajeError, useColores, useEmpresa, useEstilos } from './componentes';
+import { ModalQrCargadores } from '../../components/ModalQrCargadores';
+import { Aviso, Boton, Insignia, Selector, Tarjeta, Titulo, Vacio, etiqueta, mensajeError, useColores, useEmpresa, useEstilos } from './componentes';
 
 const OPCIONES_ESTADO: Array<{ valor: EstacionApiEmpresa['estado']; texto: string }> = [
   { valor: 'activa', texto: 'Activa' },
@@ -26,6 +27,7 @@ export const EstacionesApi: React.FC = () => {
   const [estaciones, setEstaciones] = useState<EstacionApiEmpresa[] | null>(null);
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
+  const [qrDe, setQrDe] = useState<{ id: string; nombre: string } | null>(null);
 
   useEffect(() => {
     listarEstacionesApiEmpresa()
@@ -73,6 +75,9 @@ export const EstacionesApi: React.FC = () => {
           <Text style={estilos.textoSuave}>Operador: {estacion.operador} · {estacion.conectores} conector(es)</Text>
           <Text style={estilos.campoEtiqueta}>Estado en el mapa</Text>
           <Selector opciones={OPCIONES_ESTADO} valor={estacion.estado} onChange={(estado) => void cambiar(estacion, estado)} />
+          <View style={estilos.fila}>
+            <Boton texto="QR de cargadores" onPress={() => setQrDe({ id: estacion.id, nombre: estacion.nombre })} />
+          </View>
           <View style={estilos.separador} />
           <EditorFotos
             fotos={estacion.fotos || []}
@@ -82,6 +87,7 @@ export const EstacionesApi: React.FC = () => {
           />
         </Tarjeta>
       ))}
+      <ModalQrCargadores estacion={qrDe} como="empresa" onCerrar={() => setQrDe(null)} />
     </View>
   );
 };

@@ -109,8 +109,8 @@ export function crearHtmlMapa(oscuro: boolean): string {
   cargarLeaflet(0);
 
   function iniciar() {
-  var COLORES = { disponible: '#39a900', activa: '#39a900', reservada: '#3498db', mantenimiento: '#f39c12', inactiva: '#e74c3c' };
-  var ICONOS = { mantenimiento: 'fa-screwdriver-wrench', inactiva: 'fa-ban', reservada: 'fa-clock' };
+  var COLORES = { disponible: '#39a900', activa: '#39a900', reservada: '#3498db', ocupada: '#8e44ad', mantenimiento: '#f39c12', inactiva: '#e74c3c' };
+  var ICONOS = { mantenimiento: 'fa-screwdriver-wrench', inactiva: 'fa-ban', reservada: 'fa-clock', ocupada: 'fa-bolt' };
   var map = L.map('map', { zoomControl: false, minZoom: 5, maxBounds: [[-4.5, -81.5], [13.8, -66.5]], maxBoundsViscosity: 1 })
     .setView([4.6651, -74.1204], 12);
   // Mismas teselas de OpenStreetMap que el frontend web; el modo oscuro se logra con un filtro CSS.

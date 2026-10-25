@@ -100,6 +100,7 @@ export const coloresEstado: Record<string, string> = {
   disponible: '#39a900',
   activa: '#39a900',
   reservada: '#3498db',
+  ocupada: '#8e44ad',
   mantenimiento: '#f39c12',
   inactiva: '#e74c3c',
 };

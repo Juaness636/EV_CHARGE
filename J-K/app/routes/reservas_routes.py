@@ -12,7 +12,8 @@ from app.controllers.reservas_controller import (
     cancelar_reserva,
     eliminar_reserva,
 )
-from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate, ReservaUpdate, ReservaCotizacion
+from app.controllers.carga_qr_controller import escanear_qr, terminar_carga
+from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate, ReservaUpdate, ReservaCotizacion, EscaneoQR
 from app.services.tarifas_service import calcular_precio_reserva, cotizar_reserva_servidor
 
 # Sin prefix único: el contrato del frontend mezcla /mis-reservas, /reservar y /reservas/{rid}
@@ -61,3 +62,14 @@ def reserva_cancelar(rid: str, current_user=Depends(get_current_user), db: Sessi
 @router.delete("/reservas/{rid}")
 def reserva_eliminar(rid: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     return eliminar_reserva(db, current_user.id, rid)
+
+
+@router.post("/reservas/{rid}/escanear")
+def reserva_escanear(rid: str, data: EscaneoQR, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Inicia la carga si el QR (o su código manual) es del cargador reservado y está en su franja."""
+    return escanear_qr(db, current_user.id, rid, data.codigo)
+
+
+@router.post("/reservas/{rid}/terminar")
+def reserva_terminar(rid: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    return terminar_carga(db, current_user.id, rid)

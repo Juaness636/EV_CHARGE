@@ -8,7 +8,7 @@ import { obtenerEstadoEstacion, type EstadoEstacion } from '../../api/estado.api
 import { listarFavoritos, agregarFavorito, quitarFavorito } from '../../api/favoritos.api';
 import { calificar, calificacionesDeEstacion, type ResumenCalificaciones } from '../../api/calificaciones.api';
 import { crearReporte, reportesDeEstacion, type Reporte } from '../../api/reportes.api';
-import { crearReservaConfirmada, type ReservaCreate } from '../../api/reservas.api';
+import { crearReservaConfirmada, MINUTOS_TOLERANCIA_LLEGADA, type ReservaCreate } from '../../api/reservas.api';
 import { cambiarEstadoEstacionOcm } from '../../api/admin.api';
 import { listarMetodosPago, type MetodoPago } from '../../api/metodosPago.api';
 import { cotizarReserva } from '../../api/tarifas.api';
@@ -46,6 +46,7 @@ const TIPOS_REPORTE = [
 ];
 
 type EstadoAdmin = 'activa' | 'mantenimiento' | 'inactiva';
+const SEGUNDOS_REFRESCO_DETALLE = 10;
 
 export function EstacionDetalle({
   estacion, usuario, onLoginRequerido, onRegistroRequerido, onCalcularRuta,
@@ -96,6 +97,7 @@ export function EstacionDetalle({
 
   const fin = sumarHoras(inicio, duracion);
   const reservados = estado?.cargadores_reservados || [];
+  const enUso = estado?.cargadores_en_uso || [];
   const compatibles = conexiones.map((c, i) => ({ c, id: `${ocmId}-${i + 1}` })).filter(({ c }) => esCompatible(c.ConnectionType?.Title || ''));
   const hayDisponible = compatibles.some(({ id }) => !reservados.includes(id));
   const estadoPanel = estado?.estado === 'mantenimiento' || estado?.estado === 'inactiva'
@@ -135,6 +137,12 @@ export function EstacionDetalle({
   }, [ocmId, usuario, refrescarEstado]);
 
   useEffect(() => escuchar('estaciones-actualizadas', () => void refrescarEstado()), [refrescarEstado]);
+
+  // Mientras el detalle está abierto se ve en vivo cuando otro usuario reserva o empieza a cargar.
+  useEffect(() => {
+    const intervalo = setInterval(() => void refrescarEstado(), SEGUNDOS_REFRESCO_DETALLE * 1000);
+    return () => clearInterval(intervalo);
+  }, [refrescarEstado]);
 
   // Cotización en vivo del cargador seleccionado (POST /reservas/cotizar).
   useEffect(() => {
@@ -283,7 +291,7 @@ export function EstacionDetalle({
       setEstado((a) => ({ ...(a || {}), estacion_ocm_id: ocmId, estado: 'disponible', cargadores_reservados: [...ids] }));
       setCargadorSeleccionado(null);
       emitir('estaciones-actualizadas', { estacionId: ocmId, cargadorId: confirmada.cargador_id || reservaPendiente.cargador_id });
-      notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada correctamente.' });
+      notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada. Al llegar, escanea el QR del cargador desde Mis reservas.' });
     } catch (e) {
       await refrescarEstado();
       notificar({ tipo: 'error', titulo: 'Reserva', mensaje: mensajeError(e, 'El pago fue aprobado, pero no se pudo crear la reserva.') });
@@ -380,12 +388,13 @@ export function EstacionDetalle({
         const tipo = c.ConnectionType?.Title || 'Genérico';
         const compatible = esCompatible(c.ConnectionType?.Title || '');
         const reservado = reservados.includes(cargadorId);
+        const usando = enUso.includes(cargadorId);
         const reservaDe = estado?.reservas_por_cargador?.find((r) => r.cargador_id === cargadorId);
         const fueraDeServicio = c.Estado === 'fuera_servicio';
         const bloqueado = reservado || fueraDeServicio || estadoAdmin !== 'activa';
         const seleccionado = cargadorSeleccionado === cargadorId;
         const recomendado = compatible && !bloqueado && !!tipoConectorVehiculo;
-        const etiqueta = reservado ? 'Reservado' : estadoAdmin === 'mantenimiento' ? 'Mantenimiento' : estadoAdmin === 'inactiva' || fueraDeServicio ? 'Fuera de servicio' : 'Disponible';
+        const etiqueta = usando ? 'En uso' : reservado ? 'Reservado' : estadoAdmin === 'mantenimiento' ? 'Mantenimiento' : estadoAdmin === 'inactiva' || fueraDeServicio ? 'Fuera de servicio' : 'Disponible';
         return (
           <Presionable
             key={cargadorId}
@@ -416,10 +425,10 @@ export function EstacionDetalle({
               )}
             </View>
             <View style={s.filaEntre}>
-              <Insignia texto={etiqueta} tono={reservado ? 'azul' : bloqueado ? 'rojo' : 'verde'} />
+              <Insignia texto={etiqueta} tono={usando ? 'amarillo' : reservado ? 'azul' : bloqueado ? 'rojo' : 'verde'} icono={usando ? 'bolt' : undefined} />
               {recomendado ? <Insignia texto="Para tu vehículo" tono="verde" icono="check" /> : !compatible ? <Text style={s.textoDim}>No compatible</Text> : <Text style={s.textoDim}>ID {cargadorId}</Text>}
             </View>
-            {reservado && reservaDe && <Text style={s.textoDim}><Icono name="user" size={11} color={colors.textDim} />  Reservado por {reservaDe.reservado_por}</Text>}
+            {reservado && reservaDe && <Text style={s.textoDim}><Icono name="user" size={11} color={colors.textDim} />  {usando ? 'Cargando ahora' : 'Reservado'} · {reservaDe.reservado_por}</Text>}
           </Presionable>
         );
       })}
@@ -440,6 +449,12 @@ export function EstacionDetalle({
               <Text style={s.textoDim}>Termina: {fechaHora(fin)}</Text>
             </View>
             <Icono name="receipt" size={22} color={colors.primary} />
+          </View>
+          <View style={s.filaIcono}>
+            <Icono name="qrcode" size={13} color={colors.textDim} />
+            <Text style={[s.textoDim, { flex: 1 }]}>
+              Al llegar, escanea el QR del cargador desde Mis reservas. Si no lo haces dentro de los {MINUTOS_TOLERANCIA_LLEGADA} minutos siguientes a la hora elegida, la reserva se cancela sin reembolso.
+            </Text>
           </View>
           <Boton titulo={reservando ? 'Procesando...' : cargadorSeleccionado ? 'Reservar y pagar' : 'Elige un cargador arriba'} icono="calendar-check" cargando={reservando} disabled={!cargadorSeleccionado} onPress={confirmarReserva} bloque />
         </View>

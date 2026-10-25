@@ -42,7 +42,7 @@ export function Insignia({ texto, tono = 'gris', icono }: { texto: string; tono?
 export function tonoEstado(estado?: string): TonoInsignia {
   const valor = (estado || '').toLowerCase();
   if (['activa', 'activo', 'disponible', 'resuelto', 'validada', 'respondido', 'aprobada', 'realizada', 'entregado'].includes(valor)) return 'verde';
-  if (['reservada', 'pendiente', 'confirmado', 'enviado'].includes(valor)) return 'azul';
+  if (['reservada', 'pendiente', 'confirmado', 'enviado', 'en_curso', 'ocupada'].includes(valor)) return 'azul';
   if (['mantenimiento', 'abierto'].includes(valor)) return 'amarillo';
   if (['inactiva', 'inactivo', 'cancelada', 'cancelado', 'rechazada', 'fuera_servicio'].includes(valor)) return 'rojo';
   return 'gris';

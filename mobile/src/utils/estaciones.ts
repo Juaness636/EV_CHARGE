@@ -38,6 +38,7 @@ export function etiquetaEstado(estado?: string): string {
   if (estado === 'mantenimiento') return 'En mantenimiento';
   if (estado === 'inactiva' || estado === 'fuera_servicio') return 'Fuera de servicio';
   if (estado === 'reservada') return 'Reservada';
+  if (estado === 'ocupada') return 'En uso';
   if (estado === 'resuelto') return 'Resuelto';
   if (estado === 'abierto') return 'Abierto';
   return 'Disponible';

@@ -37,3 +37,8 @@ class ReservaCotizacion(BaseModel):
     tipo_cargador: str = ""
     potencia_kw: Optional[float] = None
     duracion_horas: float = Field(..., gt=0, le=24)
+
+
+class EscaneoQR(BaseModel):
+    # Texto leído del QR del cargador, o el código manual de 10 caracteres impreso debajo.
+    codigo: str = Field(..., min_length=1, max_length=300)

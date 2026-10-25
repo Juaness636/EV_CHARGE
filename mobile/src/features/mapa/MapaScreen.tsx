@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listarEstacionesMapa } from '../../api/mapa.api';
-import { obtenerEstadoEstacion } from '../../api/estado.api';
+import { obtenerEstadosLote } from '../../api/estado.api';
 import { listarVehiculos, type Vehiculo } from '../../api/vehiculos.api';
 import { nombreCompleto, rutaPanel, useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
@@ -31,7 +31,9 @@ import { Aparecer, LogoCargando } from '../../components/animacion';
 import { infoError } from '../../components/EstadoError';
 
 const CLAVE_CACHE = 'ev-charge:estaciones:nacional';
-type InfoEstado = { estado: string; cargadores_reservados?: string[] };
+type InfoEstado = { estado: string; cargadores_reservados?: string[]; cargadores_en_uso?: string[] };
+// Cada cuánto se refresca el estado de las estaciones a la vista (cargadores reservados o en uso).
+const SEGUNDOS_REFRESCO_ESTADO = 10;
 type Limites = { norte: number; sur: number; este: number; oeste: number };
 
 export function MapaScreen() {
@@ -119,7 +121,8 @@ export function MapaScreen() {
     return true;
   }), [estaciones, filtro, filtroDepartamento, vehiculoActivo]);
 
-  // Estado en vivo de las estaciones dentro del área visible (cada 30 s, como en el web).
+  // Estado en vivo de las estaciones dentro del área visible: una sola petición en lote cada 10 s,
+  // así quien mira el mapa ve en casi tiempo real cuando otro usuario empieza a cargar.
   const limitesRef = useRef<Limites | null>(null);
   const estadosRef = useRef(estados);
   estadosRef.current = estados;
@@ -145,20 +148,22 @@ export function MapaScreen() {
       const candidatas = soloNuevos ? enVista.filter((e) => !estadosRef.current[String(e.ID)]) : enVista;
       const objetivo = candidatas.slice(0, usuario ? 80 : 40);
       if (!objetivo.length) return;
-      const resultados = await Promise.all(objetivo.map(async (e) => {
-        const id = String(e.ID);
-        try {
-          const estado = await obtenerEstadoEstacion(id);
-          return [id, { estado: String(estado.estado || 'disponible'), cargadores_reservados: estado.cargadores_reservados }] as const;
-        } catch {
-          return [id, { estado: 'disponible' }] as const;
-        }
-      }));
+      let lote: Awaited<ReturnType<typeof obtenerEstadosLote>>;
+      try {
+        lote = await obtenerEstadosLote(objetivo.map((e) => String(e.ID)));
+      } catch {
+        return; // Sin conexión se conserva el último estado conocido.
+      }
+      const resultados = Object.entries(lote).map(([id, estado]) => [id, {
+        estado: String(estado.estado || 'disponible'),
+        cargadores_reservados: estado.cargadores_reservados,
+        cargadores_en_uso: estado.cargadores_en_uso,
+      }] as const);
       if (!cancelado) setEstados((actual) => ({ ...actual, ...Object.fromEntries(resultados) }));
     };
     cargarEstadosRef.current = cargar;
     void cargar();
-    const intervalo = setInterval(() => void cargar(), 30000);
+    const intervalo = setInterval(() => void cargar(), SEGUNDOS_REFRESCO_ESTADO * 1000);
     const quitar = escuchar('estaciones-actualizadas', () => void cargar());
     return () => {
       cancelado = true;
@@ -167,7 +172,8 @@ export function MapaScreen() {
     };
   }, [visibles, usuario]);
 
-  // Estado final del marcador: si todos los cargadores compatibles están reservados, se ve "reservada".
+  // Estado final del marcador: si todos los cargadores compatibles están ocupados se ve "reservada",
+  // o "ocupada" (en uso) si alguno ya está cargando un vehículo.
   const marcadores = useMemo<MarcadorEstacion[]>(() => visibles.map((st) => {
     const id = String(st.ID);
     const info = estados[id] || { estado: 'disponible' };
@@ -179,12 +185,13 @@ export function MapaScreen() {
       })
       .map((x) => x.id);
     const todosReservados = idsCompatibles.length > 0 && idsCompatibles.every((x) => info.cargadores_reservados?.includes(x));
+    const algunoEnUso = idsCompatibles.some((x) => info.cargadores_en_uso?.includes(x));
     return {
       id,
       lat: st.AddressInfo!.Latitude,
       lon: st.AddressInfo!.Longitude,
       titulo: nombreEstacion(st),
-      estado: info.estado === 'disponible' && todosReservados ? 'reservada' : info.estado,
+      estado: info.estado === 'disponible' && todosReservados ? (algunoEnUso ? 'ocupada' : 'reservada') : info.estado,
     };
   }), [visibles, estados, filtro, vehiculoActivo]);
 
@@ -415,7 +422,7 @@ function Leyenda() {
   return (
     <View style={s.tarjeta}>
       <Text style={s.subtitulo}>Estado de las estaciones</Text>
-      {[['disponible', 'Disponible'], ['reservada', 'Reservada'], ['mantenimiento', 'En mantenimiento'], ['inactiva', 'Fuera de servicio']].map(([clave, texto]) => (
+      {[['disponible', 'Disponible'], ['reservada', 'Reservada'], ['ocupada', 'En uso'], ['mantenimiento', 'En mantenimiento'], ['inactiva', 'Fuera de servicio']].map(([clave, texto]) => (
         <View key={clave} style={s.fila}>
           <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: coloresEstado[clave] }} />
           <Text style={s.texto}>{texto}</Text>

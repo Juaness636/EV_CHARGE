@@ -2,7 +2,10 @@
 // edición de reservas pendientes, cancelación con reembolso y eliminación.
 import React, { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { actualizarReserva, cancelarReserva, crearReservaConfirmada, eliminarReserva, misReservas, type Reserva, type ReservaCreate } from '../../../api/reservas.api';
+import {
+  actualizarReserva, cancelarReserva, crearReservaConfirmada, eliminarReserva, escanearQr, misReservas, terminarCarga,
+  MINUTOS_ANTICIPACION_QR, MINUTOS_TOLERANCIA_LLEGADA, type Reserva, type ReservaCreate,
+} from '../../../api/reservas.api';
 import { listarVehiculos } from '../../../api/vehiculos.api';
 import { listarMetodosPago, type MetodoPago } from '../../../api/metodosPago.api';
 import { obtenerEstadoEstacion, type EstadoEstacion } from '../../../api/estado.api';
@@ -18,8 +21,30 @@ import { Alerta, Boton, CampoSelect, Cargando, Dato, Insignia, ItemLista, KPI, S
 import type { PropsPanel } from '../tipos';
 import { AvisoVehiculo, totalReservasPagadas } from './PanelesResumen';
 import { EstadoError } from '../../../components/EstadoError';
+import { EscanerQR } from '../../../components/EscanerQR';
 
-const etiquetaReserva = (estado?: string) => (estado === 'activa' ? 'Aceptada' : estado === 'realizada' ? 'Realizada' : estado || 'pendiente');
+const etiquetaReserva = (r: Reserva) => (
+  r.estado === 'activa' ? 'Aceptada'
+    : r.estado === 'en_curso' ? 'Cargando'
+      : r.estado === 'realizada' ? 'Realizada'
+        : r.estado === 'cancelada' && r.motivo_cancelacion === 'no_llego' ? 'Cancelada (no llegó)'
+          : r.estado || 'pendiente'
+);
+
+// Franja para escanear el QR: desde 15 min antes del inicio hasta 30 min después.
+const ventanaQr = (r: Reserva) => {
+  const inicio = new Date(r.fecha_hora_inicio).getTime();
+  return { desde: new Date(inicio - MINUTOS_ANTICIPACION_QR * 60000), hasta: new Date(inicio + MINUTOS_TOLERANCIA_LLEGADA * 60000) };
+};
+// "demo-est-0001-2" se muestra como "#2"; los ids reales de cargador se dejan como están.
+const etiquetaCargador = (r: Reserva) => {
+  const id = r.cargador_id || '';
+  if (!id || id.endsWith('-general')) return 'Cualquiera de la estación';
+  const numero = id.startsWith(`${r.estacion_ocm_id}-`) ? id.slice(r.estacion_ocm_id.length + 1) : '';
+  return /^\d+$/.test(numero) ? `#${numero}` : id;
+};
+// Cada cuánto se recargan las reservas mientras el panel está abierto (para ver la cancelación automática).
+const SEGUNDOS_REFRESCO = 30;
 
 export function ReservasPanel({ version, irA }: PropsPanel) {
   const { datos, cargando, error, recargar, fallo } = useCarga(async () => {
@@ -39,6 +64,12 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
   const [pago, setPago] = useState<{ id: string; monto: number; reserva: ReservaCreate } | null>(null);
   const [metodos, setMetodos] = useState<MetodoPago[]>([]);
   const estaciones = useEstacionesMapa(mostrar);
+  const [escaneando, setEscaneando] = useState<Reserva | null>(null);
+
+  useEffect(() => {
+    const intervalo = setInterval(() => void recargar(), SEGUNDOS_REFRESCO * 1000);
+    return () => clearInterval(intervalo);
+  }, [recargar]);
 
   const vehiculoActivo = vehiculos.find((v) => v.activo);
   const estacion = estaciones.find((e) => String(e.ID) === estacionId);
@@ -133,7 +164,7 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
     try {
       await crearReservaConfirmada({ ...pago.reserva, transaccion_id });
       emitir('estaciones-actualizadas', { estacionId: pago.reserva.estacion_ocm_id, cargadorId: pago.reserva.cargador_id });
-      notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada correctamente.' });
+      notificar({ tipo: 'success', titulo: 'Reserva confirmada', mensaje: 'Pago aprobado y reserva aceptada. Al llegar, toca "Escanear QR" en esta reserva.' });
       setMostrar(false);
       limpiar();
       await recargar();
@@ -151,6 +182,28 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
       await recargar();
     } catch (e) {
       notificar({ tipo: 'error', titulo: 'Reserva', mensaje: mensajeError(e) });
+    }
+  };
+
+  const validarQr = async (codigo: string) => {
+    if (!escaneando) return;
+    // Si el código no sirve, la excepción la muestra el lector y el usuario puede reintentar.
+    const respuesta = await escanearQr(escaneando.id, codigo);
+    setEscaneando(null);
+    notificar({ tipo: 'success', titulo: 'Cargador desbloqueado', mensaje: respuesta.mensaje });
+    emitir('estaciones-actualizadas', { estacionId: escaneando.estacion_ocm_id, cargadorId: escaneando.cargador_id });
+    await recargar();
+  };
+
+  const terminar = async (r: Reserva) => {
+    if (!(await confirmar({ titulo: 'Terminar carga', mensaje: '¿Ya desconectaste tu vehículo? El cargador quedará libre para otros conductores.', confirmarTexto: 'Sí, terminar' }))) return;
+    try {
+      const respuesta = await terminarCarga(r.id);
+      notificar({ tipo: 'success', titulo: 'Carga terminada', mensaje: respuesta.mensaje });
+      emitir('estaciones-actualizadas', { estacionId: r.estacion_ocm_id, cargadorId: r.cargador_id });
+      await recargar();
+    } catch (e) {
+      notificar({ tipo: 'error', titulo: 'Terminar carga', mensaje: mensajeError(e) });
     }
   };
 
@@ -174,7 +227,7 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
       </Tarjeta>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <KPI etiqueta="Reservas registradas" valor={reservas.length} icono="list" />
-        <KPI etiqueta="Reservas activas" valor={reservas.filter((r) => r.estado === 'activa').length} icono="calendar-check" />
+        <KPI etiqueta="Reservas activas" valor={reservas.filter((r) => r.estado === 'activa' || r.estado === 'en_curso').length} icono="calendar-check" />
         <KPI etiqueta="Total reservado" valor={sinVehiculo ? '—' : pesos(totalReservasPagadas(reservas))} icono="wallet" />
       </View>
       {sinVehiculo && <AvisoVehiculo texto="Registra un vehículo para reservar cargadores compatibles y ver los valores estimados." onRegistrar={() => irA('Vehículos')} />}
@@ -233,17 +286,29 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
         <ItemLista
           key={r.id}
           titulo={r.estacion_nombre || r.estacion_ocm_id}
-          insignia={<Insignia texto={etiquetaReserva(r.estado)} tono={tonoEstado(r.estado)} />}
-          acciones={(r.estado === 'pendiente' || r.estado === 'activa' || r.estado === 'realizada' || r.estado === 'cancelada') ? <>
+          insignia={<Insignia texto={etiquetaReserva(r)} tono={tonoEstado(r.estado)} />}
+          acciones={(r.estado === 'pendiente' || r.estado === 'activa' || r.estado === 'en_curso' || r.estado === 'realizada' || r.estado === 'cancelada') ? <>
+            {r.estado === 'activa' && <Boton titulo="Escanear QR" icono="qrcode" pequeno onPress={() => setEscaneando(r)} />}
+            {r.estado === 'en_curso' && <Boton titulo="Terminar carga" icono="plug-circle-xmark" pequeno onPress={() => void terminar(r)} />}
             {r.estado === 'pendiente' && <Boton titulo="Editar" pequeno variante="outline" onPress={() => editar(r)} />}
             {(r.estado === 'pendiente' || r.estado === 'activa') && <Boton titulo="Cancelar" pequeno variante="danger" onPress={() => void cancelar(r)} />}
             {(r.estado === 'realizada' || r.estado === 'cancelada') && <Boton titulo="Eliminar" pequeno variante="danger" onPress={() => void eliminar(r)} />}
           </> : undefined}
         >
-          <Dato etiqueta="Cargador" valor={r.cargador_id || 'General'} />
+          <Dato etiqueta="Cargador" valor={etiquetaCargador(r)} />
           <Dato etiqueta="Inicio" valor={fechaHora(r.fecha_hora_inicio)} />
           <Dato etiqueta="Fin" valor={fechaHora(r.fecha_hora_fin)} />
           <Dato etiqueta="Valor" valor={sinVehiculo ? 'Registra un vehículo para estimar el costo' : pesos(r.costo_pagado)} />
+          {r.estado === 'activa' && (
+            <Alerta
+              tipo="info"
+              texto={`Al llegar, toca "Escanear QR" y lee el código pegado en tu cargador. Puedes hacerlo entre ${fechaHora(ventanaQr(r).desde)} y ${fechaHora(ventanaQr(r).hasta)}; si no, la reserva se cancela sola, sin reembolso, y el cargador queda libre.`}
+            />
+          )}
+          {r.estado === 'en_curso' && <Alerta tipo="success" texto={`Cargando desde ${fechaHora(r.iniciada_en)}; cuando desconectes el vehículo, toca "Terminar carga".`} />}
+          {r.estado === 'cancelada' && r.motivo_cancelacion === 'no_llego' && (
+            <Alerta tipo="warning" texto={`Se canceló porque no escaneaste el QR dentro de los ${MINUTOS_TOLERANCIA_LLEGADA} minutos siguientes a la hora reservada.`} />
+          )}
         </ItemLista>
       ))}
 
@@ -257,6 +322,14 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
         metodosGuardados={metodos}
         onCerrar={() => setPago(null)}
         onExito={alPagar}
+      />
+
+      <EscanerQR
+        visible={!!escaneando}
+        titulo="Escanear QR del cargador"
+        detalle={escaneando ? `${escaneando.estacion_nombre || 'Tu estación'} · ${fechaHora(escaneando.fecha_hora_inicio)}` : undefined}
+        onCerrar={() => setEscaneando(null)}
+        onCodigo={validarQr}
       />
     </>
   );

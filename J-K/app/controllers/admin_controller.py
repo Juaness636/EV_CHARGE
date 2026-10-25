@@ -20,7 +20,8 @@ from app.models.utils import ahora_utc
 from app.controllers.notificaciones_controller import crear_notificacion
 from app.controllers.empresa_controller import marca_empresa
 from app.controllers.empresa_fotos_controller import fotos_por_estacion
-from app.utils.constantes import EMPRESA_APROBADA, EMPRESA_PENDIENTE, ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
+from app.services.carga_reserva import registrar_carga_de_reserva
+from app.utils.constantes import EMPRESA_APROBADA, EMPRESA_PENDIENTE, ESTADOS_RESERVA_OCUPAN, ROL_ADMIN, ROL_EMPRESA, ROL_USUARIO
 from app.utils.estaciones_empresa import empresa_por_texto, lista_palabras
 import os
 import requests
@@ -672,13 +673,16 @@ def actualizar_reserva(rid: str, data: AdminReservaUpdate, db: Session):
         raise HTTPException(status_code=400, detail="Estado de reserva no válido.")
     if reserva.estado == "realizada":
         return reserva
+    # Una reserva que se canceló sola o que ya está cargando no se vuelve a "aceptar".
+    if estado == "activa" and reserva.estado in {"cancelada", "en_curso"}:
+        raise HTTPException(status_code=400, detail="Esta reserva ya fue cancelada o está en curso; no se puede volver a aceptar.")
 
     if estado == "activa":
         solapada = db.query(Reservas).filter(
             Reservas.id != rid,
             Reservas.estacion_ocm_id == reserva.estacion_ocm_id,
             Reservas.cargador_id == (reserva.cargador_id or f"{reserva.estacion_ocm_id}-general"),
-            Reservas.estado == "activa",
+            Reservas.estado.in_(ESTADOS_RESERVA_OCUPAN),
             Reservas.fecha_hora_inicio < reserva.fecha_hora_fin,
             Reservas.fecha_hora_fin > reserva.fecha_hora_inicio,
         ).first()
@@ -687,32 +691,12 @@ def actualizar_reserva(rid: str, data: AdminReservaUpdate, db: Session):
 
     reserva.estado = estado
     if estado == "realizada":
-        referencia = f"Carga generada desde la reserva {reserva.id}"
-        carga_existente = db.query(Cargas).filter(Cargas.notas == referencia).first()
-        if not carga_existente:
-            duracion_horas = max(
-                0,
-                (reserva.fecha_hora_fin - reserva.fecha_hora_inicio).total_seconds() / 3600,
-            )
-            kwh_simulados = round(duracion_horas * 7.4, 2)
-            db.add(Cargas(
-                usuario_id=reserva.usuario_id,
-                estacion_ocm_id=reserva.estacion_ocm_id,
-                cargador_id=reserva.cargador_id,
-                estacion_nombre=reserva.estacion_nombre or "",
-                kwh_cargados=kwh_simulados,
-                # Conserva el valor que el usuario aprobó al pagar su reserva.
-                costo_estimado=reserva.costo_pagado or max(1, round(duracion_horas)) * 5000,
-                notas=referencia,
-                estado="validada",
-            ))
-            crear_notificacion(
-                db,
-                reserva.usuario_id,
-                "Carga validada",
-                f"La carga realizada en {reserva.estacion_nombre or reserva.estacion_ocm_id} ya fue validada por el administrador.",
-                "carga",
-            )
+        registrar_carga_de_reserva(
+            db,
+            reserva,
+            (reserva.fecha_hora_fin - reserva.fecha_hora_inicio).total_seconds() / 3600,
+            f"La carga realizada en {reserva.estacion_nombre or reserva.estacion_ocm_id} ya fue validada por el administrador.",
+        )
     titulo = "Reserva aceptada" if estado == "activa" else "Reserva rechazada" if estado == "rechazada" else "Reserva realizada"
     mensaje = (
         f"Tu reserva de {reserva.estacion_nombre or reserva.estacion_ocm_id} fue aceptada por el administrador."

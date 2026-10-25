@@ -10,6 +10,7 @@ import {
 } from '../../../api/admin.api';
 import type { FotoEstacion } from '../../../api/empresa.api';
 import { EditorFotos } from '../../../components/EditorFotos';
+import { ModalQrCargadores } from '../../../components/ModalQrCargadores';
 import { useTheme } from '../../../theme/ThemeContext';
 import { Radius } from '../../../theme/spacing';
 import { etiquetaEstado, TIPOS_CONECTOR } from '../../../utils/estaciones';
@@ -37,6 +38,7 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
   const [filtro, setFiltro] = useState<'todos' | EstadoEstacion>('todos');
   const [guardando, setGuardando] = useState(false);
   const [fotosDe, setFotosDe] = useState<{ estacion: FilaEstacion; fotos: FotoEstacion[] } | null>(null);
+  const [qrDe, setQrDe] = useState<{ id: string; nombre: string } | null>(null);
 
   const filtradas = estaciones.filter((e) => {
     const texto = `${e.id} ${e.nombre} ${e.operador}`.toLowerCase();
@@ -178,6 +180,7 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
             acciones={<>
               <Boton titulo="Editar" pequeno variante="outline" onPress={() => editar(e)} />
               <Boton titulo={`Fotos (${e.fotos?.length ?? 0})`} icono="camera" pequeno variante="outline" onPress={() => setFotosDe({ estacion: e, fotos: e.fotos || [] })} />
+              <Boton titulo="QR" icono="qrcode" pequeno variante="outline" onPress={() => setQrDe({ id: String(e.id), nombre: e.nombre })} />
               <Boton titulo={e.estado === 'activa' ? 'Fuera de servicio' : 'Activar'} pequeno variante={e.estado === 'activa' ? 'outline' : 'soft'} onPress={() => void alternarEstado(e)} />
               <Boton titulo="Eliminar" pequeno variante="danger" onPress={() => void eliminar(e)} />
             </>}
@@ -201,6 +204,7 @@ export function EstacionesAdmin({ version }: PropsAdmin) {
           />
         ) : null}
       </AppModal>
+      <ModalQrCargadores estacion={qrDe} como="admin" onCerrar={() => setQrDe(null)} />
     </>
   );
 }

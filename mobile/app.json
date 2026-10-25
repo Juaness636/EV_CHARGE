@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "co.sena.evcharge",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "EV Charge usa tu ubicación para mostrar estaciones cercanas y calcular rutas."
+        "NSLocationWhenInUseUsageDescription": "EV Charge usa tu ubicación para mostrar estaciones cercanas y calcular rutas.",
+        "NSCameraUsageDescription": "EV Charge usa la cámara para leer el QR del cargador que reservaste."
       }
     },
     "android": {
@@ -44,6 +45,13 @@
         "expo-image-picker",
         {
           "photosPermission": "EV Charge usa tus fotos para que tu empresa publique imágenes de sus estaciones."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "EV Charge usa la cámara para leer el QR del cargador que reservaste.",
+          "recordAudioAndroid": false
         }
       ],
       [

@@ -43,6 +43,8 @@ from app.routes.admin_compras_routes import router as admin_compras_router
 from app.routes import asistente_routes
 from app.routes.empresa_routes import router as empresa_router
 from app.routes.media_routes import router as media_router
+from app.routes.qr_routes import router as qr_router
+from app.controllers.carga_qr_controller import iniciar_revisor_vencimientos
 from app.controllers.empresa_fotos_controller import migrar_fotos_de_disco
 
 # ==========================================
@@ -63,8 +65,12 @@ with engine.begin() as connection:
     connection.execute(text("UPDATE cargas SET estado = 'pendiente' WHERE estado IS NULL"))
     connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
     connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS costo_pagado FLOAT NOT NULL DEFAULT 0"))
-    # Las reservas canceladas no deben conservarse como gasto acumulado.
-    connection.execute(text("UPDATE reservas SET costo_pagado = 0 WHERE estado = 'cancelada' AND costo_pagado <> 0"))
+    # Carga con QR: hora en que se escaneó el cargador y motivo de las cancelaciones automáticas.
+    connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS iniciada_en TIMESTAMP"))
+    connection.execute(text("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS motivo_cancelacion VARCHAR"))
+    # Las reservas canceladas no deben conservarse como gasto acumulado,
+    # salvo las que se vencieron porque el usuario no llegó (no tienen reembolso).
+    connection.execute(text("UPDATE reservas SET costo_pagado = 0 WHERE estado = 'cancelada' AND costo_pagado <> 0 AND motivo_cancelacion IS NULL"))
     connection.execute(text("ALTER TABLE cargas ADD COLUMN IF NOT EXISTS cargador_id VARCHAR"))
     connection.execute(text("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS admin_leida BOOLEAN NOT NULL DEFAULT FALSE"))
     connection.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS compartir_nombre_reserva BOOLEAN NOT NULL DEFAULT FALSE"))
@@ -198,6 +204,15 @@ app.include_router(empresa_router)
 
 # Fotos de estaciones guardadas en la base de datos (ver empresa_fotos_controller).
 app.include_router(media_router)
+
+# QR de cargadores (admin y empresa) y la hoja imprimible.
+app.include_router(qr_router)
+
+
+@app.on_event("startup")
+def arrancar_revisor_reservas():
+    # Cancela las reservas sin llegada (30 min) y cierra las cargas que terminaron su horario.
+    iniciar_revisor_vencimientos()
 
 # ==========================================
 # RUTA RAÍZ

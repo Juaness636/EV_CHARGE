@@ -14,7 +14,7 @@ from app.schemas.reservas_schemas import ReservaCreate, ReservaConfirmadaCreate,
 from app.controllers.notificaciones_controller import crear_notificacion
 from app.controllers.empresa_controller import notificar_empresa
 from app.controllers.empresa_estaciones_controller import cargador_por_referencia
-from app.utils.constantes import CARGADOR_ESTADO_DISPONIBLE, EMPRESA_APROBADA
+from app.utils.constantes import CARGADOR_ESTADO_DISPONIBLE, EMPRESA_APROBADA, ESTADO_RESERVA_EN_CURSO, ESTADOS_RESERVA_OCUPAN
 
 
 def _aware(dt):
@@ -86,7 +86,7 @@ def validar_reserva(db: Session, usuario_id: str, data: ReservaCreate) -> str:
     solapada = db.query(Reservas).filter(
         Reservas.estacion_ocm_id == data.estacion_ocm_id,
         Reservas.cargador_id == cargador_id,
-        Reservas.estado == "activa",
+        Reservas.estado.in_(ESTADOS_RESERVA_OCUPAN),
         Reservas.fecha_hora_inicio < data.fecha_hora_fin,
         Reservas.fecha_hora_fin > data.fecha_hora_inicio,
         Reservas.usuario_id != usuario_id,
@@ -218,7 +218,7 @@ def actualizar_reserva(db: Session, usuario_id: str, rid: str, data: ReservaUpda
             Reservas.id != rid,
             Reservas.estacion_ocm_id == estacion_id,
             Reservas.cargador_id == cargador_id,
-            Reservas.estado == "activa",
+            Reservas.estado.in_(ESTADOS_RESERVA_OCUPAN),
             Reservas.fecha_hora_inicio < fin,
             Reservas.fecha_hora_fin > inicio,
             Reservas.usuario_id != usuario_id,
@@ -248,6 +248,8 @@ def cancelar_reserva(db: Session, usuario_id: str, rid: str):
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
+    if reserva.estado == ESTADO_RESERVA_EN_CURSO:
+        raise HTTPException(status_code=400, detail="Tu carga ya empezó. Usa \"Terminar carga\" cuando desconectes el vehículo.")
     if reserva.estado in {"realizada", "cancelada", "rechazada"}:
         raise HTTPException(status_code=400, detail="Esta reserva ya no se puede cancelar")
     monto_reembolsado = float(reserva.costo_pagado or 0)

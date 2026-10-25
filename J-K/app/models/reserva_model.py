@@ -18,7 +18,11 @@ class Reservas(Base):
     fecha_hora_fin = Column(DateTime, nullable=False)
     # Importe confirmado en el pago de esta reserva. Se reutiliza al crear la carga.
     costo_pagado = Column(Float, nullable=False, default=0)
-    estado = Column(String, default="pendiente")  # pendiente | activa | rechazada | realizada | cancelada
+    estado = Column(String, default="pendiente")  # pendiente | activa | en_curso | rechazada | realizada | cancelada
+    # Momento en que el usuario escaneó el QR del cargador y empezó a cargar.
+    iniciada_en = Column(DateTime, nullable=True)
+    # NULL = la canceló el usuario o la estación; "no_llego" = no escaneó el QR a tiempo.
+    motivo_cancelacion = Column(String, nullable=True)
     created_at = Column(DateTime, default=ahora_utc)
 
     usuario = relationship("usuarios", back_populates="reservas_rel")

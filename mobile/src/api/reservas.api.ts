@@ -20,8 +20,23 @@ export interface ReservaUpdate extends Partial<ReservaCreate> {}
 export interface Reserva extends ReservaCreate {
   id: string;
   costo_pagado?: number;
+  // pendiente | activa | en_curso (QR escaneado, cargando) | realizada | cancelada | rechazada
   estado?: string;
   reservante_nombre?: string;
+  iniciada_en?: string | null;
+  // "no_llego" cuando se canceló sola por no escanear el QR a tiempo.
+  motivo_cancelacion?: string | null;
+}
+
+// Minutos que tiene el usuario para escanear el QR antes y después de la hora reservada
+// (iguales a MINUTOS_ANTICIPACION_QR y MINUTOS_TOLERANCIA_LLEGADA del backend).
+export const MINUTOS_ANTICIPACION_QR = 15;
+export const MINUTOS_TOLERANCIA_LLEGADA = 30;
+
+export interface RespuestaCarga {
+  ok: boolean;
+  mensaje: string;
+  reserva: Reserva;
 }
 
 export async function misReservas(): Promise<Reserva[]> {
@@ -51,4 +66,15 @@ export async function cancelarReserva(id: string): Promise<{ ok: boolean; reembo
 
 export async function eliminarReserva(id: string): Promise<void> {
   await api.delete(`/reservas/${id}`);
+}
+
+// `codigo` es el texto que leyó la cámara del QR o el código manual de 10 caracteres.
+export async function escanearQr(id: string, codigo: string): Promise<RespuestaCarga> {
+  const { data } = await api.post<RespuestaCarga>(`/reservas/${id}/escanear`, { codigo });
+  return data;
+}
+
+export async function terminarCarga(id: string): Promise<RespuestaCarga> {
+  const { data } = await api.post<RespuestaCarga>(`/reservas/${id}/terminar`);
+  return data;
 }

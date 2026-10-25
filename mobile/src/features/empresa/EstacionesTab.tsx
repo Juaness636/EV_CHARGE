@@ -32,6 +32,7 @@ import {
 } from './componentes';
 import { EstacionesApi } from './EstacionesApi';
 import { FotosEstacion } from './FotosEstacion';
+import { ModalQrCargadores } from '../../components/ModalQrCargadores';
 
 type Conector = (typeof TIPOS_CONECTOR)[number];
 
@@ -70,6 +71,7 @@ export const EstacionesTab: React.FC = () => {
   const [creando, setCreando] = useState(false);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
+  const [qrDe, setQrDe] = useState<{ id: string; nombre: string } | null>(null);
 
   const cargar = async () => {
     try {
@@ -180,6 +182,7 @@ export const EstacionesTab: React.FC = () => {
 
             <View style={estilos.fila}>
               <Boton texto={expandida ? 'Ocultar' : 'Gestionar'} onPress={() => setAbierta(expandida ? null : estacion.id)} />
+              <Boton texto="QR de cargadores" onPress={() => setQrDe({ id: estacion.id, nombre: estacion.nombre })} />
             </View>
 
             {expandida ? (
@@ -245,6 +248,7 @@ export const EstacionesTab: React.FC = () => {
       })}
 
       <EstacionesApi />
+      <ModalQrCargadores estacion={qrDe} como="empresa" onCerrar={() => setQrDe(null)} />
 
       <MotivoModal
         visible={pendiente !== null}
