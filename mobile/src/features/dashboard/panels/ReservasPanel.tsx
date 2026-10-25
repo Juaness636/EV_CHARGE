@@ -13,7 +13,7 @@ import { cotizarReserva } from '../../../api/tarifas.api';
 import { mensajeError } from '../../../api/httpClient';
 import { emitir } from '../../../utils/eventos';
 import { conectorCoincide, etiquetaEstado, nombreEstacion } from '../../../utils/estaciones';
-import { fechaHora, pesos, proximaHora, sumarHoras } from '../../../utils/formato';
+import { fechaHora, enUnosMinutos, pesos, proximaHora, sumarHoras } from '../../../utils/formato';
 import { useCarga, useEstacionesMapa } from '../../../utils/useCarga';
 import { ModalPago } from '../../../components/ModalPago';
 import { confirmar, notificar } from '../../../components/Notificaciones';
@@ -266,7 +266,7 @@ export function ReservasPanel({ version, irA }: PropsPanel) {
           <SelectorDuracion valor={duracion} onChange={setDuracion} />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
             <View style={{ flex: 1 }}><SelectorFechaHora valor={inicio} onChange={setInicio} /></View>
-            <Boton titulo="Ahora" variante="outline" pequeno onPress={() => setInicio(proximaHora())} style={{ marginBottom: 12 }} />
+            <Boton titulo="Ahora" variante="outline" pequeno onPress={() => setInicio(enUnosMinutos())} style={{ marginBottom: 12 }} />
           </View>
           <Dato etiqueta="Fin" valor={fechaHora(sumarHoras(inicio, duracion))} />
           {noDisponible && <Alerta tipo="warning" texto={`Esta estación está ${estadoEstacion?.estado === 'mantenimiento' ? 'en mantenimiento' : 'fuera de servicio'} y no admite reservas.`} />}

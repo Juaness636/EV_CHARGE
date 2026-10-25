@@ -19,7 +19,7 @@ import { Radius, Spacing } from '../../theme/spacing';
 import { contieneLenguajeOfensivo, mensajeContenidoOfensivo } from '../../utils/contentFilter';
 import { emitir, escuchar } from '../../utils/eventos';
 import { conectorCoincide, etiquetaEstado } from '../../utils/estaciones';
-import { fechaCorta, fechaHora, pesos, proximaHora, sumarHoras } from '../../utils/formato';
+import { fechaCorta, fechaHora, enUnosMinutos, pesos, proximaHora, sumarHoras } from '../../utils/formato';
 import { ModalPago } from '../../components/ModalPago';
 import { GaleriaFotos } from './GaleriaFotos';
 import { notificar } from '../../components/Notificaciones';
@@ -439,7 +439,7 @@ export function EstacionDetalle({
           <SelectorDuracion valor={duracion} onChange={setDuracion} />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
             <View style={{ flex: 1 }}><SelectorFechaHora valor={inicio} onChange={setInicio} /></View>
-            <Boton titulo="Ahora" variante="outline" pequeno onPress={() => setInicio(proximaHora())} style={{ marginBottom: 12 }} />
+            <Boton titulo="Ahora" variante="outline" pequeno onPress={() => setInicio(enUnosMinutos())} style={{ marginBottom: 12 }} />
           </View>
           <Paso numero={3} titulo="Confirma y paga" />
           <View style={[s.precio, { borderColor: colors.primaryBorder }]}>

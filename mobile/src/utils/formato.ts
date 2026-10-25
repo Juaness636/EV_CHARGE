@@ -58,6 +58,15 @@ export function proximaHora(): Date {
   return fecha;
 }
 
+// Botón "Ahora": en 5 a 10 minutos (redondeado a 5; deja tiempo para pagar), así la reserva empieza ya y el
+// QR del cargador se puede escanear de inmediato (desde 15 min antes del inicio).
+export function enUnosMinutos(): Date {
+  const fecha = new Date(Date.now() + 5 * 60000);
+  fecha.setSeconds(0, 0);
+  fecha.setMinutes(Math.ceil(fecha.getMinutes() / 5) * 5);
+  return fecha;
+}
+
 export function sumarHoras(fecha: Date, horas: number): Date {
   return new Date(fecha.getTime() + horas * 3600000);
 }
