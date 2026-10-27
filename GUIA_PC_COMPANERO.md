@@ -1,6 +1,6 @@
 # EV Charge: cómo correrlo en otro PC (Windows)
 
-Esta rama (`feria-dia-2`) tiene el código exactamente como corre en el PC de Jhon.
+Esta rama (`Model-v.4` del repositorio Juaness636/EV_CHARGE) tiene el código exactamente como corre en el PC de Jhon.
 Las contraseñas **no** están en GitHub: Jhon te pasa por USB, Drive o WhatsApp:
 
 1. El archivo `.env` del backend (va en `J-K\.env`).
@@ -24,11 +24,11 @@ Todos los comandos son para **PowerShell**.
 cd C:\
 mkdir EVCharge
 cd C:\EVCharge
-git clone -b feria-dia-2 https://github.com/jhon71777/Avanze-react-native.git EVCharge
+git clone -b Model-v.4 https://github.com/Juaness636/EV_CHARGE.git EVCharge
 cd C:\EVCharge\EVCharge
 ```
 
-(Si el repositorio es privado, Jhon te tiene que agregar como colaborador en GitHub, o te pasa la carpeta comprimida.)
+(Si el repositorio es privado, el dueño te tiene que agregar como colaborador en GitHub.)
 
 ## 2. Crear la base de datos y cargar los datos de Jhon
 
