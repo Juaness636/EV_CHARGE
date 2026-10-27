@@ -10,11 +10,13 @@ Uso (desde la carpeta J-K, con el entorno virtual activo):
 
     python -m app.scripts.seed_demo            # crea los datos demo (o los recrea si ya estaban)
     python -m app.scripts.seed_demo --borrar   # quita solo los datos demo
+    python -m app.scripts.seed_demo --actualizar-cuentas  # cambia correos y clave sin borrar nada
 
 Cómo se reconocen los datos demo:
-- Todo registro creado aquí tiene un id que empieza por "demo-".
-- Los correos de los usuarios demo terminan en @demo.evcharge.co.
-  Todos usan la contraseña Demo2026* (por ejemplo terpel@demo.evcharge.co para el panel de empresa).
+- Todo registro creado aquí tiene un id que empieza por "demo-" (el id no se muestra en la app).
+- Los nombres y correos se ven reales (sin la palabra "demo") para presentar la app en la feria:
+  las empresas usan un correo de su dominio (por ejemplo voltex@terpel.com para el panel de empresa)
+  y los conductores correos de gmail, hotmail u outlook. Todos usan la contraseña Avanze2026*.
 
 El script nunca modifica ni borra registros que no sean demo: correrlo dos veces deja la base
 igual que correrlo una vez (borra lo demo anterior y lo vuelve a crear con fechas relativas a hoy).
@@ -26,6 +28,7 @@ local tenga un esquema un poco más viejo o más nuevo.
 """
 
 import argparse
+import hashlib
 import random
 import sys
 from datetime import datetime, timedelta, timezone
@@ -41,8 +44,8 @@ except ImportError:  # ramas donde el catálogo aún vive en constantes
     from app.utils.constantes import PRECIOS_PRODUCTOS
 
 PREFIJO = "demo-"
-DOMINIO = "demo.evcharge.co"
-CLAVE_DEMO = "Demo2026*"
+CLAVE_DEMO = "Avanze2026*"
+DOMINIOS_CONDUCTORES = ["gmail.com", "hotmail.com", "outlook.com", "gmail.com", "yahoo.com"]
 SEMILLA = 2026
 SEMANAS = 8
 
@@ -101,8 +104,9 @@ VEHICULOS = [
 EMPRESAS = [
     {
         "clave": "terpel",
+        "correo": "voltex@terpel.com",
         "nombre": "Terpel Voltex",
-        "razon_social": "Terpel Voltex (demo)",
+        "razon_social": "Organización Terpel S.A.",
         "nit": "900.555.101-1",
         "telefono": "601 555 0101",
         "direccion": "Cra. 7 #75-51, Bogotá",
@@ -117,8 +121,9 @@ EMPRESAS = [
     },
     {
         "clave": "celsia",
+        "correo": "movilidad@celsia.com",
         "nombre": "Celsia",
-        "razon_social": "Celsia Movilidad (demo)",
+        "razon_social": "Celsia Colombia S.A. E.S.P.",
         "nit": "900.555.102-2",
         "telefono": "602 555 0102",
         "direccion": "Calle 15 #29B-30, Yumbo",
@@ -132,8 +137,9 @@ EMPRESAS = [
     },
     {
         "clave": "epm",
+        "correo": "ecoestaciones@epm.com.co",
         "nombre": "EPM",
-        "razon_social": "EPM Movilidad Eléctrica (demo)",
+        "razon_social": "Empresas Públicas de Medellín E.S.P.",
         "nit": "900.555.103-3",
         "telefono": "604 555 0103",
         "direccion": "Cra. 58 #42-125, Medellín",
@@ -233,6 +239,22 @@ def _id(tipo: str, n: int) -> str:
     return f"{PREFIJO}{tipo}-{n:04d}"
 
 
+def correo_conductor(nombre: str, apellido: str, n: int, usados: set[str]) -> str:
+    """Correo con aspecto real (nombre.apellido@gmail.com); agrega un número solo si ya está usado."""
+    base = f"{nombre}.{apellido}".lower().replace(" ", "").translate(str.maketrans("áéíóúñ", "aeioun"))
+    dominio = DOMINIOS_CONDUCTORES[n % len(DOMINIOS_CONDUCTORES)]
+    correo = f"{base}@{dominio}"
+    if correo in usados:
+        correo = f"{base}{n + 1}@{dominio}"
+    usados.add(correo)
+    return correo
+
+
+def transaccion(etiqueta: str) -> str:
+    """Id de transacción con el mismo formato que genera la pasarela (TX-EV- + 10 caracteres)."""
+    return "TX-EV-" + hashlib.md5(etiqueta.encode()).hexdigest()[:10].upper()
+
+
 class Sembrador:
     def __init__(self, conn):
         self.conn = conn
@@ -286,14 +308,14 @@ class Sembrador:
             usuario_id = self.nuevo_id("usr")
             self.agregar("usuarios", {
                 "id": usuario_id, "nombre": datos["nombre"], "apellido": "",
-                "email": f"{datos['clave']}@{DOMINIO}", "password_hash": clave, "rol": "empresa",
+                "email": datos["correo"], "password_hash": clave, "rol": "empresa",
                 "compartir_nombre_reserva": False, "created_at": creada,
             })
             empresa_id = self.nuevo_id("emp")
             self.agregar("empresas", {
                 "id": empresa_id, "usuario_id": usuario_id, "nombre_comercial": datos["nombre"],
                 "razon_social": datos["razon_social"], "nit": datos["nit"], "telefono": datos["telefono"],
-                "email_contacto": f"{datos['clave']}@{DOMINIO}", "direccion_sede": datos["direccion"],
+                "email_contacto": datos["correo"], "direccion_sede": datos["direccion"],
                 "descripcion": datos["descripcion"], "color_hex": datos["color"], "logo_url": None,
                 "palabras_clave": datos["palabras"], "estado": "aprobada", "creada_por_admin": True,
                 "created_at": creada,
@@ -336,6 +358,7 @@ class Sembrador:
 
         # Usuarios: unos pocos de antes y luego más registros en las semanas recientes.
         usuarios = []
+        usados = correos_reales(self.conn)
         for n in range(40):
             if n < 8:
                 creado = self.inicio - timedelta(days=rng.randint(3, 40), hours=rng.randint(0, 12))
@@ -343,15 +366,14 @@ class Sembrador:
                 progreso = rng.random() ** 0.6  # sesgo hacia fechas recientes
                 creado = self.momento(self.inicio + timedelta(days=progreso * SEMANAS * 7))
             nombre, apellido = rng.choice(NOMBRES), rng.choice(APELLIDOS)
-            correo_base = f"{nombre}.{apellido}".lower().replace(" ", "")
-            correo_base = correo_base.translate(str.maketrans("áéíóúñ", "aeioun"))
+            correo = correo_conductor(nombre, apellido, n, usados)
             uid = self.nuevo_id("usr")
             self.agregar("usuarios", {
-                "id": uid, "nombre": nombre, "apellido": apellido, "email": f"{correo_base}{n + 1}@{DOMINIO}",
+                "id": uid, "nombre": nombre, "apellido": apellido, "email": correo,
                 "password_hash": clave, "rol": "usuario", "compartir_nombre_reserva": rng.random() < 0.4,
                 "created_at": creado,
             })
-            u = {"id": uid, "nombre": f"{nombre} {apellido}", "email": f"{correo_base}{n + 1}@{DOMINIO}", "creado": creado, "metodo": None}
+            u = {"id": uid, "nombre": f"{nombre} {apellido}", "email": correo, "creado": creado, "metodo": None}
             usuarios.append(u)
             for _ in range(1 if rng.random() < 0.85 else 2):
                 marca, modelo, anio, autonomia, conector = rng.choice(VEHICULOS)
@@ -483,7 +505,7 @@ class Sembrador:
             metodo = u["metodo"] or (None, rng.choice(["Tarjeta crédito", "Nequi", "PSE"]))
             self.agregar("pagos_reserva", {
                 "id": self.nuevo_id("pag"), "usuario_id": u["id"],
-                "transaccion_id": f"TX-EV-DEMO{self.contadores['res']:05d}", "monto": float(costo),
+                "transaccion_id": transaccion(f"res{self.contadores['res']:05d}"), "monto": float(costo),
                 "metodo": metodo[1], "metodo_id": metodo[0], "estado": "aprobado", "reserva_id": rid,
                 "created_at": creada,
             })
@@ -541,7 +563,7 @@ class Sembrador:
         monto = float(precio * cantidad)
         self.agregar("compras", {
             "id": cid, "usuario_id": u["id"], "producto": producto, "cantidad": cantidad, "monto": monto,
-            "metodo": metodo[1], "metodo_id": metodo[0], "transaccion_id": f"TX-EV-DEMOC{self.contadores['cmp']:04d}",
+            "metodo": metodo[1], "metodo_id": metodo[0], "transaccion_id": transaccion(f"cmp{self.contadores['cmp']:04d}"),
             "estado": "aprobada", "estado_pedido": estado_pedido, "contacto_nombre": u["nombre"],
             "contacto_telefono": f"3{rng.randint(0, 2)}{rng.randint(0, 9)} {rng.randint(100, 999)} {rng.randint(1000, 9999)}",
             "direccion_envio": direccion, "ciudad": ciudad,
@@ -609,6 +631,60 @@ class Sembrador:
                                self.hoy - timedelta(days=1), {"antes": "activa", "despues": "mantenimiento"})
 
 
+def correos_reales(conn) -> set[str]:
+    """Correos de cuentas que no son demo, para no chocar con ellas."""
+    filas = conn.execute(text("SELECT email FROM usuarios WHERE id NOT LIKE :p"), {"p": PREFIJO + "%"})
+    return {f[0].lower() for f in filas if f[0]}
+
+
+def actualizar_cuentas(conn) -> dict[str, int]:
+    """Pone los correos, la contraseña y los ids de transacción nuevos en los datos demo que ya
+    existen, sin borrar nada (así se conservan fotos, reservas y demás cosas hechas a mano)."""
+    clave = hash_password(CLAVE_DEMO)
+    existentes = set(inspect(conn).get_table_names())
+    resumen = {"empresas": 0, "conductores": 0, "transacciones": 0}
+    for datos in EMPRESAS:
+        fila = conn.execute(
+            text("SELECT id, usuario_id FROM empresas WHERE id LIKE :p AND nombre_comercial = :n"),
+            {"p": PREFIJO + "%", "n": datos["nombre"]},
+        ).first()
+        if not fila:
+            continue
+        conn.execute(text("UPDATE usuarios SET email = :e, password_hash = :c WHERE id = :u"),
+                     {"e": datos["correo"], "c": clave, "u": fila.usuario_id})
+        conn.execute(text("UPDATE empresas SET email_contacto = :e, razon_social = :r WHERE id = :i"),
+                     {"e": datos["correo"], "r": datos["razon_social"], "i": fila.id})
+        resumen["empresas"] += 1
+
+    usados = correos_reales(conn)
+    conductores = conn.execute(
+        text("SELECT id, nombre, apellido FROM usuarios WHERE id LIKE :p AND rol = 'usuario' ORDER BY id"),
+        {"p": PREFIJO + "%"},
+    ).all()
+    for n, fila in enumerate(conductores):
+        correo = correo_conductor(fila.nombre, fila.apellido, n, usados)
+        conn.execute(text("UPDATE usuarios SET email = :e, password_hash = :c WHERE id = :u"),
+                     {"e": correo, "c": clave, "u": fila.id})
+        if "contactos" in existentes:
+            conn.execute(text("UPDATE contactos SET correo = :e WHERE usuario_id = :u AND id LIKE :p"),
+                         {"e": correo, "u": fila.id, "p": PREFIJO + "%"})
+        resumen["conductores"] += 1
+
+    for tabla in ("pagos_reserva", "compras", "reservas"):
+        if tabla not in existentes or "transaccion_id" not in {c["name"] for c in inspect(conn).get_columns(tabla)}:
+            continue
+        filas = conn.execute(
+            text(f'SELECT id, transaccion_id FROM "{tabla}" WHERE transaccion_id LIKE :t'), {"t": "TX-EV-DEMO%"}
+        ).all()
+        for fila in filas:
+            resto = fila.transaccion_id[len("TX-EV-DEMO"):]
+            etiqueta = "cmp" + resto[1:] if resto.startswith("C") else "res" + resto
+            conn.execute(text(f'UPDATE "{tabla}" SET transaccion_id = :t WHERE id = :i'),
+                         {"t": transaccion(etiqueta), "i": fila.id})
+            resumen["transacciones"] += 1
+    return resumen
+
+
 def borrar_demo(conn) -> dict[str, int]:
     existentes = set(inspect(conn).get_table_names())
     resumen = {}
@@ -624,7 +700,16 @@ def borrar_demo(conn) -> dict[str, int]:
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Crea o borra los datos de demostración de Avanze.")
     parser.add_argument("--borrar", action="store_true", help="solo borra los datos demo")
+    parser.add_argument("--actualizar-cuentas", action="store_true",
+                        help="cambia correos y contraseña de las cuentas demo existentes sin borrar nada")
     args = parser.parse_args(argv)
+
+    if args.actualizar_cuentas:
+        with engine.begin() as conn:
+            resumen = actualizar_cuentas(conn)
+        print("Cuentas actualizadas:", resumen)
+        print(f"Todas usan la contraseña {CLAVE_DEMO}")
+        return
 
     with engine.begin() as conn:
         borrados = borrar_demo(conn)
@@ -639,7 +724,7 @@ def main(argv=None):
     print("Datos demo creados:")
     for tabla, n in creados.items():
         print(f"  {tabla}: {n}")
-    print(f"Usuarios demo: *@{DOMINIO} con contraseña {CLAVE_DEMO}")
+    print(f"Todas las cuentas creadas usan la contraseña {CLAVE_DEMO}")
 
 
 if __name__ == "__main__":
