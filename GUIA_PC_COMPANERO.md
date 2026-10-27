@@ -24,11 +24,11 @@ Todos los comandos son para **PowerShell**.
 cd C:\
 mkdir EVCharge
 cd C:\EVCharge
-git clone -b feria-dia-2 https://github.com/Juaness636/EV_CHARGE.git EVCharge
+git clone -b feria-dia-2 https://github.com/jhon71777/Avanze-react-native.git EVCharge
 cd C:\EVCharge\EVCharge
 ```
 
-(Si no tienes acceso a ese repositorio, usa `https://github.com/jhon71777/Avanze-react-native.git`, misma rama `feria-dia-2`.)
+(Si el repositorio es privado, Jhon te tiene que agregar como colaborador en GitHub, o te pasa la carpeta comprimida.)
 
 ## 2. Crear la base de datos y cargar los datos de Jhon
 
