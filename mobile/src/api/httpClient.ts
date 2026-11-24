@@ -15,14 +15,11 @@ export const CLAVE_TOKEN = 'ev_token';
 //    (hostUri), así el celular encuentra el backend sin escribir la IP a mano.
 // 4. Emulador Android sin hostUri: 10.0.2.2 apunta al computador anfitrión.
 function resolverApiUrl(): string {
-  const configurada = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (configurada) return configurada.replace(/\/+$/, '');
+  // 1. Prioriza la URL de producción si está configurada
+  const urlEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (urlEnv) return urlEnv.replace(/\/$/, '');
 
-  if (Platform.OS === 'web') {
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    return `http://${host || 'localhost'}:${PUERTO_BACKEND}`;
-  }
-
+  // 2. Fallback para desarrollo local en Expo Go
   const hostUri = Constants.expoConfig?.hostUri ?? '';
   const hostExpo = hostUri.split(':')[0];
   if (hostExpo && !hostExpo.includes('exp.direct')) return `http://${hostExpo}:${PUERTO_BACKEND}`;
@@ -35,7 +32,7 @@ export const API_BASE_URL = resolverApiUrl();
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 20000,
+  timeout: 60000,
 });
 
 // El token se mantiene en memoria para no leer AsyncStorage en cada petición.
