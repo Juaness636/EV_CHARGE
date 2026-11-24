@@ -1,59 +1,46 @@
-# EV_CHARGE/config/database.py
-
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# ==========================================
-# CARGAR VARIABLES .env
-# ==========================================
-load_dotenv()
+load_dotenv(override=False)
 
-# ==========================================
-# VARIABLES DE ENTORNO
-# ==========================================
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Validación estricta
-if not all([DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME]):
-    raise ValueError("❌ Faltan variables de entorno requeridas en el archivo .env")
+if DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.strip()
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    database_url = make_url(DATABASE_URL)
+    SQLALCHEMY_DATABASE_URL = database_url.set(drivername="postgresql+psycopg2")
+else:
+    if not all([DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME]):
+        raise ValueError("Configura DATABASE_URL o las cinco variables DB_* de PostgreSQL")
+    SQLALCHEMY_DATABASE_URL = URL.create(
+        "postgresql+psycopg2",
+        username=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=int(DB_PORT),
+        database=DB_NAME,
+    )
 
-# ==========================================
-# URL CONEXIÓN POSTGRESQL
-# ==========================================
-SQLALCHEMY_DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-
-# ==========================================
-# ENGINE OPTIMIZADO
-# ==========================================
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    pool_size=10,         # Conexiones base
-    max_overflow=20,      # Conexiones adicionales máximas
-    pool_pre_ping=True    # Reconecta si la sesión expiró en Postgres
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True
 )
 
-# ==========================================
-# SESIONES Y BASE ORM
-# ==========================================
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
-
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# ==========================================
-# DEPENDENCIA DB PARA FASTAPI
-# ==========================================
 def get_db():
     db = SessionLocal()
     try:
