@@ -6,16 +6,15 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 const PUERTO_BACKEND = 8000;
+const URL_PRODUCCION = 'https://ev-charge-xw36.onrender.com';
 export const CLAVE_TOKEN = 'ev_token';
 
 // Resuelve la URL del backend FastAPI en este orden:
-// 1. EXPO_PUBLIC_API_URL (si se define en mobile/.env).
-// 2. Web: el mismo host desde el que se abrió la página (localhost o la IP del PC).
-// 3. Expo Go / build de desarrollo: la IP del computador que ejecuta `expo start`
-//    (hostUri), así el celular encuentra el backend sin escribir la IP a mano.
-// 4. Emulador Android sin hostUri: 10.0.2.2 apunta al computador anfitrión.
+// 1. EXPO_PUBLIC_API_URL (si se define en mobile/.env o en Render).
+// 2. Expo Go / build de desarrollo local en red LAN (hostUri).
+// 3. Producción en Render (Web y APK compilado).
 function resolverApiUrl(): string {
-  // 1. Prioriza la URL de producción si está configurada
+  // 1. Prioriza la variable de entorno si está configurada
   const urlEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (urlEnv) return urlEnv.replace(/\/$/, '');
 
@@ -24,7 +23,8 @@ function resolverApiUrl(): string {
   const hostExpo = hostUri.split(':')[0];
   if (hostExpo && !hostExpo.includes('exp.direct')) return `http://${hostExpo}:${PUERTO_BACKEND}`;
 
-  return Platform.OS === 'android' ? `http://10.0.2.2:${PUERTO_BACKEND}` : `http://localhost:${PUERTO_BACKEND}`;
+  // 3. URL de producción en Render para Web y APK
+  return URL_PRODUCCION;
 }
 
 export const API_BASE_URL = resolverApiUrl();
