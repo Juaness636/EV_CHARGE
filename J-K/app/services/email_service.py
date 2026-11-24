@@ -1,7 +1,7 @@
 """Envío de correos transaccionales de EV Charge.
 
-Las credenciales se leen únicamente desde las variables de entorno. No se
-guardan códigos, contraseñas ni credenciales SMTP en el código fuente.
+Las credenciales se leen desde las variables de entorno. Con BREVO_API_KEY
+se envía por HTTPS. En los demás ambientes se usa la configuración SMTP.
 
 Los correos siguen las pautas de Gmail para remitentes y así no terminan en spam:
 - Remitente fijo con nombre visible ("EV Charge <correo>"), Message-ID y Date propios.
@@ -20,7 +20,11 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate, make_msgid
 
+import requests
+from requests.exceptions import RequestException
+
 logger = logging.getLogger(__name__)
+BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
 
 # Colores de la marca (los mismos de la app móvil).
 VERDE = "#39a900"
@@ -37,7 +41,7 @@ HORA_COLOMBIA = timezone(timedelta(hours=-5))
 
 
 class EmailDeliveryError(RuntimeError):
-    """Indica que un correo no pudo entregarse al servidor SMTP."""
+    """Indica que no se pudo enviar un correo al proveedor."""
 
 
 def _smtp_config() -> tuple[str, int, str, str]:
@@ -53,17 +57,53 @@ def _smtp_config() -> tuple[str, int, str, str]:
     return server, port, sender, password
 
 
+def _send_brevo_email(api_key: str, payload: dict) -> None:
+    try:
+        response = requests.post(
+            BREVO_EMAIL_URL,
+            headers={"api-key": api_key},
+            json=payload,
+            timeout=(5, 15),
+            allow_redirects=False,
+        )
+    except RequestException as exc:
+        logger.warning("No se pudo conectar con Brevo (%s).", type(exc).__name__)
+        raise EmailDeliveryError("No se pudo conectar con Brevo.") from exc
+    if response.status_code != 201:
+        logger.warning("Brevo rechazó el envío (HTTP %s).", response.status_code)
+        raise EmailDeliveryError("Brevo rechazó el envío del correo.")
+
+
 def _send_email(recipient: str, subject: str, text_body: str, html_body: str) -> None:
+    sender_name = os.getenv("SENDER_NAME", "EV Charge").strip() or "EV Charge"
+    reply_to = os.getenv("REPLY_TO_EMAIL", "").strip()
+    brevo_api_key = os.getenv("BREVO_API_KEY", "").strip()
+    if brevo_api_key:
+        sender = os.getenv("SENDER_EMAIL", "").strip()
+        if not sender:
+            logger.warning("Falta SENDER_EMAIL para el envío por Brevo.")
+            raise EmailDeliveryError("Falta configurar el remitente de Brevo.")
+        payload = {
+            "sender": {"email": sender, "name": sender_name},
+            "to": [{"email": recipient}],
+            "subject": subject,
+            "textContent": text_body,
+            "htmlContent": html_body,
+        }
+        if reply_to:
+            payload["replyTo"] = {"email": reply_to}
+        _send_brevo_email(brevo_api_key, payload)
+        return
+
     server, port, sender, password = _smtp_config()
     message = EmailMessage()
     # El nombre visible y la dirección son siempre los mismos: Gmail confía más en un
     # remitente estable que en uno que cambia de un correo a otro.
-    message["From"] = formataddr((os.getenv("SENDER_NAME", "EV Charge").strip() or "EV Charge", sender))
+    message["From"] = formataddr((sender_name, sender))
     message["To"] = recipient
     message["Subject"] = subject
     message["Date"] = formatdate(localtime=False)
     message["Message-ID"] = make_msgid(domain=sender.rsplit("@", 1)[-1])
-    reply_to = os.getenv("REPLY_TO_EMAIL", "").strip()
     if reply_to:
         message["Reply-To"] = reply_to
     message.set_content(text_body)
